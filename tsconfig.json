@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "jsx": "react-native",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "./frontend/app/*"
+            ]
+        }
+    },
+    "include": [
+        "frontend/app/**/*.ts",
+        "frontend/app/**/*.tsx",
+        "frontend/app/expo-env.d.ts"
+    ]
+}

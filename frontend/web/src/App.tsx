@@ -1,6 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import SidebarLayout from './layouts/SidebarLayout';
 import Dashboard from './pages/Dashboard';
+import POIManagement from './pages/POIManagement';
+import AudioManagement from './pages/AudioManagement';
+import TourManagement from './pages/TourManagement';
+import Translations from './pages/Translations';
 
 function App() {
   return (
@@ -8,13 +12,12 @@ function App() {
       <Routes>
         <Route path="/" element={<SidebarLayout />}>
           <Route index element={<Dashboard />} />
-          {/* Placeholder routes for future development */}
-          <Route path="stores" element={<div className="p-8"><h1>Quản lý gian hàng (Sắp ra mắt)</h1></div>} />
-          <Route path="products" element={<div className="p-8"><h1>Quản lý sản phẩm (Sắp ra mắt)</h1></div>} />
-          <Route path="orders" element={<div className="p-8"><h1>Quản lý đơn hàng (Sắp ra mắt)</h1></div>} />
-          <Route path="users" element={<div className="p-8"><h1>Quản lý người dùng (Sắp ra mắt)</h1></div>} />
-          <Route path="analytics" element={<div className="p-8"><h1>Báo cáo phân tích (Sắp ra mắt)</h1></div>} />
-          <Route path="settings" element={<div className="p-8"><h1>Cài đặt hệ thống (Sắp ra mắt)</h1></div>} />
+          <Route path="poi" element={<POIManagement />} />
+          <Route path="audio" element={<AudioManagement />} />
+          <Route path="tours" element={<TourManagement />} />
+          <Route path="translations" element={<Translations />} />
+          <Route path="users" element={<div className="p-8"><h1 className="text-2xl font-bold">Quản lý người dùng</h1><p className="text-slate-500">Đang phát triển...</p></div>} />
+          <Route path="settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Cài đặt hệ thống</h1><p className="text-slate-500">Đang phát triển...</p></div>} />
         </Route>
       </Routes>
     </BrowserRouter>

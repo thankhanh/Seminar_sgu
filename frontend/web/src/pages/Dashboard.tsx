@@ -18,7 +18,7 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon, color }) => (
-    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-300">
+    <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-300">
         <div className="flex justify-between items-start mb-4">
             <div className={`p-3 rounded-xl ${color} bg-opacity-10`}>
                 {React.cloneElement(icon as React.ReactElement, { className: color.replace('bg-', 'text-') })}
@@ -77,7 +77,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="lg:col-span-2 bg-white p-8 rounded-xl border border-slate-100 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                         <h3 className="text-lg font-bold text-slate-900">Biểu đồ doanh thu</h3>
                         <select className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary-500/20">
@@ -101,7 +101,7 @@ const Dashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="bg-white p-8 rounded-xl border border-slate-100 shadow-sm">
                     <h3 className="text-lg font-bold text-slate-900 mb-6">Gian hàng nổi bật</h3>
                     <div className="space-y-6">
                         {[1, 2, 3, 4].map((i) => (
@@ -119,7 +119,7 @@ const Dashboard: React.FC = () => {
                             </div>
                         ))}
                     </div>
-                    <button className="w-full mt-8 py-3 rounded-xl border border-slate-100 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+                    <button className="w-full mt-8 py-3 rounded-xl border border-slate-100 text-sm font-bold text-slate-600 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-100 transition-all">
                         Xem tất cả
                     </button>
                 </div>

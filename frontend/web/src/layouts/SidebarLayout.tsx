@@ -2,16 +2,16 @@ import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
     LayoutDashboard,
-    Store,
     Users,
     Settings,
     LogOut,
-    Package,
-    ShoppingCart,
-    BarChart3,
     Search,
     Bell,
-    User
+    User,
+    MapPin,
+    Mic,
+    Map as MapIcon,
+    Languages
 } from 'lucide-react';
 
 interface SidebarItemProps {
@@ -24,7 +24,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon, label }) => (
     <NavLink
         to={to}
         className={({ isActive }) => `
-      flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
+      flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
       ${isActive
                 ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30'
                 : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-primary-600'}
@@ -45,27 +45,25 @@ const SidebarLayout: React.FC = () => {
                         <LayoutDashboard className="text-white w-6 h-6" />
                     </div>
                     <span className="text-xl font-bold bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">
-                        AdminPanel
+                        Vinh Khanh
                     </span>
                 </div>
 
                 <nav className="flex-1 px-4 space-y-1 mt-4">
-                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 mb-2">Main</div>
+                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 mb-2">CMS Management</div>
                     <SidebarItem to="/" icon={<LayoutDashboard size={20} />} label="Tổng quan" />
-                    <SidebarItem to="/stores" icon={<Store size={20} />} label="Gian hàng" />
-                    <SidebarItem to="/products" icon={<Package size={20} />} label="Sản phẩm" />
-                    <SidebarItem to="/orders" icon={<ShoppingCart size={20} />} label="Đơn hàng" />
+                    <SidebarItem to="/poi" icon={<MapPin size={20} />} label="Quản lý POI" />
+                    <SidebarItem to="/audio" icon={<Mic size={20} />} label="Quản lý Audio" />
+                    <SidebarItem to="/tours" icon={<MapIcon size={20} />} label="Quản lý Tour" />
+                    <SidebarItem to="/translations" icon={<Languages size={20} />} label="Bản dịch & Lịch sử" />
+
+                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 mt-8 mb-2">Hệ thống</div>
                     <SidebarItem to="/users" icon={<Users size={20} />} label="Người dùng" />
-
-                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 mt-8 mb-2">Phân tích</div>
-                    <SidebarItem to="/analytics" icon={<BarChart3 size={20} />} label="Báo cáo" />
-
-                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 mt-8 mb-2">Cài đặt</div>
-                    <SidebarItem to="/settings" icon={<Settings size={20} />} label="Cài đặt hệ thống" />
+                    <SidebarItem to="/settings" icon={<Settings size={20} />} label="Cài đặt" />
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
-                    <button className="flex items-center gap-3 px-4 py-3 rounded-lg text-red-500 hover:bg-red-50 transition-all w-full">
+                    <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all w-full">
                         <LogOut size={20} />
                         <span className="font-medium">Đăng xuất</span>
                     </button>
@@ -88,11 +86,11 @@ const SidebarLayout: React.FC = () => {
                     <div className="flex items-center gap-6">
                         <button className="relative p-2 text-slate-400 hover:text-primary-500 transition-colors">
                             <Bell size={22} />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-primary-500 rounded-full border-2 border-white"></span>
                         </button>
                         <div className="flex items-center gap-3 pl-6 border-l border-slate-200">
                             <div className="text-right">
-                                <div className="text-sm font-semibold">Admin Hung</div>
+                                <div className="text-sm font-semibold text-slate-900">Admin Hung</div>
                                 <div className="text-xs text-slate-400">Quản trị viên</div>
                             </div>
                             <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center overflow-hidden border-2 border-slate-200">

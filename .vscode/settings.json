@@ -1,7 +1,0 @@
-{
-    "eslint.workingDirectories": [
-        "./frontend/app",
-        "./frontend/web"
-    ],
-    "eslint.experimental.useFlatConfig": true
-}

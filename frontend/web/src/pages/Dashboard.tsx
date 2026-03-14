@@ -25,7 +25,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon, 
             <div className={`absolute top-0 right-0 w-32 h-32 bg-${baseColor}-100 rounded-full blur-2xl -mr-16 -mt-16 opacity-50 group-hover:scale-150 transition-transform duration-700 pointer-events-none`}></div>
             <div className="flex justify-between items-start mb-4 relative z-10">
                 <div className={`p-3 rounded-xl ${color} bg-opacity-10 ring-1 ring-${baseColor}-500/10`}>
-                    {React.cloneElement(icon as React.ReactElement, { className: color.replace('bg-', 'text-') })}
+                    {React.cloneElement(icon as any, { className: color.replace('bg-', 'text-') })}
                 </div>
                 <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${trend === 'up' ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'}`}>
                 {trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}

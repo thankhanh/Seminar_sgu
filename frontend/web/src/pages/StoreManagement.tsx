@@ -49,7 +49,7 @@ const MOCK_STORES = [
 ];
 
 const StoreManagement: React.FC = () => {
-    const [stores, setStores] = useState(MOCK_STORES);
+    const [stores] = useState(MOCK_STORES);
     const [searchQuery, setSearchQuery] = useState('');
 
     const filteredStores = stores.filter(store => 

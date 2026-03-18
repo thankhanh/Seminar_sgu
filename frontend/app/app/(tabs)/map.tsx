@@ -1,16 +1,44 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, TouchableOpacity, ScrollView, Dimensions, StyleSheet } from 'react-native';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import * as Location from 'expo-location';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
 export default function MapScreen() {
+    const [location, setLocation] = useState<Location.LocationObject | null>(null);
+
+    const initialRegion = {
+        latitude: 10.7610,
+        longitude: 106.7032,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+    };
+
+    useEffect(() => {
+        (async () => {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') return;
+            let loc = await Location.getCurrentPositionAsync({});
+            setLocation(loc);
+        })();
+    }, []);
+
+    const userLocation = location ? {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude
+    } : {
+        latitude: 10.7610, // Vĩnh Khánh default
+        longitude: 106.7032
+    };
+
     return (
         <SafeAreaView className="flex-1 bg-[#F9FAFB] relative">
             <View className="flex-1">
                 {/* === HEADER === */}
-                <View className="flex-row items-center justify-between px-5 pt-4 pb-3 bg-white z-10">
+                <View className="flex-row items-center justify-between px-5 pt-4 pb-3 bg-[#F4FBFC] z-10">
                     <TouchableOpacity>
                         <Ionicons name="menu-outline" size={28} color="#1F2937" />
                     </TouchableOpacity>
@@ -32,7 +60,7 @@ export default function MapScreen() {
                 <View className="h-[1px] w-full bg-[#F3F4F6] z-10" />
 
                 {/* === FILTER CATEGORIES === */}
-                <View className="bg-white z-10 pb-3">
+                <View className="bg-[#F4FBFC] z-10 pb-3">
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -60,76 +88,68 @@ export default function MapScreen() {
                     </ScrollView>
                 </View>
 
-                {/* === MAP AREA === */}
-                <View className="flex-1 bg-[#E8EDF2] relative overflow-hidden">
-                    {/* Static Map Background (Using CSS shapes/rotations to mimic the street grid shown in UI) */}
-                    <View className="absolute w-[200%] h-[200%] -top-[50%] -left-[50%] flex items-center justify-center">
-                        <View className="w-[120px] h-[800px] bg-[#D2DAE5] rotate-[-15deg] absolute" />
-                        <View className="w-[800px] h-[100px] bg-[#D2DAE5] rotate-[-15deg] translate-y-32 absolute" />
-                        <View className="w-[400px] h-[300px] bg-white absolute -left-20 -top-10 shadow-sm border border-[#E5E7EB]" />
-                        <View className="w-[300px] h-[250px] bg-white absolute right-10 top-20 shadow-sm border border-[#E5E7EB]" />
-                        <View className="w-[500px] h-[400px] bg-white absolute bottom-10 left-10 shadow-sm border border-[#E5E7EB]" />
-                    </View>
-
-                    {/* Heatmap Gradients (Simulated with absolute views) */}
-                    {/* Heatmap 1 (Red/Intense) */}
-                    <View className="absolute top-[20%] right-[10%] w-[250px] h-[250px] rounded-full bg-red-500/30 blur-3xl" style={{ transform: [{ scale: 1.5 }] }} />
-                    <View className="absolute top-[25%] right-[20%] w-[150px] h-[150px] rounded-full bg-red-600/50 blur-2xl" />
-
-                    {/* Heatmap 2 (Orange/Moderate) */}
-                    <View className="absolute top-[10%] left-[5%] w-[180px] h-[180px] rounded-full bg-[#E86B32]/30 blur-2xl" />
-
-                    {/* Heatmap 3 (Orange/Large) */}
-                    <View className="absolute bottom-[20%] left-[-10%] w-[350px] h-[350px] rounded-full bg-[#E86B32]/30 blur-3xl" />
-
-                    {/* --- MAP MARKERS --- */}
-                    {/* Marker 1: #12 */}
-                    <View className="absolute top-[22%] left-[18%] items-center">
-                        <View className="bg-white px-2 py-1 rounded shadow-sm mb-1 border border-gray-100">
-                            <Text className="text-[10px] font-extrabold text-[#1F2937]">#12</Text>
-                        </View>
-                        <View className="w-4 h-4 rounded-full bg-white items-center justify-center shadow-sm">
-                            <View className="w-2 h-2 rounded-full bg-[#1F2937]" />
-                        </View>
-                    </View>
-
-                    {/* Marker 2: #15 (With Tooltip) */}
-                    <View className="absolute top-[35%] align-center" style={{ left: width / 2 - 20 }}>
-                        <View className="bg-white px-2 py-1 rounded shadow-sm mb-1 border border-gray-100 self-center">
-                            <Text className="text-[10px] font-extrabold text-[#1F2937]">#15</Text>
-                        </View>
-                        <View className="w-4 h-4 rounded-full bg-white items-center justify-center shadow-sm self-center">
-                            <View className="w-2 h-2 rounded-full bg-[#1F2937]" />
-                        </View>
-                    </View>
-
-                    {/* Marker 3: Oc Oanh Tooltip */}
-                    <View className="absolute top-[42%] right-[15%] items-center z-20">
-                        <View className="bg-[#111827] px-3 py-2 rounded-xl shadow-lg mb-2 items-center">
-                            <Text className="text-[10px] font-bold text-white uppercase tracking-wider mb-0.5">Oc Oanh</Text>
-                            <View className="flex-row items-center">
-                                <View className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1" />
-                                <Text className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">Crowded</Text>
-                            </View>
-                        </View>
-                        <View className="w-6 h-6 rounded-full bg-white/80 items-center justify-center shadow-sm">
-                            <View className="w-4 h-4 rounded-full bg-white items-center justify-center shadow-sm">
-                                <View className="w-2.5 h-2.5 rounded-full bg-[#111827]" />
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* User Location Marker */}
-                    <View className="absolute top-[52%] left-[42%] items-center justify-center">
-                        <View className="w-12 h-12 rounded-full bg-[#4F46E5]/20 absolute items-center justify-center">
-                            <View className="w-6 h-6 rounded-full bg-[#4F46E5]/30 items-center justify-center">
-                                <View className="w-4 h-4 rounded-full bg-white items-center justify-center shadow-sm">
-                                    <View className="w-2.5 h-2.5 rounded-full bg-[#3B82F6]" />
+                {/* === MAP AREA === */}                <View className="flex-1 relative overflow-hidden">
+                    <MapView 
+                        style={StyleSheet.absoluteFillObject}
+                        initialRegion={initialRegion}
+                        provider={PROVIDER_DEFAULT}
+                        showsUserLocation={false}
+                    >
+                        {/* User Location Marker */}
+                        <Marker coordinate={userLocation} zIndex={100} anchor={{x: 0.5, y: 0.5}}>
+                            <View className="items-center justify-center">
+                                <View className="w-12 h-12 rounded-full bg-[#4F46E5]/20 items-center justify-center">
+                                    <View className="w-6 h-6 rounded-full bg-[#4F46E5]/30 items-center justify-center">
+                                        <View className="w-4 h-4 rounded-full bg-white items-center justify-center shadow-sm">
+                                            <View className="w-2.5 h-2.5 rounded-full bg-[#3B82F6]" />
+                                        </View>
+                                    </View>
                                 </View>
                             </View>
-                        </View>
-                    </View>
+                        </Marker>
 
+                        {/* Marker 1: #12 */}
+                        <Marker coordinate={{ latitude: 10.7618, longitude: 106.7020 }}>
+                            <View className="items-center">
+                                <View className="bg-white px-2 py-1 rounded shadow-sm mb-1 border border-gray-100">
+                                    <Text className="text-[10px] font-extrabold text-[#1F2937]">#12</Text>
+                                </View>
+                                <View className="w-4 h-4 rounded-full bg-white items-center justify-center shadow-sm">
+                                    <View className="w-2 h-2 rounded-full bg-[#1F2937]" />
+                                </View>
+                            </View>
+                        </Marker>
+
+                        {/* Marker 2: #15 */}
+                        <Marker coordinate={{ latitude: 10.7605, longitude: 106.7040 }}>
+                            <View className="items-center">
+                                <View className="bg-white px-2 py-1 rounded shadow-sm mb-1 border border-gray-100">
+                                    <Text className="text-[10px] font-extrabold text-[#1F2937]">#15</Text>
+                                </View>
+                                <View className="w-4 h-4 rounded-full bg-white items-center justify-center shadow-sm">
+                                    <View className="w-2 h-2 rounded-full bg-[#1F2937]" />
+                                </View>
+                            </View>
+                        </Marker>
+
+                        {/* Marker 3: Oc Oanh Tooltip */}
+                        <Marker coordinate={{ latitude: 10.7612, longitude: 106.7025 }} zIndex={90}>
+                            <View className="items-center">
+                                <View className="bg-[#111827] px-3 py-2 rounded-xl shadow-lg mb-2 items-center">
+                                    <Text className="text-[10px] font-bold text-white uppercase tracking-wider mb-0.5">Oc Oanh</Text>
+                                    <View className="flex-row items-center">
+                                        <View className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1" />
+                                        <Text className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">Crowded</Text>
+                                    </View>
+                                </View>
+                                <View className="w-6 h-6 rounded-full bg-white/80 items-center justify-center shadow-sm">
+                                    <View className="w-4 h-4 rounded-full bg-white items-center justify-center shadow-sm">
+                                        <View className="w-2.5 h-2.5 rounded-full bg-[#111827]" />
+                                    </View>
+                                </View>
+                            </View>
+                        </Marker>
+                    </MapView>
                     {/* --- FLOATING CONTROLS (Right Side) --- */}
                     <View className="absolute top-5 right-5 z-20">
                         <View className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 overflow-hidden">
@@ -141,7 +161,7 @@ export default function MapScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity className="w-[42px] h-[42px] rounded-2xl bg-[#E86B32] items-center justify-center shadow-sm shadow-[#E86B32]/30 mb-4">
+                        <TouchableOpacity className="w-[42px] h-[42px] rounded-2xl bg-[#009FB7] items-center justify-center shadow-sm shadow-[#009FB7]/30 mb-4">
                             <Ionicons name="sunny" size={20} color="white" />
                         </TouchableOpacity>
 

@@ -35,7 +35,7 @@ export default function LoginScreen() {
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
                             <View style={styles.iconCircle}>
-                                <Ionicons name="compass-outline" size={20} color="#E86B32" />
+                                <Ionicons name="compass-outline" size={20} color="#009fb7" />
                             </View>
                             <Text style={styles.headerBrand}>Vinh Khanh Market</Text>
                         </View>
@@ -53,7 +53,7 @@ export default function LoginScreen() {
                         >
                             <View style={styles.mapOverlay}>
                                 <View style={styles.locationTag}>
-                                    <Ionicons name="location-outline" size={16} color="#E86B32" />
+                                    <Ionicons name="location-outline" size={16} color="#009FB7" />
                                     <Text style={styles.locationText}>STREET FOOD HUB</Text>
                                 </View>
                                 <Text style={styles.welcomeText}>Welcome Back</Text>
@@ -167,7 +167,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#F9FAFC',
+        backgroundColor: '#F4FBFC',
     },
     container: {
         flex: 1,
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#FFEEe5',
+        backgroundColor: '#F4FBFC',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 10,
@@ -284,19 +284,19 @@ const styles = StyleSheet.create({
     },
     forgotText: {
         fontSize: 14,
-        color: '#E86B32',
+        color: '#009FB7',
         fontWeight: '500',
         marginBottom: 8,
     },
     loginButton: {
-        backgroundColor: '#E86B32',
+        backgroundColor: '#009FB7',
         height: 56,
         borderRadius: 12,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 8,
-        shadowColor: '#E86B32',
+        shadowColor: '#009FB7',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     },
     signUpLink: {
         fontSize: 14,
-        color: '#E86B32',
+        color: '#009FB7',
         fontWeight: '600',
     },
     footerBrand: {

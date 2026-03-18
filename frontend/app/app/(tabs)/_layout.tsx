@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,19 +7,20 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 const TabItem = ({ icon, label, active = false, isIonicons = true, onPress }: any) => (
   <TouchableOpacity onPress={onPress} className="items-center justify-center flex-1">
     {isIonicons ? (
-      <Ionicons name={icon} size={24} color={active ? "#E86B32" : "#9CA3AF"} />
+      <Ionicons name={icon} size={24} color={active ? "#009FB7" : "#9CA3AF"} />
     ) : (
-      <MaterialCommunityIcons name={icon} size={24} color={active ? "#E86B32" : "#9CA3AF"} />
+      <MaterialCommunityIcons name={icon} size={24} color={active ? "#009FB7" : "#9CA3AF"} />
     )}
-    <Text className={`text-[10px] mt-1 ${active ? "text-[#E86B32] font-bold" : "text-[#9CA3AF]"}`}>
+    <Text className={`text-[10px] mt-1 ${active ? "text-[#009FB7] font-bold" : "text-[#9CA3AF]"}`}>
       {label}
     </Text>
   </TouchableOpacity>
 );
 
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const router = useRouter();
   return (
-    <View className="absolute bottom-0 w-full bg-white/95 border-t border-[#F3F4F6] pt-2 pb-8">
+    <View className="absolute bottom-0 w-full bg-white border-t border-[#B3EBF2] pt-2 pb-8">
       <View className="flex-row justify-around items-center px-4">
         <TabItem
           icon="home"
@@ -34,11 +35,14 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           onPress={() => navigation.navigate('map')}
         />
 
-        {/* Floating Center Audio Button */}
+        {/* Floating Center QR Scan Button */}
         <View className="-top-10 items-center justify-center">
-          <View className="w-[74px] h-[74px] rounded-full bg-[#FEF0E6] items-center justify-center">
-            <TouchableOpacity className="w-[58px] h-[58px] rounded-full bg-[#E86B32] items-center justify-center shadow-lg shadow-[#E86B32]/40">
-              <Ionicons name="headset" size={28} color="white" />
+          <View className="w-[74px] h-[74px] rounded-full bg-white items-center justify-center">
+            <TouchableOpacity 
+              onPress={() => router.push('/scanner')}
+              className="w-[58px] h-[58px] rounded-full bg-[#009FB7] items-center justify-center shadow-lg shadow-[#009FB7]/40"
+            >
+              <Ionicons name="qr-code-outline" size={28} color="white" />
             </TouchableOpacity>
           </View>
         </View>

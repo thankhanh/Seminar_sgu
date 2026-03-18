@@ -5,7 +5,11 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        brand: '#E86B32', // Bạn có thể định nghĩa màu cam thương hiệu ở đây
+        brand: '#009FB7', // Bạn có thể định nghĩa màu cam thương hiệu ở đây (updated to new primary)
+        primary: '#009FB7',
+        secondary: '#B2EBF2',
+        tertiary: '#3A75D3',
+        neutral: '#4D7E91',
       }
     },
   },

@@ -16,8 +16,20 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="scanner/index" options={{ headerShown: true, title: 'Scanner' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+
+        {/* THÊM DÒNG NÀY ĐỂ ĐĂNG KÝ ROUTE CHO STALL */}
+        <Stack.Screen
+          name="stall/[id]"
+          options={{
+            headerShown: false, // Ẩn header mặc định vì bạn đã tự làm header trong code rồi
+            presentation: 'card'
+          }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

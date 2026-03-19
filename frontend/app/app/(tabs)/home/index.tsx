@@ -89,9 +89,9 @@ export default function HomeScreen() {
             { label: 'Drinks', icon: 'glass-martini-alt', color: '#4B5563', bg: '#F3F4F6', type: 'fa' },
             { label: 'Desserts', icon: 'ice-cream', color: '#4B5563', bg: '#F3F4F6', type: 'fa' },
           ].map((item, index) => (
-            <View key={index} className="items-center">
+            <View key={index} className="items-center shadow-sm shadow-black/5">
               <View style={{ backgroundColor: item.bg }} className="w-[66px] h-[66px] rounded-2xl items-center justify-center mb-2">
-                <FontAwesome5 name={item.icon} size={22} color={item.color} />
+                <FontAwesome5 name={item.icon as any} size={22} color={item.color} />
               </View>
               <Text className={`text-[12px] font-bold ${index === 0 ? 'text-[#1F2937]' : 'text-[#9CA3AF]'}`}>{item.label}</Text>
             </View>

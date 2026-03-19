@@ -19,27 +19,29 @@ const TabItem = ({ icon, label, active = false, isIonicons = true, onPress }: an
 
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const router = useRouter();
+  const currentRouteName = state.routes[state.index]?.name || '';
+
   return (
     <View className="absolute bottom-0 w-full bg-white border-t border-[#B3EBF2] pt-2 pb-8">
       <View className="flex-row justify-around items-center px-4">
         <TabItem
           icon="home"
           label="Home"
-          active={state.index === 0}
-          onPress={() => navigation.navigate('index')}
+          active={currentRouteName.includes('home')}
+          onPress={() => router.push('/(tabs)/home')}
         />
         <TabItem
           icon="map-outline"
           label="Map"
-          active={state.index === 1}
-          onPress={() => navigation.navigate('map')}
+          active={currentRouteName.includes('map')}
+          onPress={() => router.push('/(tabs)/map')}
         />
 
         {/* Floating Center QR Scan Button */}
         <View className="-top-10 items-center justify-center">
           <View className="w-[74px] h-[74px] rounded-full bg-white items-center justify-center">
-            <TouchableOpacity 
-              onPress={() => router.push('/scanner')}
+            <TouchableOpacity
+              onPress={() => router.push('/scanner' as any)}
               className="w-[58px] h-[58px] rounded-full bg-[#009FB7] items-center justify-center shadow-lg shadow-[#009FB7]/40"
             >
               <Ionicons name="qr-code-outline" size={28} color="white" />
@@ -50,14 +52,14 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         <TabItem
           icon="compass-outline"
           label="Guide"
-          active={state.index === 2}
-          onPress={() => navigation.navigate('guide')}
+          active={currentRouteName.includes('guide')}
+          onPress={() => router.push('/(tabs)/guide')}
         />
         <TabItem
           icon="person-outline"
           label="Profile"
-          active={state.index === 3}
-          onPress={() => navigation.navigate('profile')}
+          active={currentRouteName.includes('profile')}
+          onPress={() => router.push('/(tabs)/profile')}
         />
       </View>
     </View>
@@ -70,11 +72,12 @@ export default function TabLayout() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="map" />
-      <Tabs.Screen name="guide" />
-      <Tabs.Screen name="profile" />
-      <Tabs.Screen name="explore" options={{ href: null }} />
+      <Tabs.Screen name="home/index" />
+      <Tabs.Screen name="map/index" />
+      <Tabs.Screen name="guide/index" />
+      <Tabs.Screen name="profile/index" />
+      <Tabs.Screen name="explore/index" options={{ href: null }} />
+
     </Tabs>
   );
 }

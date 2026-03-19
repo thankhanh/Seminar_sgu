@@ -116,7 +116,7 @@ export default function LoginScreen() {
                         </View>
 
                         {/* Login Button */}
-                        <TouchableOpacity style={styles.loginButton} onPress={() => router.replace('/(tabs)')}>
+                        <TouchableOpacity style={styles.loginButton} onPress={() => router.replace('/(tabs)/home')}>
                             <Text style={styles.loginButtonText}>Log In</Text>
                             <Ionicons name="arrow-forward-outline" size={20} color="#FFF" style={{ marginLeft: 6 }} />
                         </TouchableOpacity>

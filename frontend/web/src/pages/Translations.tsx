@@ -18,11 +18,18 @@ const Translations: React.FC = () => {
                         </div>
                         <button className="text-sm font-bold text-primary-600">+ Thêm ngôn ngữ</button>
                     </div>
-                    <div className="space-y-3">
-                        {['Tiếng Việt', 'Tiếng Anh', 'Tiếng Trung', 'Tiếng Hàn'].map((lang, i) => (
-                            <div key={lang} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors">
-                                <span className="text-sm font-medium text-slate-700">{lang}</span>
-                                <span className="text-xs text-slate-400">{i === 0 ? 'Mặc định' : '98% Hoàn thành'}</span>
+                    <div className="space-y-4">
+                        {[{lang: 'Tiếng Việt', pct: 100}, {lang: 'Tiếng Anh', pct: 98}, {lang: 'Tiếng Trung', pct: 45}, {lang: 'Tiếng Hàn', pct: 12}].map((item, i) => (
+                            <div key={item.lang} className="p-4 rounded-xl border border-slate-100 hover:border-primary-200 hover:shadow-sm transition-all bg-slate-50/50">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="font-bold text-slate-900">{item.lang}</span>
+                                    <span className="text-xs font-semibold text-primary-600">{i === 0 ? 'Mặc định' : `${item.pct}%`}</span>
+                                </div>
+                                {i !== 0 && (
+                                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                        <div className="bg-primary-500 h-1.5 rounded-full" style={{ width: `${item.pct}%` }}></div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -36,13 +43,23 @@ const Translations: React.FC = () => {
                         </div>
                         <Download size={20} className="text-slate-400 cursor-pointer" />
                     </div>
-                    <div className="space-y-4">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="flex gap-4 pb-4 border-b border-slate-50 last:border-0 last:pb-0">
-                                <div className="w-2 h-2 rounded-full bg-primary-500 mt-1.5 shrink-0"></div>
-                                <div>
-                                    <p className="text-sm text-slate-900 font-medium line-clamp-1">Admin Hung đã cập nhật POI: Ốc Oanh</p>
-                                    <span className="text-xs text-slate-400">10 phút trước</span>
+                    <div className="space-y-0 relative before:absolute before:top-4 before:bottom-4 before:left-[11px] before:w-[2px] before:bg-slate-100">
+                        {[
+                            { title: 'Cập nhật POI: Ốc Oanh', time: '10 phút trước', user: 'Admin Hung', color: 'primary' },
+                            { title: 'Tạo Tour: Khám phá ăn vặt', time: '2 giờ trước', user: 'Manager Hoa', color: 'emerald' },
+                            { title: 'Thêm bản dịch Tiếng Anh cho Bánh Khọt', time: 'Hôm qua, 14:30', user: 'Admin Hung', color: 'indigo' }
+                        ].map((item, i) => (
+                            <div key={i} className="relative pl-8 py-4 group">
+                                <div className={`absolute left-0 top-5 w-6 h-6 rounded-full bg-white border-4 border-${item.color}-100 flex items-center justify-center`}>
+                                    <div className={`w-2 h-2 rounded-full bg-${item.color}-500 group-hover:scale-150 transition-transform`}></div>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 group-hover:border-slate-200 transition-colors">
+                                    <p className="text-sm text-slate-900 font-bold mb-1">{item.title}</p>
+                                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                                        <span className="font-medium text-slate-700">{item.user}</span>
+                                        <span>•</span>
+                                        <span>{item.time}</span>
+                                    </div>
                                 </div>
                             </div>
                         ))}

@@ -17,21 +17,26 @@ interface StatCardProps {
     color: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon, color }) => (
-    <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-300">
-        <div className="flex justify-between items-start mb-4">
-            <div className={`p-3 rounded-xl ${color} bg-opacity-10`}>
-                {React.cloneElement(icon as React.ReactElement, { className: color.replace('bg-', 'text-') })}
-            </div>
-            <div className={`flex items-center gap-1 text-sm font-medium ${trend === 'up' ? 'text-emerald-500' : 'text-rose-500'}`}>
+const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon, color }) => {
+    // Extract base color name from Tailwind class (e.g. 'bg-emerald-500' -> 'emerald')
+    const baseColor = color.split('-')[1] || 'primary';
+    return (
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/40 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+            <div className={`absolute top-0 right-0 w-32 h-32 bg-${baseColor}-100 rounded-full blur-2xl -mr-16 -mt-16 opacity-50 group-hover:scale-150 transition-transform duration-700 pointer-events-none`}></div>
+            <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className={`p-3 rounded-xl ${color} bg-opacity-10 ring-1 ring-${baseColor}-500/10`}>
+                    {React.cloneElement(icon as any, { className: color.replace('bg-', 'text-') })}
+                </div>
+                <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${trend === 'up' ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'}`}>
                 {trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                 {change}
             </div>
         </div>
-        <div className="text-slate-500 text-sm font-medium mb-1">{title}</div>
-        <div className="text-2xl font-bold text-slate-900">{value}</div>
+        <div className="text-slate-500 text-sm font-medium mb-1 relative z-10">{title}</div>
+        <div className="text-3xl font-extrabold text-slate-900 tracking-tight relative z-10">{value}</div>
     </div>
-);
+    );
+};
 
 const Dashboard: React.FC = () => {
     return (

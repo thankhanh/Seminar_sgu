@@ -70,7 +70,7 @@ export default function StallDetailScreen() {
         <SafeAreaView className="flex-1 bg-white">
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 {/* HERO IMAGE */}
-                <View className="relative w-full h-[280px]">
+                <View className="relative w-full h-[210px]">
                     <Image source={{ uri: stall.image }} className="w-full h-full" resizeMode="cover" />
                     <View className="absolute inset-0 bg-black/40" />
 
@@ -108,73 +108,9 @@ export default function StallDetailScreen() {
                     </View>
                 </View>
 
-                <View className="bg-white rounded-t-3xl -mt-4 pt-6 px-5 flex-1 min-h-[500px]">
-                    {/* TABS SEGMENTED CONTROL */}
-                    <View className="flex-row bg-[#F3F4F6] rounded-xl p-1 mb-6">
-                        <TouchableOpacity
-                            onPress={() => setActiveTab('intro')}
-                            className={`flex-1 py-2.5 items-center rounded-lg ${activeTab === 'intro' ? 'bg-white shadow-sm' : ''}`}
-                        >
-                            <Text className={`text-[13px] font-bold ${activeTab === 'intro' ? 'text-[#009FB7]' : 'text-[#6B7280]'}`}>Giới Thiệu</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => setActiveTab('menu')}
-                            className={`flex-1 py-2.5 items-center rounded-lg ${activeTab === 'menu' ? 'bg-white shadow-sm' : ''}`}
-                        >
-                            <Text className={`text-[13px] font-bold ${activeTab === 'menu' ? 'text-[#009FB7]' : 'text-[#6B7280]'}`}>Thực Đơn</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => setActiveTab('audio')}
-                            className={`flex-1 py-2.5 items-center rounded-lg ${activeTab === 'audio' ? 'bg-white shadow-sm' : ''}`}
-                        >
-                            <Text className={`text-[13px] font-bold ${activeTab === 'audio' ? 'text-[#009FB7]' : 'text-[#6B7280]'}`}>Thuyết Minh</Text>
-                        </TouchableOpacity>
-                    </View>
-                    {/* <View>
-                        <Text> {JSON.stringify(params)} {pathName}</Text>
-                    </View> */}
-
-                    {/* TAB CONTENT: INTRODUCTION */}
-                    {activeTab === 'intro' ? (
-                        <View>
-                            <Text className="text-[#1F2937] text-base leading-6 font-medium">
-                                {stall.description}
-                            </Text>
-
-                            <View className="mt-8 flex-row items-center justify-between p-4 bg-[#F4FBFC] border border-[#B3EBF2] rounded-2xl">
-                                <View className="flex-row items-center">
-                                    <View className="w-10 h-10 rounded-full bg-[#009FB7] items-center justify-center">
-                                        <Ionicons name="time-outline" size={20} color="white" />
-                                    </View>
-                                    <View className="ml-3">
-                                        <Text className="text-[#1F2937] font-bold text-[13px]">Giờ hoạt động</Text>
-                                        <Text className="text-[#4B5563] text-xs mt-0.5">16:00 - 23:30 hằng ngày</Text>
-                                    </View>
-                                </View>
-                            </View>
-                        </View>
-                    ) : null}
-
-                    {/* TAB CONTENT: MENU */}
-                    {activeTab === 'menu' ? (
-                        <View>
-                            {stall.menu.map((item: any) => (
-                                <View key={item.id} className="flex-row items-center bg-white border border-gray-100 p-3 rounded-2xl mb-3 shadow-sm">
-                                    <Image source={{ uri: item.image }} className="w-20 h-20 rounded-xl bg-gray-100" />
-                                    <View className="flex-1 ml-3 h-20 justify-center">
-                                        <Text className="text-[#1F2937] font-bold text-[15px] mb-2">{item.name}</Text>
-                                        <Text className="text-[#009FB7] font-extrabold text-[14px]">{item.price}</Text>
-                                    </View>
-                                    <TouchableOpacity className="w-8 h-8 rounded-full bg-[#F4FBFC] items-center justify-center">
-                                        <Ionicons name="add" size={20} color="#009FB7" />
-                                    </TouchableOpacity>
-                                </View>
-                            ))}
-                        </View>
-                    ) : null}
-
+                <View className="bg-white rounded-t-3xl -mt-4 pt-6 px-5 flex flex-col gap-5 min-h-[500px]">
                     {/* TAB CONTENT: AUDIO */}
-                    {activeTab === 'audio' ? (
+                    <View className='rounded-xl bg-[#F3F4F6] p-5'>
                         <View className="items-center mt-6">
                             <View className="w-24 h-24 rounded-full bg-[#F4FBFC] items-center justify-center border-4 border-[#B3EBF2] shadow-sm mb-6 relative overflow-hidden">
                                 {isPlaying ? <View className="absolute inset-0 bg-[#009FB7] opacity-10" /> : null}
@@ -213,7 +149,50 @@ export default function StallDetailScreen() {
                                 </TouchableOpacity>
                             </View>
                         </View>
-                    ) : null}
+                    </View>
+                    {/* TAB CONTENT: INTRODUCTION */}
+                    <View className='rounded-xl bg-[#F3F4F6] p-5'>
+                        <View>
+                            <Text className="text-[#009FB7] text-2xl leading-6 font-bold text-center mb-5">
+                                Giới thiệu
+                            </Text>
+                            <Text className="text-[#1F2937] text-base leading-6 font-medium">
+                                {stall.description}
+                            </Text>
+
+                            <View className="mt-8 flex-row items-center justify-between p-4 bg-[#F4FBFC] border border-[#B3EBF2] rounded-2xl">
+                                <View className="flex-row items-center">
+                                    <View className="w-10 h-10 rounded-full bg-[#009FB7] items-center justify-center">
+                                        <Ionicons name="time-outline" size={20} color="white" />
+                                    </View>
+                                    <View className="ml-3">
+                                        <Text className="text-[#1F2937] font-bold text-[13px]">Giờ hoạt động</Text>
+                                        <Text className="text-[#4B5563] text-xs mt-0.5">16:00 - 23:30 hằng ngày</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+                    {/* TAB CONTENT: MENU */}
+                    <View className='rounded-xl bg-[#F3F4F6] p-5'>
+                        <Text className="text-[#009FB7] text-2xl leading-6 font-bold text-center mb-5">
+                            Thực đơn
+                        </Text>
+                        {stall.menu.map((item: any) => (
+                            <View key={item.id} className="flex-row items-center bg-white border border-gray-100 p-3 rounded-2xl mb-3 shadow-sm">
+                                <Image source={{ uri: item.image }} className="w-20 h-20 rounded-xl bg-gray-100" />
+                                <View className="flex-1 ml-3 h-20 justify-center">
+                                    <Text className="text-[#1F2937] font-bold text-[15px] mb-2">{item.name}</Text>
+                                    <Text className="text-[#009FB7] font-extrabold text-[14px]">{item.price}</Text>
+                                </View>
+                                <TouchableOpacity className="w-8 h-8 rounded-full bg-[#F4FBFC] items-center justify-center">
+                                    <Ionicons name="add" size={20} color="#009FB7" />
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+                    </View>
+
+
                 </View>
             </ScrollView>
         </SafeAreaView>

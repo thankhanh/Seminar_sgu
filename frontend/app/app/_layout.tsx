@@ -33,14 +33,21 @@ export default function RootLayout() {
           name="cart/index"
           options={{
             headerShown: false,
-            presentation: 'modal'
+            presentation: 'card'
           }}
         />
         <Stack.Screen
           name="checkout/index"
           options={{
             headerShown: false,
-            presentation: 'modal'
+            presentation: 'card'
+          }}
+        />
+        <Stack.Screen
+          name="orders/index"
+          options={{
+            headerShown: false,
+            presentation: 'card'
           }}
         />
       </Stack>

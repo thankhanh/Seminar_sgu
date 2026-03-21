@@ -79,7 +79,7 @@ export default function ProfileScreen() {
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </TouchableOpacity>
 
-                    <TouchableOpacity className="bg-[#F8FAFC] rounded-2xl p-4 flex-row items-center justify-between mb-8">
+                    <TouchableOpacity className="bg-[#F8FAFC] rounded-2xl p-4 flex-row items-center justify-between mb-3">
                         <View className="flex-row items-center flex-1">
                             <View className="w-12 h-12 bg-[#E2E8F0] rounded-2xl items-center justify-center mr-4">
                                 <Feather name="clock" size={20} color="#4B5563" />
@@ -87,6 +87,22 @@ export default function ProfileScreen() {
                             <View>
                                 <Text className="text-[16px] font-bold text-[#1F2937] mb-0.5">Visited Stalls History</Text>
                                 <Text className="text-[12px] text-[#9CA3AF]">Vinh Khanh Street history</Text>
+                            </View>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => router.push('/orders' as any)}
+                        className="bg-[#F8FAFC] rounded-2xl p-4 flex-row items-center justify-between mb-8"
+                    >
+                        <View className="flex-row items-center flex-1">
+                            <View className="w-12 h-12 bg-[#FEF3C7] rounded-2xl items-center justify-center mr-4">
+                                <Ionicons name="receipt-outline" size={20} color="#D97706" />
+                            </View>
+                            <View>
+                                <Text className="text-[16px] font-bold text-[#1F2937] mb-0.5">Lịch sử mua hàng</Text>
+                                <Text className="text-[12px] text-[#9CA3AF]">Theo dõi các đơn hàng gần đây</Text>
                             </View>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />

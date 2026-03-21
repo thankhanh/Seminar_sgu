@@ -23,10 +23,24 @@ export default function RootLayout() {
 
         {/* THÊM DÒNG NÀY ĐỂ ĐĂNG KÝ ROUTE CHO SHOP */}
         <Stack.Screen
-          name="shop/[id]"
+          name="stall/[id]"
           options={{
             headerShown: false, // Ẩn header mặc định vì bạn đã tự làm header trong code rồi
             presentation: 'card'
+          }}
+        />
+        <Stack.Screen
+          name="cart/index"
+          options={{
+            headerShown: false,
+            presentation: 'modal'
+          }}
+        />
+        <Stack.Screen
+          name="checkout/index"
+          options={{
+            headerShown: false,
+            presentation: 'modal'
           }}
         />
       </Stack>

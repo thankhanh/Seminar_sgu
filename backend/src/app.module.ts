@@ -23,6 +23,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { LanguagesModule } from './modules/languages/languages.module';
 import { QrModule } from './modules/qr/qr.module';
 
+
 @Module({
   imports: [
     // Cấu hình môi trường — load .env + các config namespace
@@ -46,8 +47,9 @@ import { QrModule } from './modules/qr/qr.module';
     AdminModule,
     LanguagesModule,
     QrModule,
+
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

@@ -86,8 +86,15 @@ export default function StallDetailScreen() {
                             <TouchableOpacity className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md items-center justify-center border border-white/30 mr-2">
                                 <Ionicons name="share-social-outline" size={22} color="white" />
                             </TouchableOpacity>
-                            <TouchableOpacity className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md items-center justify-center border border-white/30">
+                            <TouchableOpacity className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md items-center justify-center border border-white/30 mr-2">
                                 <Ionicons name="heart-outline" size={24} color="white" />
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                onPress={() => router.push('/cart')}
+                                className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md items-center justify-center border border-white/30 relative"
+                            >
+                                <Ionicons name="cart-outline" size={24} color="white" />
+                                <View className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border border-white" />
                             </TouchableOpacity>
                         </View>
                     </View>

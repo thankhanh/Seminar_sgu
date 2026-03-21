@@ -4,7 +4,7 @@ import MapView, { Marker, PROVIDER_DEFAULT } from '../../../components/MapView';
 import * as Location from 'expo-location';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
@@ -67,6 +67,8 @@ export default function MapScreen() {
         longitude: 106.7032
     };
 
+    const navigation = useNavigation();
+
     return (
         <SafeAreaView className="flex-1 bg-[#F9FAFB] relative">
             <View className="flex-1">
@@ -122,14 +124,14 @@ export default function MapScreen() {
                 </View>
 
                 {/* === MAP AREA === */}                <View className="flex-1 relative overflow-hidden">
-                    <MapView 
+                    <MapView
                         style={StyleSheet.absoluteFillObject}
                         initialRegion={initialRegion}
                         provider={PROVIDER_DEFAULT}
                         showsUserLocation={false}
                     >
                         {/* User Location Marker */}
-                        <Marker coordinate={userLocation} zIndex={100} anchor={{x: 0.5, y: 0.5}}>
+                        <Marker coordinate={userLocation} zIndex={100} anchor={{ x: 0.5, y: 0.5 }}>
                             <View className="items-center justify-center">
                                 <View className="w-12 h-12 rounded-full bg-[#4F46E5]/20 items-center justify-center">
                                     <View className="w-6 h-6 rounded-full bg-[#4F46E5]/30 items-center justify-center">
@@ -143,9 +145,9 @@ export default function MapScreen() {
 
                         {/* Dynamic Markers */}
                         {STALLS.map((stall) => (
-                            <Marker 
-                                key={stall.id} 
-                                coordinate={stall.coordinate} 
+                            <Marker
+                                key={stall.id}
+                                coordinate={stall.coordinate}
                                 zIndex={selectedStall?.id === stall.id ? 99 : 90}
                                 onPress={() => setSelectedStall(stall)}
                             >
@@ -203,15 +205,17 @@ export default function MapScreen() {
                                 </View>
 
                                 <View className="flex-row items-center justify-between mt-1">
-                                    <TouchableOpacity 
-                                        onPress={() => router.push(`/stall/${selectedStall.id}` as any)}
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            router.push(`/stall/${selectedStall.id}` as any);
+                                        }}
                                         className="flex-1 bg-[#009FB7] rounded-xl h-12 items-center justify-center mr-3 shadow-lg shadow-[#009FB7]/40"
                                     >
                                         <Text className="text-white text-[12px] font-extrabold tracking-widest uppercase">
                                             Xem Chi Tiết
                                         </Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         onPress={() => setSelectedStall(null)}
                                         className="w-12 h-12 bg-[#F3F4F6] rounded-xl items-center justify-center border border-gray-200"
                                     >

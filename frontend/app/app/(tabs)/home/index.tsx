@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 // import { styled } from 'nativewind';
 
 // const StyledView = styled(View);
@@ -21,6 +22,7 @@ const { width } = Dimensions.get('window');
 
 
 export default function HomeScreen() {
+  const router = useRouter();
   return (
     <SafeAreaView className="flex-1 bg-[#F4FBFC]">
       <ScrollView
@@ -40,9 +42,19 @@ export default function HomeScreen() {
               <Text className="text-base font-extrabold text-[#1F2937]">Alex Rivera</Text>
             </View>
           </View>
-          <TouchableOpacity className="w-11 h-11 rounded-full bg-[#F3F4F6] items-center justify-center">
-            <Ionicons name="notifications-outline" size={24} color="#1F2937" />
-          </TouchableOpacity>
+          <View className="flex-row items-center gap-2">
+            <TouchableOpacity className="w-11 h-11 rounded-full bg-[#F3F4F6] items-center justify-center">
+              <Ionicons name="notifications-outline" size={24} color="#1F2937" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/cart' as any)}
+              className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md items-center justify-center border border-white/30 relative"
+            >
+              <Ionicons name="cart-outline" size={24} color="" />
+              <View className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border border-white" />
+            </TouchableOpacity>
+          </View>
+
         </View>
 
         {/* --- Hero Title --- */}

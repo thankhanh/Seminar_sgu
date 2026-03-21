@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
     TrendingUp,
     Users,
@@ -7,6 +7,8 @@ import {
     ArrowUpRight,
     ArrowDownRight
 } from 'lucide-react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface StatCardProps {
     title: string;
@@ -39,6 +41,31 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon, 
 };
 
 const Dashboard: React.FC = () => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    
+    useEffect(() => {
+        // Redirect managers off the dashboard
+        if (user?.role === 'manager') {
+            navigate('/store-info', { replace: true });
+        }
+    }, [user?.role, navigate]);
+
+    // If user is not an admin and not a manager (or role is null/undefined),
+    // or if the user is a manager and the useEffect hasn't redirected yet,
+    // we might want to handle other roles or loading states.
+    // For now, assuming only admin should see this dashboard,
+    // and managers are redirected by useEffect.
+    if (user?.role !== 'admin' && user?.role !== 'manager') {
+        return <Navigate to="/unauthorized" replace />; // Or another appropriate page
+    }
+
+    // If user is a manager, useEffect will handle redirection.
+    // If user is an admin, they will see the dashboard.
+    if (user?.role !== 'admin') {
+        return null; // Render nothing temporarily while useEffect handles redirection or if not admin
+    }
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div>

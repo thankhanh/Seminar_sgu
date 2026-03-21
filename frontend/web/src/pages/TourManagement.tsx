@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Share2, Plus, Search, Map as MapIcon, ArrowRight, Edit2, Trash2, Clock } from 'lucide-react';
+import Modal from '../components/Modal';
 
 const MOCK_TOURS = [
     { id: 1, name: 'Hành trình Hải sản', steps: 5, time: '120 phút', active: true, image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=300&h=200&fit=crop' },
@@ -9,6 +10,7 @@ const MOCK_TOURS = [
 
 const TourManagement: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [isAddTourOpen, setIsAddTourOpen] = useState(false);
 
     const filteredTours = MOCK_TOURS.filter(tour => 
         tour.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -21,7 +23,10 @@ const TourManagement: React.FC = () => {
                     <h1 className="text-3xl font-bold text-slate-900 mb-2">Quản lý Tour</h1>
                     <p className="text-slate-500">Tạo và quản lý các lộ trình tham quan cho người dùng.</p>
                 </div>
-                <button className="bg-primary-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-700 transition-all shadow-sm shadow-primary-500/20">
+                <button 
+                    onClick={() => setIsAddTourOpen(true)}
+                    className="bg-primary-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-700 transition-all shadow-sm shadow-primary-500/20"
+                >
                     <Plus size={20} />
                     Tạo Tour mới
                 </button>
@@ -101,6 +106,58 @@ const TourManagement: React.FC = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Add Tour Modal */}
+            <Modal 
+                isOpen={isAddTourOpen} 
+                onClose={() => setIsAddTourOpen(false)}
+                title="Tạo Tour trải nghiệm mới"
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Tên Tour / Lộ trình</label>
+                        <input type="text" placeholder="Nhập tên tour..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Mô tả tổng quan</label>
+                        <textarea rows={3} placeholder="Mô tả sự hấp dẫn của lộ trình này..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900 resize-none"></textarea>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">Thời lượng dự kiến (phút)</label>
+                            <input type="number" placeholder="Ví dụ: 60" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">Trạng thái</label>
+                            <select className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900">
+                                <option>Đang bật (Active)</option>
+                                <option>Đang ẩn (Draft)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Chọn và sắp xếp các điểm POI trên Tour</label>
+                        <div className="p-4 border border-slate-200 rounded-xl bg-slate-50 text-center text-sm text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors">
+                            + Nhấn vào đây để thêm điểm vào lộ trình
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
+                        <button 
+                            onClick={() => setIsAddTourOpen(false)}
+                            className="px-5 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                        >
+                            Hủy
+                        </button>
+                        <button 
+                            onClick={() => setIsAddTourOpen(false)}
+                            className="px-5 py-2.5 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all"
+                        >
+                            Lưu thông tin
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

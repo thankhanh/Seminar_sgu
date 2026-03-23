@@ -11,7 +11,11 @@ export class PrismaService
   async onModuleInit() {
     try {
       await this.$connect();
-      this.logger.log('✅ Prisma connected to PostgreSQL');
+      const dbUrl = process.env.DATABASE_URL ?? '';
+      const isSupabase = dbUrl.toLowerCase().includes('supabase.co');
+      this.logger.log(
+        `✅ ${isSupabase ? 'Connected to Supabase' : 'Prisma connected to PostgreSQL'} successfully`,
+      );
     } catch (error) {
       this.logger.warn(
         '⚠️  Không thể kết nối PostgreSQL — hãy kiểm tra DATABASE_URL trong .env',

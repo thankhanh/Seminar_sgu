@@ -65,13 +65,24 @@ export class AuthService {
       const payload = this.jwtService.verify(token, {
         secret: this.configService.get('JWT_REFRESH_SECRET'),
       });
+
+      // Kiểm tra user vẫn còn tồn tại và active trong DB
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { id: true, email: true, role: true, isActive: true },
+      });
+      if (!user || !user.isActive) {
+        throw new UnauthorizedException('Tài khoản không tồn tại hoặc đã bị vô hiệu hóa');
+      }
+
       const accessToken = this.jwtService.sign({
-        sub: payload.sub,
-        email: payload.email,
-        role: payload.role,
+        sub: user.id,
+        email: user.email,
+        role: user.role,
       });
       return { accessToken };
-    } catch {
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
       throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
     }
   }

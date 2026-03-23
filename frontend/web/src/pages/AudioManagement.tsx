@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Mic, CloudUpload, Play, MoreVertical, Headphones, Clock, Edit2, Trash2, Search } from 'lucide-react';
+import { CloudUpload, Play, MoreVertical, Headphones, Clock, Edit2, Trash2, Search } from 'lucide-react';
+import Modal from '../components/Modal';
 
 const MOCK_AUDIO = [
     { id: 1, title: 'Giới thiệu về Phố Vinh Khánh', duration: '03:45', voice: 'Nam - Miền Nam', status: 'Đã xuất bản', plays: '1.2k', image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=100&h=100&fit=crop' },
@@ -9,6 +10,7 @@ const MOCK_AUDIO = [
 
 const AudioManagement: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [isUploadOpen, setIsUploadOpen] = useState(false);
 
     const filteredAudio = MOCK_AUDIO.filter(audio => 
         audio.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -21,7 +23,10 @@ const AudioManagement: React.FC = () => {
                     <h1 className="text-3xl font-bold text-slate-900 mb-2">Quản lý Audio</h1>
                     <p className="text-slate-500">Hệ thống âm thanh thuyết minh và kể chuyện (Storytelling).</p>
                 </div>
-                <button className="bg-primary-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-700 transition-all shadow-sm shadow-primary-500/20">
+                <button 
+                    onClick={() => setIsUploadOpen(true)}
+                    className="bg-primary-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-700 transition-all shadow-sm shadow-primary-500/20"
+                >
                     <CloudUpload size={20} />
                     Tải lên Audio
                 </button>
@@ -93,6 +98,54 @@ const AudioManagement: React.FC = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Upload Audio Modal */}
+            <Modal 
+                isOpen={isUploadOpen} 
+                onClose={() => setIsUploadOpen(false)}
+                title="Tải lên bài Audio mới"
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Tên bài Audio / Thuyết minh</label>
+                        <input type="text" placeholder="Nhập tiêu đề..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Giọng đọc (AI Voice)</label>
+                        <select className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900">
+                            <option>Nữ - Miền Nam (Mặc định)</option>
+                            <option>Nam - Miền Nam</option>
+                            <option>Nữ - Miền Bắc</option>
+                            <option>Nam - Miền Bắc</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Nội dung văn bản (để AI chuyển thành giọng nói)</label>
+                        <textarea rows={4} placeholder="Nhập nội dung cần chuyển đổi thành âm thanh..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900 resize-none"></textarea>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">HOẶC Tải tệp Audio trực tiếp (.mp3, .wav)</label>
+                        <input type="file" accept="audio/*" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100" />
+                    </div>
+                    
+                    <div className="flex items-center justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
+                        <button 
+                            onClick={() => setIsUploadOpen(false)}
+                            className="px-5 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                        >
+                            Hủy
+                        </button>
+                        <button 
+                            onClick={() => setIsUploadOpen(false)}
+                            className="px-5 py-2.5 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all flex hidden" 
+                            // Using standard tailwind instead of flex hidden, removing hidden
+                            style={{ display: 'flex' }}
+                        >
+                            Lưu và xuất bản
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

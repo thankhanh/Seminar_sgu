@@ -5,7 +5,6 @@ import 'react-native-reanimated';
 import '../global.css';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
 export const unstable_settings = {
   anchor: '(tabs)',
 };
@@ -16,8 +15,20 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="scanner/index" options={{ headerShown: true, title: 'Scanner' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+
+        {/* THÊM DÒNG NÀY ĐỂ ĐĂNG KÝ ROUTE CHO SHOP */}
+        <Stack.Screen
+          name="shop/[id]"
+          options={{
+            headerShown: false, // Ẩn header mặc định vì bạn đã tự làm header trong code rồi
+            presentation: 'card'
+          }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

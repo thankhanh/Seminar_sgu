@@ -6,10 +6,13 @@ import Dashboard from './pages/Dashboard';
 import POIManagement from './pages/POIManagement';
 import AudioManagement from './pages/AudioManagement';
 import TourManagement from './pages/TourManagement';
+import StoreInfo from './pages/StoreInfo';
+import MenuManagement from './pages/MenuManagement';
 import Translations from './pages/Translations';
 import StoreManagement from './pages/StoreManagement';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import UserManagement from './pages/UserManagement';
 
 function App() {
   return (
@@ -29,6 +32,9 @@ function App() {
               <Route path="tours" element={<TourManagement />} />
               <Route path="translations" element={<Translations />} />
               <Route path="store" element={<StoreManagement />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="store-info" element={<StoreInfo />} />
+              <Route path="menu-management" element={<MenuManagement />} />
             </Route>
           </Route>
         </Routes>

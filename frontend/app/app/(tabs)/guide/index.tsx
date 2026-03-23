@@ -5,9 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function GuideScreen() {
     return (
-        <SafeAreaView className="flex-1 bg-white">
+        <SafeAreaView className="flex-1 bg-[#F4FBFC]">
             {/* === HEADER === */}
-            <View className="flex-row items-center justify-between px-5 pt-4 pb-3 bg-white">
+            <View className="flex-row items-center justify-between px-5 pt-4 pb-3 bg-[#F4FBFC]">
                 <TouchableOpacity>
                     <Ionicons name="close" size={28} color="#1F2937" />
                 </TouchableOpacity>
@@ -27,7 +27,7 @@ export default function GuideScreen() {
             >
                 <View className="px-5 pt-5">
                     {/* === NOW PLAYING WIDGET === */}
-                    <View className="bg-[#FFF7ED] rounded-[24px] p-4 border border-[#FFEDD5] mb-6 relative shadow-sm">
+                    <View className="bg-[#F4FBFC] rounded-[24px] p-4 border border-[#B3EBF2] mb-6 relative shadow-sm">
                         <View className="flex-row items-center justify-between mb-4">
                             <View className="flex-row items-center flex-1 pr-2">
                                 <Image
@@ -35,7 +35,7 @@ export default function GuideScreen() {
                                     className="w-[52px] h-[52px] rounded-xl mr-3"
                                 />
                                 <View>
-                                    <Text className="text-[10px] font-extrabold text-[#E86B32] uppercase tracking-wider mb-0.5">
+                                    <Text className="text-[10px] font-extrabold text-[#009FB7] uppercase tracking-wider mb-0.5">
                                         Now Playing
                                     </Text>
                                     <Text className="text-[16px] font-extrabold text-[#1F2937] leading-tight mb-0.5">
@@ -47,7 +47,7 @@ export default function GuideScreen() {
                                 </View>
                             </View>
 
-                            <TouchableOpacity className="w-[46px] h-[46px] rounded-full bg-[#E86B32] items-center justify-center shadow-sm shadow-[#E86B32]/40">
+                            <TouchableOpacity className="w-[46px] h-[46px] rounded-full bg-[#009FB7] items-center justify-center shadow-sm shadow-[#009FB7]/40">
                                 <View className="flex-row space-x-1">
                                     <View className="w-1.5 h-3.5 bg-white rounded-sm" />
                                     <View className="w-1.5 h-3.5 bg-white rounded-sm ml-1" />
@@ -56,8 +56,8 @@ export default function GuideScreen() {
                         </View>
 
                         {/* Progress Bar */}
-                        <View className="w-full h-1 bg-[#FDE6D5] rounded-full overflow-hidden">
-                            <View className="w-[40%] h-full bg-[#E86B32] rounded-full" />
+                        <View className="w-full h-1 bg-[#B3EBF2] rounded-full overflow-hidden">
+                            <View className="w-[40%] h-full bg-[#009FB7] rounded-full" />
                         </View>
                     </View>
 
@@ -79,7 +79,7 @@ export default function GuideScreen() {
                     className="pl-5 mb-8"
                     contentContainerStyle={{ paddingRight: 40 }}
                 >
-                    <TouchableOpacity className="bg-[#E86B32] px-6 py-2.5 rounded-full mr-3 shadow-sm shadow-[#E86B32]/20">
+                    <TouchableOpacity className="bg-[#009FB7] px-6 py-2.5 rounded-full mr-3 shadow-sm shadow-[#009FB7]/20">
                         <Text className="text-white text-[13px] font-bold">All</Text>
                     </TouchableOpacity>
                     <TouchableOpacity className="bg-[#F3F4F6] px-5 py-2.5 rounded-full mr-3">
@@ -149,7 +149,7 @@ export default function GuideScreen() {
                                 </View>
                             </View>
                             <TouchableOpacity className="bg-[#F3F4F6] px-4 py-2.5 rounded-full">
-                                <Text className="text-[#E86B32] text-[13px] font-bold">Listen</Text>
+                                <Text className="text-[#009FB7] text-[13px] font-bold">Listen</Text>
                             </TouchableOpacity>
                         </View>
                     ))}

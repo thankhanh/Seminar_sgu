@@ -7,9 +7,9 @@ import { useRouter } from 'expo-router';
 export default function ProfileScreen() {
     const router = useRouter();
     return (
-        <SafeAreaView className="flex-1 bg-white">
+        <SafeAreaView className="flex-1 bg-[#F4FBFC]">
             {/* === HEADER === */}
-            <View className="flex-row items-center justify-between px-5 pt-4 pb-4 bg-white z-10">
+            <View className="flex-row items-center justify-between px-5 pt-4 pb-4 bg-[#F4FBFC] z-10">
                 <TouchableOpacity>
                     <Ionicons name="arrow-back" size={26} color="#1F2937" />
                 </TouchableOpacity>
@@ -39,7 +39,7 @@ export default function ProfileScreen() {
                             />
                         </View>
                         {/* Edit Badge */}
-                        <TouchableOpacity className="absolute bottom-1 right-1 w-7 h-7 bg-[#E86B32] rounded-full items-center justify-center border-2 border-white">
+                        <TouchableOpacity className="absolute bottom-1 right-1 w-7 h-7 bg-[#009FB7] rounded-full items-center justify-center border-2 border-white">
                             <Feather name="edit-2" size={12} color="white" />
                         </TouchableOpacity>
                     </View>
@@ -49,8 +49,8 @@ export default function ProfileScreen() {
                         Alex Wanderer
                     </Text>
 
-                    <View className="bg-[#FFF7ED] px-4 py-1.5 rounded-full mb-3">
-                        <Text className="text-[#E86B32] font-semibold text-[13px]">
+                    <View className="bg-[#F4FBFC] px-4 py-1.5 rounded-full mb-3">
+                        <Text className="text-[#009FB7] font-semibold text-[13px]">
                             Explorer Level: Gold
                         </Text>
                     </View>
@@ -68,8 +68,8 @@ export default function ProfileScreen() {
 
                     <TouchableOpacity className="bg-[#F8FAFC] rounded-2xl p-4 flex-row items-center justify-between mb-3">
                         <View className="flex-row items-center flex-1">
-                            <View className="w-12 h-12 bg-[#FFF7ED] rounded-2xl items-center justify-center mr-4">
-                                <Feather name="heart" size={20} color="#E86B32" />
+                            <View className="w-12 h-12 bg-[#F4FBFC] rounded-2xl items-center justify-center mr-4">
+                                <Feather name="heart" size={20} color="#009FB7" />
                             </View>
                             <View>
                                 <Text className="text-[16px] font-bold text-[#1F2937] mb-0.5">My Favorites</Text>

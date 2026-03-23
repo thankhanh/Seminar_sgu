@@ -3,23 +3,27 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
-  --color-primary-50: #fff7ed;
-  --color-primary-100: #ffedd5;
-  --color-primary-200: #fed7aa;
-  --color-primary-300: #fdba74;
-  --color-primary-400: #fb923c;
-  --color-primary-500: #e86b32;
-  --color-primary-600: #d45b29;
-  --color-primary-700: #b14823;
-  --color-primary-800: #903c20;
-  --color-primary-900: #78341c;
+  --color-primary-50: #f4fbfc;
+  --color-primary-100: #b3ebf2;
+  --color-primary-200: #80defa;
+  --color-primary-300: #4dd1f2;
+  --color-primary-400: #26c7ed;
+  --color-primary-500: #009fb7;
+  --color-primary-600: #008fa5;
+  --color-primary-700: #007688;
+  --color-primary-800: #005f6e;
+  --color-primary-900: #004d5a;
+  
+  --color-secondary: #b2ebf2;
+  --color-tertiary: #3a75d3;
+  --color-neutral: #4d7e91;
 }
 
 :root {
   --primary: var(--color-primary-500);
   --primary-foreground: white;
 
-  --background: #f9fafc;
+  --background: var(--color-primary-50); /* Phông nền xanh nhạt dễ nhìn */
   --foreground: #111827;
 
   --card: white;

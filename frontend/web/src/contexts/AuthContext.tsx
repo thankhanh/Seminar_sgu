@@ -50,19 +50,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
         if (password === 'password') { // basic mock validation
-           const dummyUser: User = {
-             id: '1',
-             name: email.split('@')[0],
-             email,
-             role: 'admin',
-             avatar: `https://i.pravatar.cc/150?u=${email}`
-           };
-           localStorage.setItem('admin_token', 'mock-jwt-token');
-           localStorage.setItem('admin_user', JSON.stringify(dummyUser));
-           setUser(dummyUser);
-           resolve();
+          const isMerchant = email === 'merchant@gmail.com';
+          const dummyUser: User = {
+            id: isMerchant ? '2' : '1',
+            name: isMerchant ? 'Chủ quán Test' : 'Admin Test',
+            email,
+            role: isMerchant ? 'manager' : 'admin',
+            avatar: `https://i.pravatar.cc/150?u=${email}`
+          };
+          localStorage.setItem('admin_token', 'mock-jwt-token');
+          localStorage.setItem('admin_user', JSON.stringify(dummyUser));
+          setUser(dummyUser);
+          resolve();
         } else {
-           reject(new Error('Email hoặc mật khẩu không chính xác'));
+          reject(new Error('Email hoặc mật khẩu không chính xác'));
         }
         setLoading(false);
       }, 1200);
@@ -75,11 +76,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return new Promise<void>((resolve) => {
       setTimeout(() => {
         const dummyUser: User = {
-            id: Date.now().toString(),
-            name,
-            email,
-            role: 'manager',
-            avatar: `https://i.pravatar.cc/150?u=${email}`
+          id: Date.now().toString(),
+          name,
+          email,
+          role: 'manager',
+          avatar: `https://i.pravatar.cc/150?u=${email}`
         };
         localStorage.setItem('admin_token', 'mock-jwt-token');
         localStorage.setItem('admin_user', JSON.stringify(dummyUser));
@@ -98,7 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, register, logout, loading }}>
-        {children}
+      {children}
     </AuthContext.Provider>
   );
 };

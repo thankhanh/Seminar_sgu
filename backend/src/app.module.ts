@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 // Config
 import databaseConfig from './config/database.config';
@@ -33,6 +35,12 @@ import { QrModule } from './modules/qr/qr.module';
       load: [databaseConfig, jwtConfig, appConfig],
     }),
 
+    // Rate Limiting — chống brute force
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 1 phút
+      limit: 60,  // 60 request / phút mặc định (auth routes override riêng)
+    }]),
+
     // Database (Prisma - Global)
     DatabaseModule,
 
@@ -50,6 +58,10 @@ import { QrModule } from './modules/qr/qr.module';
 
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Áp dụng ThrottlerGuard cho toàn bộ app
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule { }

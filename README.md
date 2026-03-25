@@ -292,6 +292,8 @@ AWS_REGION=ap-southeast-1
 | [docs/database.md](./docs/database.md) | 🗄️ Schema 14 bảng PostgreSQL — đầy đủ constraint, chú thích |
 | [docs/database_analysis.md](./docs/database_analysis.md) | 📊 ERD diagram + phân tích VNPAY/MoMo + Checklist UI |
 | [docs/api.md](./docs/api.md) | 🔌 REST API documentation — ~40 endpoints đầy đủ |
+| [docs/PRD.md](./docs/PRD.md) | 📋 Product Requirements Document — scope, KPIs, release plan |
+| [docs/diagrams.md](./docs/diagrams.md) | 📐 8 Sequence Diagrams + 5 Activity Diagrams (Mermaid.js) |
 | [docs/migration.sql](./docs/migration.sql) | 🛠️ SQL tạo toàn bộ database (14 bảng, indexes, functions GPS) |
 
 ---

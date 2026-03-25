@@ -1,17 +1,19 @@
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
     LayoutDashboard,
-    Users,
-    Settings,
     LogOut,
     Search,
     Bell,
-    User,
+    User as UserIcon,
     MapPin,
     Mic,
     Map as MapIcon,
-    Languages
+    Languages,
+    Store,
+    Users,
+    Utensils
 } from 'lucide-react';
 
 interface SidebarItemProps {
@@ -35,7 +37,40 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon, label }) => (
     </NavLink>
 );
 
+// Assuming NavItem is similar to SidebarItem but might be used within a list structure
+interface NavItemProps {
+    path: string;
+    icon: React.ReactNode;
+    label: string;
+}
+
+const NavItem: React.FC<NavItemProps> = ({ path, icon, label }) => (
+    <li>
+        <NavLink
+            to={path}
+            className={({ isActive }) => `
+                flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200
+                ${isActive
+                    ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-primary-600'}
+            `}
+        >
+            <span className="shrink-0">{icon}</span>
+            <span className="font-medium text-sm">{label}</span>
+        </NavLink>
+    </li>
+);
+
+
 const SidebarLayout: React.FC = () => {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
     return (
         <div className="flex min-h-screen bg-background font-sans">
             {/* Sidebar */}
@@ -49,22 +84,38 @@ const SidebarLayout: React.FC = () => {
                     </span>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-1 mt-4">
-                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 mb-2">CMS Management</div>
-                    <SidebarItem to="/" icon={<LayoutDashboard size={20} />} label="Tổng quan" />
-                    <SidebarItem to="/poi" icon={<MapPin size={20} />} label="Quản lý POI" />
-                    <SidebarItem to="/audio" icon={<Mic size={20} />} label="Quản lý Audio" />
-                    <SidebarItem to="/tours" icon={<MapIcon size={20} />} label="Quản lý Tour" />
-                    <SidebarItem to="/translations" icon={<Languages size={20} />} label="Bản dịch & Lịch sử" />
+                <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto pb-4">
+                    {user?.role === 'admin' ? (
+                        <>
+                            <div className="text-xs font-semibold text-slate-400 capitalize px-4 mb-2 mt-2">Tổng quan</div>
+                            <SidebarItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" />
+                            
+                            <div className="text-xs font-semibold text-slate-400 capitalize px-4 mb-2 mt-6">Hệ thống</div>
+                            <SidebarItem to="/users" icon={<Users size={20} />} label="Người dùng (Users)" />
+                            <SidebarItem to="/store" icon={<Store size={20} />} label="Danh sách Cửa hàng" />
+                            <div className="text-xs font-semibold text-slate-400 capitalize px-4 mb-2 mt-6">Quản lý nội dung tổng</div>
+                        </>
+                    ) : (
+                        <div className="mb-6">
+                            <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cửa hàng của tôi</h3>
+                            <ul className="space-y-1 relative">
+                                <NavItem icon={<Store size={20} />} label="Thông tin quán" path="/store-info" />
+                                <NavItem icon={<Utensils size={20} />} label="Quản lý Menu" path="/menu-management" />
+                            </ul>
+                            <div className="text-xs font-semibold text-slate-400 capitalize px-4 mb-2 mt-6">Nội dung hệ thống</div>
+                        </div>
+                    )}
 
-                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-4 mt-8 mb-2">Hệ thống</div>
-                    <SidebarItem to="/users" icon={<Users size={20} />} label="Người dùng" />
-                    <SidebarItem to="/settings" icon={<Settings size={20} />} label="Cài đặt" />
+                    {/* Shared Content Items (Admin manages all, Merchant manages their own) */}
+                    <SidebarItem to="/poi" icon={<MapPin size={20} />} label={user?.role === 'admin' ? "Quản lý POI" : "POI riêng của quán"} />
+                    <SidebarItem to="/audio" icon={<Mic size={20} />} label={user?.role === 'admin' ? "Quản lý Audio" : "Audio giới thiệu"} />
+                    <SidebarItem to="/tours" icon={<MapIcon size={20} />} label={user?.role === 'admin' ? "Quản lý Tour" : "Gói Tour quán"} />
+                    <SidebarItem to="/translations" icon={<Languages size={20} />} label="Bản dịch & Lịch sử" />
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
-                    <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all w-full">
-                        <LogOut size={20} />
+                    <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-rose-500 hover:bg-rose-50 transition-all w-full group">
+                        <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
                         <span className="font-medium">Đăng xuất</span>
                     </button>
                 </div>
@@ -88,13 +139,17 @@ const SidebarLayout: React.FC = () => {
                             <Bell size={22} />
                             <span className="absolute top-2 right-2 w-2 h-2 bg-primary-500 rounded-full border-2 border-white"></span>
                         </button>
-                        <div className="flex items-center gap-3 pl-6 border-l border-slate-200">
+                        <div className="flex items-center gap-3 pl-6 border-l border-slate-200 cursor-pointer hover:opacity-80 transition-opacity">
                             <div className="text-right">
-                                <div className="text-sm font-semibold text-slate-900">Admin Hung</div>
-                                <div className="text-xs text-slate-400">Quản trị viên</div>
+                                <div className="text-sm font-semibold text-slate-900">{user?.name || 'Admin'}</div>
+                                <div className="text-xs text-slate-400 capitalize">{user?.role === 'admin' ? 'Quản trị viên' : 'Quản lý'}</div>
                             </div>
-                            <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center overflow-hidden border-2 border-slate-200">
-                                <User className="text-slate-400" size={24} />
+                            <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center overflow-hidden border-2 border-slate-200 shadow-sm">
+                                {user?.avatar ? (
+                                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <UserIcon className="text-slate-400" size={24} />
+                                )}
                             </div>
                         </div>
                     </div>

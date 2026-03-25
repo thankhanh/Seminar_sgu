@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -10,6 +11,9 @@ async function bootstrap() {
 
   // Global prefix — tất cả route bắt đầu bằng /api/v1
   app.setGlobalPrefix('api/v1');
+
+  // Khai báo middleware cookie-parser
+  app.use(cookieParser());
 
   // CORS
   app.enableCors({

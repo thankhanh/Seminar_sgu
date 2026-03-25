@@ -26,6 +26,17 @@
 
 ---
 
+## Implementation Status (Auto-check 2026-03-23)
+
+Trong trạng thái code hiện tại, chỉ có các endpoint sau được triển khai thực sự (có route decorator `@Get/@Post/...`):
+- `GET /api/v1` (Health check)
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+
+Các controller còn lại có tồn tại file, nhưng hiện chưa có các method route (`@Get/@Post/...`) nên **các endpoint tương ứng trong tài liệu** (Users, Stores, Narrations, Menus, Listen History, QR Codes, Subscriptions, Payments, Merchant, Admin, Languages và các auth endpoint khác như `forgot-password/reset-password`) **chưa được triển khai trong backend**.
+
 ## Convention
 
 ### HTTP Status Codes

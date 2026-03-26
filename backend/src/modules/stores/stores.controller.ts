@@ -34,11 +34,19 @@ export class StoresController {
   }
 
   @Get('nearby')
+<<<<<<< Updated upstream
   @ApiOperation({ summary: 'Tìm stores gần nhất dựa trên vị trí (public)' })
   @ApiQuery({ name: 'lat', required: true, type: Number, example: 10.7769 })
   @ApiQuery({ name: 'lng', required: true, type: Number, example: 106.7009 })
   @ApiQuery({ name: 'radius', required: false, type: Number, example: 5, description: 'Bán kính tìm kiếm (km)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+=======
+  @ApiOperation({ summary: 'Tìm stores gần vị trí GPS (public)' })
+  @ApiQuery({ name: 'lat', required: true, type: Number, example: 10.7769, description: 'Vĩ độ hiện tại' })
+  @ApiQuery({ name: 'lng', required: true, type: Number, example: 106.7009, description: 'Kinh độ hiện tại' })
+  @ApiQuery({ name: 'radius', required: false, type: Number, example: 5, description: 'Bán kính tìm kiếm (km), mặc định 5' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20, description: 'Số kết quả tối đa' })
+>>>>>>> Stashed changes
   findNearby(
     @Query('lat') lat: number,
     @Query('lng') lng: number,

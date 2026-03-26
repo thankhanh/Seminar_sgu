@@ -1,11 +1,16 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { TranslationService } from '../../common/services/translation.service';
 import { CreateNarrationDto } from './dto/create-narration.dto';
 import { UpdateNarrationDto } from './dto/update-narration.dto';
+import { TranslateNarrationDto } from './dto/translate-narration.dto';
 
 @Injectable()
 export class NarrationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private translationService: TranslationService,
+  ) {}
 
   private async verifyStoreOwner(storeId: string, userId: string) {
     const store = await this.prisma.store.findUnique({
@@ -64,6 +69,7 @@ export class NarrationsService {
     return { success: true, message: 'Đã xóa narration' };
   }
 
+<<<<<<< Updated upstream
   // Hàm tính khoảng cách Haversine giữa hai điểm (đơn vị: km)
   private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 6371; // Bán kính Trái Đất (km)
@@ -134,3 +140,90 @@ export class NarrationsService {
       },
     });
   }
+=======
+  /**
+   * Dịch nội dung thuyết minh từ ngôn ngữ gốc sang ngôn ngữ đích.
+   * Hỗ trợ tùy chọn lưu bản dịch thành narration mới.
+   */
+  async translateNarration(narrationId: string, dto: TranslateNarrationDto) {
+    // 1. Tìm narration gốc
+    const narration = await this.prisma.narration.findUnique({
+      where: { id: narrationId },
+      include: { language: true },
+    });
+    if (!narration) throw new NotFoundException('Narration không tồn tại');
+
+    if (!narration.textContent || narration.textContent.trim().length === 0) {
+      throw new BadRequestException('Narration này không có nội dung text để dịch');
+    }
+
+    // 2. Tìm ngôn ngữ đích
+    const targetLanguage = await this.prisma.language.findFirst({
+      where: { code: dto.targetLanguageCode, isActive: true },
+    });
+    if (!targetLanguage) {
+      throw new NotFoundException(
+        `Ngôn ngữ "${dto.targetLanguageCode}" không tồn tại hoặc chưa được kích hoạt`,
+      );
+    }
+
+    // 3. Dịch text
+    const sourceLanguageCode = narration.language.code;
+    const result = await this.translationService.translate(
+      narration.textContent,
+      sourceLanguageCode,
+      dto.targetLanguageCode,
+    );
+
+    // 4. Nếu yêu cầu lưu thành narration mới
+    let savedNarration = null;
+    if (dto.saveAsNew) {
+      // Kiểm tra xem đã tồn tại narration cho ngôn ngữ đích chưa
+      const existing = await this.prisma.narration.findUnique({
+        where: {
+          storeId_languageId: {
+            storeId: narration.storeId,
+            languageId: targetLanguage.id,
+          },
+        },
+      });
+
+      if (existing) {
+        // Cập nhật narration hiện có
+        savedNarration = await this.prisma.narration.update({
+          where: { id: existing.id },
+          data: { textContent: result.translatedText },
+          include: { language: true },
+        });
+      } else {
+        // Tạo narration mới
+        savedNarration = await this.prisma.narration.create({
+          data: {
+            storeId: narration.storeId,
+            languageId: targetLanguage.id,
+            textContent: result.translatedText,
+            duration: narration.duration,
+            isActive: true,
+          },
+          include: { language: true },
+        });
+      }
+    }
+
+    return {
+      originalText: narration.textContent,
+      translatedText: result.translatedText,
+      sourceLanguage: {
+        code: sourceLanguageCode,
+        name: narration.language.name,
+      },
+      targetLanguage: {
+        code: dto.targetLanguageCode,
+        name: targetLanguage.name,
+      },
+      saved: dto.saveAsNew ?? false,
+      savedNarration,
+    };
+  }
+}
+>>>>>>> Stashed changes

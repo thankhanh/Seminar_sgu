@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NarrationsService } from './narrations.service';
 import { CreateNarrationDto } from './dto/create-narration.dto';
 import { UpdateNarrationDto } from './dto/update-narration.dto';
+import { TranslateNarrationDto } from './dto/translate-narration.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -29,6 +30,7 @@ export class NarrationsController {
     return this.narrService.findByStore(storeId);
   }
 
+<<<<<<< Updated upstream
   @Get('nearby')
   @ApiOperation({ summary: 'Tìm narrations gần nhất dựa trên vị trí (public)' })
   @ApiQuery({ name: 'lat', required: true, type: Number, example: 10.7769 })
@@ -57,6 +59,20 @@ export class NarrationsController {
     @Query('source') source: 'gps' | 'qr' = 'gps',
   ) {
     return this.narrService.recordListen(user.id, narrationId, source);
+=======
+  @Post('narrations/:id/translate')
+  @ApiOperation({
+    summary: 'Dịch nội dung thuyết minh sang ngôn ngữ khác',
+    description:
+      'Nhận narration ID, dịch textContent từ ngôn ngữ gốc sang ngôn ngữ đích. ' +
+      'Có thể tùy chọn lưu bản dịch thành narration mới.',
+  })
+  translateNarration(
+    @Param('id') id: string,
+    @Body() dto: TranslateNarrationDto,
+  ) {
+    return this.narrService.translateNarration(id, dto);
+>>>>>>> Stashed changes
   }
 
   @Patch('narrations/:id')

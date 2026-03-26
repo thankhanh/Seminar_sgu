@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../../database/prisma.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { haversineDistance } from '../../common/utils/haversine.util';
 
 @Injectable()
 export class StoresService {
@@ -43,6 +44,50 @@ export class StoresService {
       this.prisma.store.count({ where: { status: 'active' } }),
     ]);
     return { data, total, page, limit };
+  }
+
+  /**
+   * Tìm các stores gần vị trí GPS hiện tại
+   * @param lat - Vĩ độ hiện tại
+   * @param lng - Kinh độ hiện tại
+   * @param radiusKm - Bán kính tìm kiếm (km), mặc định 5km
+   * @param limit - Số lượng kết quả tối đa, mặc định 20
+   */
+  async findNearby(lat: number, lng: number, radiusKm = 5, limit = 20) {
+    // Lấy tất cả stores active
+    const stores = await this.prisma.store.findMany({
+      where: { status: 'active' },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        lat: true,
+        lng: true,
+        openTime: true,
+        closeTime: true,
+        coverImage: true,
+        status: true,
+        merchant: { select: { businessName: true } },
+      },
+    });
+
+    // Tính khoảng cách và lọc theo bán kính
+    const storesWithDistance = stores
+      .map((store) => ({
+        ...store,
+        distance: haversineDistance(lat, lng, store.lat, store.lng),
+      }))
+      .filter((store) => store.distance <= radiusKm)
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, limit);
+
+    return {
+      data: storesWithDistance,
+      total: storesWithDistance.length,
+      centerLat: lat,
+      centerLng: lng,
+      radiusKm,
+    };
   }
 
   async findOne(id: string) {

@@ -5,26 +5,43 @@ import {
     Smartphone, Globe
 } from 'lucide-react';
 import { subscriptionsApi, paymentsApi } from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
+import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 
 const SubscriptionManagement: React.FC = () => {
+    const { user } = useAuth();
     const [currentSub, setCurrentSub] = useState<any>(null);
+    const [allSubs, setAllSubs] = useState<any[]>([]);
+    const [totalSubs, setTotalSubs] = useState(0);
+    const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
+    
+    // Admin editing state
+    const [editingSub, setEditingSub] = useState<any>(null);
+    const [editForm, setEditForm] = useState({
+        plan: '',
+        maxStore: 1,
+        status: 'active',
+        endDate: ''
+    });
 
     const plans = [
         {
             id: 'starter',
             type: 'merchant_starter',
-            name: 'Miễn phí (Starter)',
-            price: '0đ',
+            name: 'Gói Khởi Tạo (Starter)',
+            price: '0đ / tháng',
             rawPrice: 0,
-            description: 'Mặc định cho mọi cửa hàng.',
+            description: 'Giải pháp cơ bản để bạn làm quen với Smart Tour.',
             features: [
-                'Tối đa 1 địa điểm (POI)',
-                'Thuyết minh đa ngôn ngữ',
-                'Quản lý thực đơn cơ bản'
+                'Quản lý tối đa 1 địa điểm (POI)',
+                'Thuyết minh 2 ngôn ngữ (Việt - Anh)',
+                'Quản lý thực đơn & thông tin cơ bản',
+                'Hỗ trợ qua email'
             ],
             icon: <Zap className="text-slate-400" size={24} />,
             color: 'bg-slate-50',
@@ -33,14 +50,15 @@ const SubscriptionManagement: React.FC = () => {
         {
             id: 'business',
             type: 'merchant_business',
-            name: 'Nâng cấp 1 (Business)',
+            name: 'Gói Kinh Doanh (Business)',
             price: '499,000đ / tháng',
             rawPrice: 499000,
-            description: 'Dành cho chuỗi cửa hàng nhỏ.',
+            description: 'Tối ưu cho chuỗi cửa hàng và doanh nghiệp nhỏ.',
             features: [
-                'Tối đa 5 địa điểm (POI)',
-                'Ưu tiên hiển thị trên bản đồ',
-                'Phân tích lượt nghe chi tiết'
+                'Quản lý lên đến 5 địa điểm (POI)',
+                'Hỗ trợ mọi ngôn ngữ thuyết minh',
+                'Ưu tiên hiển thị trên bản đồ App',
+                'Thống kê lượt nghe & tương tác'
             ],
             icon: <Shield className="text-primary-500" size={24} />,
             color: 'bg-primary-50',
@@ -49,14 +67,15 @@ const SubscriptionManagement: React.FC = () => {
         {
             id: 'premium',
             type: 'merchant_premium',
-            name: 'Nâng cấp 2 (Premium)',
+            name: 'Gói Chuyên Nghiệp (Premium)',
             price: '999,000đ / tháng',
             rawPrice: 999000,
-            description: 'Giải pháp toàn diện cho doanh nghiệp.',
+            description: 'Giải pháp cao cấp nhất cho doanh nghiệp lớn.',
             features: [
-                'Tối đa 10 địa điểm (POI)',
-                'API tích hợp riêng',
-                'Tư vấn nội dung thuyết minh'
+                'Quản lý lên đến 10 địa điểm (POI)',
+                'Hỗ trợ mọi ngôn ngữ & AI Storytelling',
+                'Tư vấn nội dung thuyết minh riêng',
+                'Hỗ trợ kỹ thuật ưu tiên 24/7'
             ],
             icon: <Crown className="text-indigo-500" size={24} />,
             color: 'bg-indigo-50',
@@ -65,8 +84,12 @@ const SubscriptionManagement: React.FC = () => {
     ];
 
     useEffect(() => {
-        fetchSubscription();
-    }, []);
+        if (user?.role === 'admin') {
+            fetchAllSubscriptions(page);
+        } else if (user?.role === 'merchant') {
+            fetchSubscription();
+        }
+    }, [user, page]);
 
     const fetchSubscription = async () => {
         setLoading(true);
@@ -78,6 +101,44 @@ const SubscriptionManagement: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const fetchAllSubscriptions = async (pageNum: number) => {
+        setLoading(true);
+        try {
+            const res = await subscriptionsApi.getAll(pageNum, 10);
+            setAllSubs(res.data || []);
+            setTotalSubs(res.total || 0);
+        } catch (err) {
+            console.error('Lỗi khi lấy danh sách gói:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateSub = async () => {
+        if (!editingSub) return;
+        setIsSubmitting(true);
+        try {
+            await subscriptionsApi.update(editingSub.id, editForm);
+            alert('Cập nhật gói thành công!');
+            setEditingSub(null);
+            fetchAllSubscriptions(page);
+        } catch (err: any) {
+            alert(err.message || 'Lỗi khi cập nhật gói');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const openEditModal = (sub: any) => {
+        setEditingSub(sub);
+        setEditForm({
+            plan: sub.plan,
+            maxStore: sub.maxStore,
+            status: sub.status,
+            endDate: new Date(sub.endDate).toISOString().split('T')[0]
+        });
     };
 
     const handlePlanClick = (plan: any) => {
@@ -92,13 +153,9 @@ const SubscriptionManagement: React.FC = () => {
     const handleSubscribe = async (planId: string) => {
         setIsSubmitting(true);
         try {
-            const res = await subscriptionsApi.create({ plan: planId });
-            if (res.requiresPayment) {
-                // Should not happen for starter
-            } else {
-                alert('Kích hoạt gói thành công!');
-                fetchSubscription();
-            }
+            await subscriptionsApi.create({ plan: planId });
+            alert('Kích hoạt gói thành công!');
+            fetchSubscription();
         } catch (err: any) {
             alert(err.message || 'Lỗi khi kích hoạt gói');
         } finally {
@@ -123,10 +180,158 @@ const SubscriptionManagement: React.FC = () => {
         }
     };
 
-    if (loading) {
+    if (loading && !allSubs.length && !currentSub) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <Loader2 className="animate-spin text-primary-500" size={40} />
+            </div>
+        );
+    }
+
+    if (user?.role === 'admin') {
+        return (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+                            <Shield className="text-primary-600" size={32} />
+                            Quản lý Gói Merchant
+                        </h1>
+                        <p className="text-slate-500 mt-1">Theo dõi và chỉnh sửa quyền hạn gói của các Merchant.</p>
+                    </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-slate-200">
+                                    <th className="px-6 py-4 text-sm font-bold text-slate-700">Merchant / Doanh nghiệp</th>
+                                    <th className="px-6 py-4 text-sm font-bold text-slate-700">Gói hiện tại</th>
+                                    <th className="px-6 py-4 text-sm font-bold text-slate-700 text-center">Giới hạn POI</th>
+                                    <th className="px-6 py-4 text-sm font-bold text-slate-700">Ngày hết hạn</th>
+                                    <th className="px-6 py-4 text-sm font-bold text-slate-700">Trạng thái</th>
+                                    <th className="px-6 py-4 text-sm font-bold text-slate-700 text-right">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {allSubs.map((sub: any) => (
+                                    <tr key={sub.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-slate-900">{sub.merchant?.businessName}</div>
+                                            <div className="text-xs text-slate-500">{sub.merchant?.user?.email}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                                                sub.plan === 'starter' ? 'bg-slate-100 text-slate-600' :
+                                                sub.plan === 'business' ? 'bg-primary-100 text-primary-600' :
+                                                'bg-indigo-100 text-indigo-600'
+                                            }`}>
+                                                {sub.plan}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center font-bold text-slate-700">
+                                            {sub.maxStore}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-slate-600">
+                                            {new Date(sub.endDate).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                                                sub.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                            }`}>
+                                                {sub.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button 
+                                                onClick={() => openEditModal(sub)}
+                                                className="text-primary-600 font-bold text-sm hover:underline"
+                                            >
+                                                Chỉnh sửa
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    {allSubs.length === 0 && (
+                        <div className="py-20 text-center">
+                            <p className="text-slate-500">Chưa có dữ liệu đăng ký nào.</p>
+                        </div>
+                    )}
+                </div>
+
+                <Pagination 
+                    currentPage={page} 
+                    totalItems={totalSubs} 
+                    itemsPerPage={10} 
+                    onPageChange={setPage} 
+                />
+
+                {/* Edit Modal */}
+                <Modal 
+                    isOpen={!!editingSub} 
+                    onClose={() => setEditingSub(null)}
+                    title="Chỉnh sửa quyền hạn gói"
+                >
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">Gói dịch vụ</label>
+                            <select 
+                                value={editForm.plan} 
+                                onChange={e => setEditForm({...editForm, plan: e.target.value})}
+                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500/20"
+                            >
+                                <option value="starter">Starter</option>
+                                <option value="business">Business</option>
+                                <option value="premium">Premium</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">Giới hạn POI (Số lượng cửa hàng)</label>
+                            <input 
+                                type="number" 
+                                value={editForm.maxStore} 
+                                onChange={e => setEditForm({...editForm, maxStore: parseInt(e.target.value)})}
+                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500/20"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">Ngày hết hạn</label>
+                            <input 
+                                type="date" 
+                                value={editForm.endDate} 
+                                onChange={e => setEditForm({...editForm, endDate: e.target.value})}
+                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500/20"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1">Trạng thái</label>
+                            <select 
+                                value={editForm.status} 
+                                onChange={e => setEditForm({...editForm, status: e.target.value})}
+                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500/20"
+                            >
+                                <option value="active">Đang hoạt động</option>
+                                <option value="expired">Đã hết hạn</option>
+                                <option value="cancelled">Đã hủy</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button onClick={() => setEditingSub(null)} className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg">Hủy</button>
+                            <button 
+                                onClick={handleUpdateSub}
+                                disabled={isSubmitting}
+                                className="px-6 py-2 bg-primary-600 text-white font-bold rounded-lg hover:bg-primary-700 transition-all flex items-center gap-2"
+                            >
+                                {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+                                Lưu thay đổi
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
             </div>
         );
     }
@@ -153,14 +358,23 @@ const SubscriptionManagement: React.FC = () => {
                                 <span className="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full text-sm font-medium">
                                     <Calendar size={16} /> Hết hạn: {new Date(currentSub.endDate).toLocaleDateString()}
                                 </span>
-                                <span className="flex items-center gap-1.5 bg-emerald-400/20 text-emerald-300 px-3 py-1 rounded-full text-sm font-bold border border-emerald-400/30">
-                                    <Check size={16} /> Đang hoạt động
+                                <span className={`flex items-center gap-1.5 bg-emerald-400/20 text-emerald-300 px-3 py-1 rounded-full text-sm font-bold border border-emerald-400/30 ${currentSub.status !== 'active' ? 'bg-rose-400/20 text-rose-300 border-rose-400/30' : ''}`}>
+                                    {currentSub.status === 'active' ? <Check size={16} /> : <AlertCircle size={16} />}
+                                    {currentSub.status === 'active' ? 'Đang hoạt động' : 'Tạm dừng/Hết hạn'}
                                 </span>
                             </div>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 w-full md:w-auto text-center">
-                            <div className="text-sm font-medium text-primary-100 mb-1">Giới hạn POI</div>
-                            <div className="text-3xl font-bold">{currentSub.maxStore} <span className="text-lg font-normal opacity-70">Cửa hàng</span></div>
+                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 w-full md:w-auto text-center relative">
+                            <div className="text-sm font-medium text-primary-100 mb-1">Quyền hạn POI hiện tại</div>
+                            <div className="text-3xl font-bold">
+                                {currentSub.status === 'active' ? currentSub.maxStore : 1} 
+                                <span className="text-lg font-normal opacity-70 ml-1">Cửa hàng</span>
+                            </div>
+                            {currentSub.status !== 'active' && (
+                                <div className="absolute -top-2 -right-2 bg-rose-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black animate-pulse">
+                                    GIỚI HẠN
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
@@ -202,13 +416,13 @@ const SubscriptionManagement: React.FC = () => {
 
                         <button
                             onClick={() => handlePlanClick(plan)}
-                            disabled={isSubmitting || currentSub?.plan === plan.id}
-                            className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${currentSub?.plan === plan.id
+                            disabled={isSubmitting || (currentSub?.plan === plan.id && currentSub?.status === 'active')}
+                            className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${currentSub?.plan === plan.id && currentSub?.status === 'active'
                                 ? 'bg-emerald-50 text-emerald-600 cursor-default'
                                 : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200'
                                 }`}
                         >
-                            {currentSub?.plan === plan.id ? (
+                            {currentSub?.plan === plan.id && currentSub?.status === 'active' ? (
                                 <>Đang sử dụng <Check size={18} /></>
                             ) : (
                                 <>Chọn ngay <ArrowRight size={18} /></>

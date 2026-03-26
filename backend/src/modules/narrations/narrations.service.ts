@@ -23,7 +23,26 @@ export class NarrationsService {
   }
 
   async create(storeId: string, user: { id: string; role: string }, dto: CreateNarrationDto) {
-    await this.verifyStoreOwner(storeId, user);
+    const store = await this.verifyStoreOwner(storeId, user);
+    
+    // Kiểm tra ngôn ngữ và gói đăng ký
+    const [language, activeSub] = await Promise.all([
+      this.prisma.language.findUnique({ where: { id: dto.languageId } }),
+      this.prisma.merchantSubscription.findFirst({
+        where: { merchantId: store.merchantId, status: 'active' },
+      }),
+    ]);
+
+    if (!language) throw new NotFoundException('Ngôn ngữ không tồn tại');
+
+    const isStarter = !activeSub || activeSub.plan === 'starter';
+    const allowedStarterCodes = ['vi', 'en'];
+
+    if (isStarter && !allowedStarterCodes.includes(language.code.toLowerCase())) {
+      throw new ForbiddenException(
+        'Gói Starter chỉ hỗ trợ thuyết minh tiếng Việt và tiếng Anh. Vui lòng nâng cấp gói để thêm ngôn ngữ khác.'
+      );
+    }
 
     const existing = await this.prisma.narration.findUnique({
       where: { storeId_languageId: { storeId, languageId: dto.languageId } },

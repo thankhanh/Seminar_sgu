@@ -7,7 +7,7 @@ import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 export class MerchantSubscriptionsService {
   constructor(private prisma: PrismaService) {}
 
-  private readonly PLAN_LIMITS = {
+  static readonly PLAN_LIMITS = {
     [MerchantPlan.starter]: 1,
     [MerchantPlan.business]: 5,
     [MerchantPlan.premium]: 10,
@@ -36,7 +36,7 @@ export class MerchantSubscriptionsService {
       data: {
         merchantId,
         plan,
-        maxStore: this.PLAN_LIMITS[plan],
+        maxStore: MerchantSubscriptionsService.PLAN_LIMITS[plan] || 1,
         startDate,
         endDate,
         status: SubscriptionStatus.active,
@@ -59,7 +59,6 @@ export class MerchantSubscriptionsService {
     }
 
     // Nếu là gói trả phí, trả về thông tin để Frontend chuyển hướng sang trang thanh toán
-    // (Thực tế Frontend sẽ gọi sang module Payments riêng)
     return { 
       requiresPayment: true, 
       plan: dto.plan,
@@ -74,12 +73,15 @@ export class MerchantSubscriptionsService {
 
     if (!merchant) return null;
 
+    // Lấy gói mới nhất (có thể active hoặc expired/cancelled)
     return this.prisma.merchantSubscription.findFirst({
       where: {
         merchantId: merchant.id,
-        status: SubscriptionStatus.active,
       },
       orderBy: { createdAt: 'desc' },
+      include: {
+        merchant: { select: { businessName: true } }
+      }
     });
   }
 
@@ -91,9 +93,7 @@ export class MerchantSubscriptionsService {
         take: limit,
         include: {
           merchant: {
-            include: {
-              user: { select: { name: true, email: true } },
-            },
+            select: { businessName: true, user: { select: { name: true, email: true } } },
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -104,7 +104,25 @@ export class MerchantSubscriptionsService {
     return { data, total, page, limit };
   }
 
-  async cancel(id: string) {
+  async update(id: string, dto: any) {
+    const sub = await this.prisma.merchantSubscription.findUnique({ where: { id } });
+    if (!sub) throw new NotFoundException('Không tìm thấy gói đăng ký');
+
+    return this.prisma.merchantSubscription.update({
+      where: { id },
+      data: {
+        plan: dto.plan,
+        maxStore: dto.maxStore,
+        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        status: dto.status,
+      },
+      include: {
+        merchant: { select: { businessName: true } }
+      }
+    });
+  }
+
+  async cancel(id: string, userId: string) {
     return this.prisma.merchantSubscription.update({
       where: { id },
       data: { status: SubscriptionStatus.cancelled },

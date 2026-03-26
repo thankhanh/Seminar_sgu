@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
-import { narrationsApi, languagesApi, merchantApi, storesApi } from '../utils/api';
+import { narrationsApi, languagesApi, merchantApi, storesApi, subscriptionsApi } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { Narration, Language, Store as StoreType } from '../types';
 
@@ -23,6 +23,7 @@ const AudioManagement: React.FC = () => {
     const [isUploadOpen, setIsUploadOpen] = useState(false);
     const [playingUrl, setPlayingUrl] = useState<string | null>(null);
     const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
+    const [subscription, setSubscription] = useState<any>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -51,7 +52,12 @@ const AudioManagement: React.FC = () => {
                 setMyStores(storeRes.data || []);
             } else {
                 // 2b. Đối với Merchant: Lấy thông tin cá nhân và narrations theo merchant
-                const merchantRes = await merchantApi.getMe();
+                const [merchantRes, subRes] = await Promise.all([
+                    merchantApi.getMe(),
+                    subscriptionsApi.getMy()
+                ]);
+                
+                setSubscription(subRes);
                 const stores = merchantRes.stores || [];
                 setMyStores(stores);
 
@@ -298,8 +304,23 @@ const AudioManagement: React.FC = () => {
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                             >
                                 <option value="">Chọn ngôn ngữ...</option>
-                                {languages.map(l => <option key={l.id} value={l.id}>{l.name} ({l.code})</option>)}
+                                {languages
+                                    .filter(l => {
+                                        if (user?.role !== 'merchant') return true;
+                                        const isStarter = !subscription || subscription.status !== 'active' || subscription.plan === 'starter';
+                                        if (isStarter) {
+                                            return ['vi', 'en'].includes(l.code.toLowerCase());
+                                        }
+                                        return true;
+                                    })
+                                    .map(l => <option key={l.id} value={l.id}>{l.name} ({l.code})</option>)
+                                }
                             </select>
+                            {user?.role === 'merchant' && (!subscription || subscription.status !== 'active' || subscription.plan === 'starter') && (
+                                <p className="text-[10px] text-amber-600 mt-1.5 font-bold uppercase tracking-tight">
+                                    Gói {subscription?.status && subscription.status !== 'active' ? 'hết hạn' : 'Starter'} chỉ hỗ trợ Tiếng Anh & Tiếng Việt
+                                </p>
+                            )}
                         </div>
                     </div>
 

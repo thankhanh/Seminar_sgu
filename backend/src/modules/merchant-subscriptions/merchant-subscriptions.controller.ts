@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, UseGuards, Request, Query, Param, Patch } from '@nestjs/common';
+import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { MerchantSubscriptionsService } from './merchant-subscriptions.service';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -24,13 +25,20 @@ export class MerchantSubscriptionsController {
 
   @Get()
   @Roles('admin')
-  async findAll(@Query('page') page: string, @Query('limit') limit: string) {
-    return this.subscriptionsService.findAll(+page || 1, +limit || 10);
+  @ApiOperation({ summary: 'Lấy tất cả subscription (Admin only)' })
+  findAll(@Query('page') page = 1, @Query('limit') limit = 10) {
+    return this.subscriptionsService.findAll(+page, +limit);
+  }
+
+  @Patch(':id')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Cập nhật subscription (Admin only)' })
+  update(@Param('id') id: string, @Body() dto: any) {
+    return this.subscriptionsService.update(id, dto);
   }
 
   @Patch(':id/cancel')
   @Roles('admin', 'merchant')
   async cancel(@Param('id') id: string) {
-    return this.subscriptionsService.cancel(id);
   }
 }

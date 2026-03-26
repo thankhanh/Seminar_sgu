@@ -146,23 +146,27 @@ const POIManagement: React.FC = () => {
                     <p className="text-slate-500">Đồng bộ dữ liệu điểm tham quan với hệ thống Mobile App.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {user?.role === 'merchant' && (
-                        <div className={`px-4 py-2 rounded-xl border font-bold text-sm ${
-                            totalPois >= (subscription?.maxStore || 1) 
-                                ? 'bg-rose-50 border-rose-200 text-rose-600' 
-                                : 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                        }`}>
-                            Giới hạn: {totalPois} / {subscription?.maxStore || 1} POI
-                        </div>
-                    )}
+                    {user?.role === 'merchant' && (() => {
+                        const effectiveMaxStore = subscription?.status === 'active' ? subscription.maxStore : 1;
+                        return (
+                            <div className={`px-4 py-2 rounded-xl border font-bold text-sm ${
+                                totalPois >= effectiveMaxStore 
+                                    ? 'bg-rose-50 border-rose-200 text-rose-600' 
+                                    : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                            }`}>
+                                Giới hạn: {totalPois} / {effectiveMaxStore} POI 
+                                {subscription?.status && subscription.status !== 'active' && ' (Gói hết hạn)'}
+                            </div>
+                        );
+                    })()}
                     <button onClick={() => fetchData()} className="p-2.5 text-slate-500 hover:text-primary-600 bg-white border border-slate-200 rounded-xl transition-all shadow-sm">
                         <Loader2 className={loading ? 'animate-spin' : ''} size={20} />
                     </button>
                     <button
-                        disabled={user?.role === 'merchant' && totalPois >= (subscription?.maxStore || 1)}
+                        disabled={user?.role === 'merchant' && totalPois >= (subscription?.status === 'active' ? subscription.maxStore : 1)}
                         onClick={() => { setFormData({ name: '', address: '', description: '', lat: 10.4967, lng: 105.1167, openTime: '08:00', closeTime: '22:00', coverImage: '', status: 'active', merchantId: '' }); setIsAddPoiOpen(true); }}
                         className={`px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm ${
-                            user?.role === 'merchant' && totalPois >= (subscription?.maxStore || 1)
+                            user?.role === 'merchant' && totalPois >= (subscription?.status === 'active' ? subscription.maxStore : 1)
                                 ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                                 : 'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-500/20'
                         }`}

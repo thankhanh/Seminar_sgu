@@ -164,6 +164,10 @@ export const subscriptionsApi = {
     }),
     getMy: () => apiFetch('/merchant-subscriptions/my'),
     getAll: (page = 1, limit = 10) => apiFetch(`/merchant-subscriptions?page=${page}&limit=${limit}`),
+    update: (id: string, dto: any) => apiFetch(`/merchant-subscriptions/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(dto),
+    }),
     cancel: (id: string) => apiFetch(`/merchant-subscriptions/${id}/cancel`, { method: 'PATCH' }),
 };
 

@@ -33,8 +33,14 @@ const Register: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      await register(name, email, password, 'merchant', businessName, taxCode);
-      navigate('/');
+      const result = await register(name, email, password, 'merchant', businessName, taxCode);
+      
+      if (!result.accessToken) {
+        alert('Đăng ký thành công! Tài khoản của bạn hiện đang chờ quản trị viên phê duyệt. Bạn sẽ có thể đăng nhập sau khi tài khoản được kích hoạt.');
+        navigate('/login');
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
     } finally {

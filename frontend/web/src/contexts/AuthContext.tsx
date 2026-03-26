@@ -14,7 +14,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role?: string, businessName?: string, taxCode?: string) => Promise<void>;
+  register: (name: string, email: string, password: string, role?: string, businessName?: string, taxCode?: string) => Promise<any>;
   logout: () => void;
   loading: boolean;
 }
@@ -68,8 +68,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const result = await authApi.register({ name, email, password, role, businessName, taxCode });
       
       const { accessToken, user: userData } = result.data;
-      localStorage.setItem('admin_token', accessToken);
-      setUser(userData);
+      if (accessToken) {
+        localStorage.setItem('admin_token', accessToken);
+        setUser(userData);
+      }
+      return result.data;
     } catch (err: any) {
       throw new Error(err.message || 'Đăng ký thất bại');
     } finally {

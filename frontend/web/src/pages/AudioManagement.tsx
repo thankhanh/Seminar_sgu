@@ -29,6 +29,8 @@ const AudioManagement: React.FC = () => {
         storeId: '',
         languageId: '',
         textContent: '',
+        audioUrl: '',
+        duration: '',
     });
 
     const fetchData = async (pageNum = page) => {
@@ -80,13 +82,23 @@ const AudioManagement: React.FC = () => {
             alert('Vui lòng chọn cửa hàng và ngôn ngữ');
             return;
         }
+
+        // Kiểm tra trùng lặp
+        const isDuplicate = narrations.some(n => n.storeId === formData.storeId && n.languageId === formData.languageId);
+        if (isDuplicate) {
+            alert('Địa điểm này đã có bản thuyết minh cho ngôn ngữ đã chọn.');
+            return;
+        }
+
         try {
             await storesApi.createNarration(formData.storeId, {
                 languageId: formData.languageId,
                 textContent: formData.textContent,
+                audioUrl: formData.audioUrl || undefined,
+                duration: formData.duration ? parseInt(formData.duration) : undefined,
             });
             setIsUploadOpen(false);
-            setFormData({ storeId: '', languageId: '', textContent: '' });
+            setFormData({ storeId: '', languageId: '', textContent: '', audioUrl: '', duration: '' });
             fetchData();
         } catch (err: any) {
             alert(err.message || 'Lỗi khi tải lên audio');
@@ -288,6 +300,29 @@ const AudioManagement: React.FC = () => {
                                 <option value="">Chọn ngôn ngữ...</option>
                                 {languages.map(l => <option key={l.id} value={l.id}>{l.name} ({l.code})</option>)}
                             </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Audio URL (Tùy chọn ghi đè)</label>
+                            <input 
+                                type="text" 
+                                value={formData.audioUrl} 
+                                onChange={e => setFormData({...formData, audioUrl: e.target.value})}
+                                placeholder="https://...audio.mp3"
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Thời lượng (Giây)</label>
+                            <input 
+                                type="number" 
+                                value={formData.duration} 
+                                onChange={e => setFormData({...formData, duration: e.target.value})}
+                                placeholder="120"
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                            />
                         </div>
                     </div>
                     

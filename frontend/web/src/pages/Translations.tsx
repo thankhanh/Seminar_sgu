@@ -17,9 +17,10 @@ const Translations: React.FC = () => {
     const [isCreating, setIsCreating] = useState(false);
     
     const [newLangData, setNewLangData] = useState({
-        name: 'Japanese',
-        code: 'ja',
-        flagIcon: '🇯🇵'
+        name: '',
+        code: '',
+        flagIcon: '🌐',
+        isActive: true
     });
 
     const fetchLangs = async () => {
@@ -119,27 +120,30 @@ const Translations: React.FC = () => {
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">Chọn ngôn ngữ</label>
-                        <select 
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Tên ngôn ngữ</label>
+                        <input 
+                            type="text" 
+                            value={newLangData.name} 
+                            onChange={e => setNewLangData({...newLangData, name: e.target.value})}
+                            placeholder="Ví dụ: Japanese, Tiếng Nhật..."
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 text-slate-900 transition-all font-medium mb-3"
+                        />
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Mã (ISO Code)</label>
+                        <input 
+                            type="text" 
                             value={newLangData.code} 
-                            onChange={e => {
-                                const opt = e.target.options[e.target.selectedIndex];
-                                setNewLangData({
-                                    ...newLangData,
-                                    code: e.target.value,
-                                    name: opt.text.split(' (')[0],
-                                    flagIcon: opt.getAttribute('data-flag') || ''
-                                });
-                            }}
+                            onChange={e => setNewLangData({...newLangData, code: e.target.value})}
+                            placeholder="Ví dụ: ja, jp, ko..."
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 text-slate-900 transition-all font-medium mb-3"
+                        />
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Biểu tượng (Emoji)</label>
+                        <input 
+                            type="text" 
+                            value={newLangData.flagIcon} 
+                            onChange={e => setNewLangData({...newLangData, flagIcon: e.target.value})}
+                            placeholder="🇯🇵"
                             className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 text-slate-900 transition-all font-medium"
-                        >
-                            <option value="ja" data-flag="🇯🇵">Tiếng Nhật (Japanese)</option>
-                            <option value="fr" data-flag="🇫🇷">Tiếng Pháp (French)</option>
-                            <option value="de" data-flag="🇩🇪">Tiếng Đức (German)</option>
-                            <option value="th" data-flag="🇹🇭">Tiếng Thái (Thai)</option>
-                            <option value="ko" data-flag="🇰🇷">Tiếng Hàn (Korean)</option>
-                            <option value="zh" data-flag="🇨🇳">Tiếng Trung (Chinese)</option>
-                        </select>
+                        />
                     </div>
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1">Kích hoạt tự động dịch</label>

@@ -32,7 +32,15 @@ export class StoresService {
         openTime: dto.openTime,
         closeTime: dto.closeTime,
         coverImage: dto.coverImage,
-        status: dto.status as any,
+        status: (user.role === 'admin' ? dto.status : 'pending') as any,
+        images: dto.images ? {
+          createMany: {
+            data: dto.images.map((url, index) => ({
+              imageUrl: url,
+              sortOrder: index,
+            })),
+          },
+        } : undefined,
       },
     });
   }
@@ -101,12 +109,27 @@ export class StoresService {
 
     console.log('Update payload for store:', id, dto);
 
-    const { merchantId, ...updateData } = dto;
+    const { merchantId, images, ...updateData } = dto;
+    
+    // For merchant, we filter out the status field to prevent self-approval
+    if (user.role !== 'admin') {
+      delete (updateData as any).status;
+    }
+
     const updatedStore = await this.prisma.store.update({ 
       where: { id }, 
       data: {
         ...updateData,
-        status: updateData.status as any,
+        status: (updateData as any).status ? (updateData as any).status as any : undefined,
+        images: images ? {
+          deleteMany: {},
+          createMany: {
+            data: images.map((url, index) => ({
+              imageUrl: url,
+              sortOrder: index,
+            })),
+          },
+        } : undefined,
       } 
     });
     console.log('Update SUCCESS for store:', id, updatedStore);

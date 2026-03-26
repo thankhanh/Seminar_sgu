@@ -80,7 +80,8 @@ export interface Language {
     id: string;
     code: string;
     name: string;
-    flagIcon?: string;
+    flagIcon: string;
+    isActive: boolean;
 }
 
 export interface Merchant {

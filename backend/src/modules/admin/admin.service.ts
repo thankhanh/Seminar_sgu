@@ -24,7 +24,7 @@ export class AdminService {
         passwordHash,
         phone: dto.phone,
         role: dto.role,
-        isActive: true,
+        isActive: dto.role === 'merchant' ? false : true,
       },
       select: { id: true, name: true, email: true, role: true, createdAt: true },
     });
@@ -34,7 +34,7 @@ export class AdminService {
         data: {
           userId: user.id,
           businessName: `${user.name}'s Business`,
-          status: 'approved',
+          status: 'pending',
         },
       });
     }
@@ -77,6 +77,14 @@ export class AdminService {
   }
 
   async approveMerchant(id: string) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { id } });
+    if (!merchant) return null;
+    
+    await this.prisma.user.update({
+      where: { id: merchant.userId },
+      data: { isActive: true }
+    });
+
     return this.prisma.merchant.update({
       where: { id },
       data: { status: 'approved' },

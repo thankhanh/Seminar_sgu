@@ -37,6 +37,7 @@ const StoreManagement: React.FC = () => {
         coverImage: '',
         status: 'pending' as 'pending' | 'active' | 'hidden',
         merchantId: '',
+        images: [] as string[],
     });
 
     const fetchStores = async (pageNum = page) => {
@@ -121,6 +122,7 @@ const StoreManagement: React.FC = () => {
             coverImage: store.coverImage || '',
             status: store.status as any,
             merchantId: store.merchantId || '',
+            images: store.images?.map(img => img.imageUrl) || [],
         });
         setIsEditOpen(true);
     };
@@ -318,6 +320,15 @@ const StoreManagement: React.FC = () => {
                         <label className="block text-sm font-semibold text-slate-700 mb-1">Mô tả</label>
                         <textarea value={formData.description} onChange={e => setFormData(prev => ({...prev, description: e.target.value}))} placeholder="Mô tả về địa điểm..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900 h-24" />
                     </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Ảnh bổ sung (URLs, cách nhau bởi dấu phẩy)</label>
+                        <textarea 
+                            value={formData.images.join(', ')} 
+                            onChange={e => setFormData(prev => ({...prev, images: e.target.value.split(',').map(s => s.trim()).filter(s => !!s)}))} 
+                            placeholder="https://image1.jpg, https://image2.jpg..." 
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900 h-20" 
+                        />
+                    </div>
                     {user?.role === 'admin' && (
                         <>
                             <div>
@@ -333,14 +344,17 @@ const StoreManagement: React.FC = () => {
                                     ))}
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1">Trạng thái</label>
-                                <select value={formData.status} onChange={e => setFormData(prev => ({...prev, status: e.target.value as any}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900">
-                                    <option value="pending">Chờ duyệt (Pending)</option>
-                                    <option value="active">Hoạt động (Active)</option>
-                                    <option value="hidden">Ẩn (Hidden)</option>
-                                </select>
-                            </div>
+                    {user?.role === 'admin' && (
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">Trạng thái duyệt</label>
+                            <select value={formData.status} onChange={e => setFormData(prev => ({...prev, status: e.target.value as any}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900">
+                                <option value="pending">Chờ duyệt (Pending)</option>
+                                <option value="active">Hoạt động (Active)</option>
+                                <option value="hidden">Ẩn (Hidden)</option>
+                            </select>
+                            <p className="text-[10px] text-slate-400 mt-1 italic">* Chủ quán không thể tự thay đổi trạng thái này.</p>
+                        </div>
+                    )}
                         </>
                     )}
                     
@@ -399,6 +413,15 @@ const StoreManagement: React.FC = () => {
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1">Địa chỉ</label>
                         <input type="text" value={formData.address} onChange={e => setFormData(prev => ({...prev, address: e.target.value}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Ảnh bổ sung (URLs, cách nhau bởi dấu phẩy)</label>
+                        <textarea 
+                            value={formData.images.join(', ')} 
+                            onChange={e => setFormData(prev => ({...prev, images: e.target.value.split(',').map(s => s.trim()).filter(s => !!s)}))} 
+                            placeholder="https://image1.jpg, https://image2.jpg..." 
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900 h-20" 
+                        />
                     </div>
 
                     <div>

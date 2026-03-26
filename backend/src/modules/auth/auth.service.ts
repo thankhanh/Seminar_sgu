@@ -28,26 +28,32 @@ export class AuthService {
         passwordHash,
         phone: dto.phone,
         role: dto.role ?? 'user',
+        isActive: (dto.role === 'merchant') ? false : true,
         preferredLanguage: dto.preferredLanguage ?? 'vi',
       },
       select: { id: true, name: true, email: true, role: true, createdAt: true },
     });
 
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    // Không tạo Token cho Merchant mới đăng ký (vì đang chờ duyệt)
+    const tokens = user.role === 'merchant' ? null : await this.generateTokens(user.id, user.email, user.role);
 
-    // Nếu là merchant, tự động tạo bản ghi Merchant (auto-approve cho dev)
+    // Nếu là merchant, tạo bản ghi Merchant ở trạng thái chờ duyệt
     if (user.role === 'merchant') {
       await this.prisma.merchant.create({
         data: {
           userId: user.id,
           businessName: dto.businessName || `${user.name}'s Business`,
           taxCode: dto.taxCode,
-          status: 'approved' as MerchantStatus,
+          status: 'pending' as MerchantStatus,
         },
       });
     }
 
-    return { user, ...tokens };
+    return { 
+      user, 
+      ...tokens,
+      message: user.role === 'merchant' ? 'Tài khoản đang chờ duyệt. Vui lòng đăng nhập sau khi được phê duyệt.' : undefined 
+    };
   }
 
   // ─── Login ───────────────────────────────────────────────────

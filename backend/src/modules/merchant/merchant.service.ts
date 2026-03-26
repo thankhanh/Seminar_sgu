@@ -18,10 +18,10 @@ export class MerchantService {
       },
     });
 
-    // Cập nhật role user thành merchant
+    // Cập nhật role user thành merchant và tạm khóa để chờ duyệt
     await this.prisma.user.update({
       where: { id: userId },
-      data: { role: 'merchant' },
+      data: { role: 'merchant', isActive: false },
     });
 
     return merchant;
@@ -56,6 +56,11 @@ export class MerchantService {
   async approveMerchant(id: string) {
     const merchant = await this.prisma.merchant.findUnique({ where: { id } });
     if (!merchant) throw new NotFoundException('Merchant không tồn tại');
+    await this.prisma.user.update({
+      where: { id: merchant.userId },
+      data: { isActive: true }
+    });
+
     return this.prisma.merchant.update({
       where: { id },
       data: { status: 'approved' },

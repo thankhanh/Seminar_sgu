@@ -39,8 +39,10 @@ export class PaymentsService {
   // ─────────────────────────────────────────────────────────────
 
   async createVnpayPayment(userId: string, dto: CreatePaymentDto, ipAddr: string) {
-    const amount = PLAN_PRICES[dto.type];
-    const label = PLAN_LABELS[dto.type];
+    const amount = dto.amount || (dto.type ? PLAN_PRICES[dto.type] : 0);
+    const label = dto.orderInfo || (dto.type ? PLAN_LABELS[dto.type] : 'Thanh toan don hang');
+
+    if (!amount) throw new BadRequestException('Bắt buộc phải có amount hoặc type hợp lệ');
 
     // Tạo transaction trong DB
     const tx = await this.prisma.transaction.create({
@@ -48,7 +50,7 @@ export class PaymentsService {
         userId,
         amount,
         currency: 'VND',
-        type: dto.type.startsWith('user') ? 'user_subscription' : 'merchant_subscription',
+        type: dto.amount ? 'food_order' : (dto.type?.startsWith('user') ? 'user_subscription' : 'merchant_subscription'),
         paymentMethod: 'vnpay',
         status: 'pending',
         description: label,
@@ -171,15 +173,17 @@ export class PaymentsService {
   // ─────────────────────────────────────────────────────────────
 
   async createMomoPayment(userId: string, dto: CreatePaymentDto) {
-    const amount = PLAN_PRICES[dto.type];
-    const label = PLAN_LABELS[dto.type];
+    const amount = dto.amount || (dto.type ? PLAN_PRICES[dto.type] : 0);
+    const label = dto.orderInfo || (dto.type ? PLAN_LABELS[dto.type] : 'Thanh toan don hang');
+
+    if (!amount) throw new BadRequestException('Bắt buộc phải có amount hoặc type hợp lệ');
 
     const tx = await this.prisma.transaction.create({
       data: {
         userId,
         amount,
         currency: 'VND',
-        type: dto.type.startsWith('user') ? 'user_subscription' : 'merchant_subscription',
+        type: dto.amount ? 'food_order' : (dto.type?.startsWith('user') ? 'user_subscription' : 'merchant_subscription'),
         paymentMethod: 'momo',
         status: 'pending',
         description: label,

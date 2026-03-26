@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, Dimensions, StyleSheet, ActivityIndicator } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from '../../../components/MapView';
 import * as Location from 'expo-location';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRouter } from 'expo-router';
+import { API_URL } from '../../../constants/Api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -13,35 +14,30 @@ export default function MapScreen() {
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [selectedStall, setSelectedStall] = useState<any>(null);
 
-    const STALLS = [
-        {
-            id: '1',
-            name: 'Ốc Oanh',
-            sub: 'Vinh Khanh St.',
-            rating: 4.8,
-            tag: 'Peak Heat',
-            coordinate: { latitude: 10.7612, longitude: 106.7025 },
-            image: 'https://i.pinimg.com/736x/8f/ba/b6/8fbab6011c778408f65cc9e95fae4680.jpg'
-        },
-        {
-            id: '2',
-            name: 'Quầy #12',
-            sub: 'Chè Ngon',
-            rating: 4.5,
-            tag: 'Dessert',
-            coordinate: { latitude: 10.7618, longitude: 106.7020 },
-            image: 'https://cdn.tgdd.vn/2020/09/CookProduct/sdsd-1200x676.jpg'
-        },
-        {
-            id: '3',
-            name: 'Quầy #15',
-            sub: 'Bánh Tráng',
-            rating: 4.2,
-            tag: 'Street Food',
-            coordinate: { latitude: 10.7605, longitude: 106.7040 },
-            image: 'https://cdn.tgdd.vn/Files/2019/12/28/1228945/cach-lam-banh-trang-tron-tai-nha-ngon-nhu-ngoai-hang-202112310931165261.jpeg'
-        }
-    ];
+    const [stores, setStores] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStores = async () => {
+            try {
+                const res = await fetch(`${API_URL}/stores?limit=50`);
+                const body = await res.json();
+                let list = [];
+                if (Array.isArray(body)) {
+                    list = body;
+                } else if (body && body.data) {
+                    if (Array.isArray(body.data)) list = body.data;
+                    else if (Array.isArray(body.data.data)) list = body.data.data;
+                }
+                setStores(list);
+            } catch (error) {
+                console.error('Error fetching stores for map:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchStores();
+    }, []);
 
     const initialRegion = {
         latitude: 10.7610,
@@ -144,23 +140,26 @@ export default function MapScreen() {
                         </Marker>
 
                         {/* Dynamic Markers */}
-                        {STALLS.map((stall) => (
-                            <Marker
-                                key={stall.id}
-                                coordinate={stall.coordinate}
-                                zIndex={selectedStall?.id === stall.id ? 99 : 90}
-                                onPress={() => setSelectedStall(stall)}
-                            >
-                                <View className="items-center mt-4">
-                                    <View className={`px-4 py-2 rounded-2xl shadow-xl mb-1 items-center border-2 ${selectedStall?.id === stall.id ? 'bg-[#009FB7] border-[#009FB7]' : 'bg-[#111827] border-[#111827]'}`}>
-                                        <Text className="text-[11px] font-extrabold text-white tracking-wider uppercase">{stall.name}</Text>
+                        {stores.map((stall) => {
+                            if (!stall.lat || !stall.lng) return null;
+                            return (
+                                <Marker
+                                    key={stall.id}
+                                    coordinate={{ latitude: stall.lat, longitude: stall.lng }}
+                                    zIndex={selectedStall?.id === stall.id ? 99 : 90}
+                                    onPress={() => setSelectedStall(stall)}
+                                >
+                                    <View className="items-center mt-4">
+                                        <View className={`px-4 py-2 rounded-2xl shadow-xl mb-1 items-center border-2 ${selectedStall?.id === stall.id ? 'bg-[#009FB7] border-[#009FB7]' : 'bg-[#111827] border-[#111827]'}`}>
+                                            <Text className="text-[11px] font-extrabold text-white tracking-wider uppercase">{stall.name}</Text>
+                                        </View>
+                                        <View className="w-6 h-6 rounded-full bg-white items-center justify-center shadow-lg border border-gray-100">
+                                            <View className={`w-3 h-3 rounded-full ${selectedStall?.id === stall.id ? 'bg-[#009FB7]' : 'bg-[#111827]'}`} />
+                                        </View>
                                     </View>
-                                    <View className="w-6 h-6 rounded-full bg-white items-center justify-center shadow-lg border border-gray-100">
-                                        <View className={`w-3 h-3 rounded-full ${selectedStall?.id === stall.id ? 'bg-[#009FB7]' : 'bg-[#111827]'}`} />
-                                    </View>
-                                </View>
-                            </Marker>
-                        ))}
+                                </Marker>
+                            );
+                        })}
                     </MapView>
                     {/* --- FLOATING CONTROLS (Right Side) --- */}
                     <View className="absolute top-5 right-5 z-20">
@@ -188,19 +187,19 @@ export default function MapScreen() {
                             <View className="bg-white rounded-3xl p-4 shadow-xl border border-gray-100">
                                 <View className="flex-row items-start mb-4">
                                     <Image
-                                        source={{ uri: selectedStall.image }}
+                                        source={{ uri: selectedStall.coverImage || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=600&auto=format&fit=crop' }}
                                         className="w-16 h-16 rounded-2xl bg-gray-100"
                                     />
                                     <View className="ml-3 flex-1 pt-1">
-                                        <Text className="text-[17px] font-extrabold text-[#1F2937] leading-6">{selectedStall.name}</Text>
+                                        <Text className="text-[17px] font-extrabold text-[#1F2937] leading-6" numberOfLines={1}>{selectedStall.name}</Text>
                                         <View className="flex-row items-center mt-1">
                                             <Ionicons name="star" size={12} color="#F59E0B" />
-                                            <Text className="text-[12px] font-bold text-[#1F2937] ml-1 mr-2">{selectedStall.rating}</Text>
-                                            <Text className="text-[12px] text-[#9CA3AF]">{selectedStall.sub}</Text>
+                                            <Text className="text-[12px] font-bold text-[#1F2937] ml-1 mr-2">{selectedStall.rating || '4.5'}</Text>
+                                            <Text className="text-[12px] text-[#9CA3AF]" numberOfLines={1} style={{flexShrink: 1}}>{selectedStall.address}</Text>
                                         </View>
                                     </View>
                                     <View className="bg-red-600 px-2 py-1 rounded-lg shadow-sm">
-                                        <Text className="text-[9px] font-extrabold text-white tracking-wider uppercase">{selectedStall.tag}</Text>
+                                        <Text className="text-[9px] font-extrabold text-white tracking-wider uppercase">Featured</Text>
                                     </View>
                                 </View>
 

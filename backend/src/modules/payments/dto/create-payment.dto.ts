@@ -20,9 +20,21 @@ export class CreatePaymentDto {
   @IsEnum(PaymentMethodEnum)
   method: PaymentMethodEnum;
 
-  @ApiProperty({ enum: SubscriptionTypeEnum, example: SubscriptionTypeEnum.USER_MONTHLY })
+  @ApiPropertyOptional({ enum: SubscriptionTypeEnum, example: SubscriptionTypeEnum.USER_MONTHLY })
+  @IsOptional()
   @IsEnum(SubscriptionTypeEnum)
-  type: SubscriptionTypeEnum;
+  type?: SubscriptionTypeEnum;
+
+  @ApiPropertyOptional({ example: 50000, description: 'Số tiền thanh toán tự do' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1000)
+  amount?: number;
+
+  @ApiPropertyOptional({ example: 'Thanh toan gio hang', description: 'Noi dung thanh toan custom' })
+  @IsOptional()
+  @IsString()
+  orderInfo?: string;
 
   @ApiPropertyOptional({ example: '127.0.0.1', description: 'IP người dùng (dùng cho VNPay)' })
   @IsOptional()

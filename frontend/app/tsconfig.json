@@ -6,7 +6,8 @@
     "paths": {
       "@/*": [
         "./*"
-      ]
+      ],
+      "merge-options": ["./node_modules/merge-options/index.d.ts"]
     }
   },
   "include": [

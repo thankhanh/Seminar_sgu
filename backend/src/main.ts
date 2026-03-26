@@ -17,10 +17,7 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: [
-      'http://localhost:5173', // Web Dashboard
-      'http://localhost:3001', // Dev alt port
-    ],
+    origin: true, // Allow any origin while reflecting it back (fixes Expo web CORS issues)
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
   });

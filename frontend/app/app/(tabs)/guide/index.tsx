@@ -1,9 +1,37 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { API_URL } from '../../../constants/Api';
 
 export default function GuideScreen() {
+    const router = useRouter();
+    const [stores, setStores] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStores = async () => {
+            try {
+                const res = await fetch(`${API_URL}/stores?limit=20`);
+                const body = await res.json();
+                let list = [];
+                if (Array.isArray(body)) {
+                    list = body;
+                } else if (body && body.data) {
+                    if (Array.isArray(body.data)) list = body.data;
+                    else if (Array.isArray(body.data.data)) list = body.data.data;
+                }
+                setStores(list);
+            } catch (error) {
+                console.error('Error fetching stores for guide:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchStores();
+    }, []);
+
     return (
         <SafeAreaView className="flex-1 bg-[#F4FBFC]">
             {/* === HEADER === */}
@@ -100,59 +128,43 @@ export default function GuideScreen() {
                     </Text>
 
                     {/* === STORY ITEMS === */}
-                    {[
-                        {
-                            id: 1,
-                            title: "Oc Dao (Snail Paradise)",
-                            image: "https://vcdn1-dulich.vnecdn.net/2021/01/18/vothilaus2-1610940428-16109559-6799-2810-1610955938.jpg?w=1200&h=0&q=100&dpr=1&fit=crop&s=sQG3H9vE8p0A_B1z0c-xkg",
-                            duration: "4:12",
-                            category: "Seafood"
-                        },
-                        {
-                            id: 2,
-                            title: "Banh Xeo Auntie Muoi",
-                            image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSq7Q063U58v3n1pZlPWeKx0R_O-v9vQ-q4vA&s",
-                            duration: "3:45",
-                            category: "Snacks"
-                        },
-                        {
-                            id: 3,
-                            title: "King of BBQ Skewers",
-                            image: "https://foodtruckempire.com/wp-content/uploads/BBQ-skewers.jpg",
-                            duration: "5:20",
-                            category: "Grill"
-                        },
-                        {
-                            id: 4,
-                            title: "Market Coffee Legend",
-                            image: "https://www.topcv.vn/v4/image/welcome/section-header/coffee.png",
-                            duration: "2:50",
-                            category: "Drinks"
-                        }
-                    ].map((item) => (
-                        <View key={item.id} className="flex-row items-center justify-between mb-6">
-                            <View className="flex-row items-center flex-1 pr-4">
-                                <Image
-                                    source={{ uri: item.image }}
-                                    className="w-[56px] h-[56px] rounded-2xl mr-4 bg-gray-100"
-                                />
-                                <View>
-                                    <Text className="text-[16px] font-extrabold text-[#111827] mb-0.5 leading-tight">
-                                        {item.title}
-                                    </Text>
-                                    <View className="flex-row items-center">
-                                        <Ionicons name="time-outline" size={12} color="#9CA3AF" />
-                                        <Text className="text-[12px] text-[#6B7280] ml-1">
-                                            {item.duration} · {item.category}
+                    {isLoading ? (
+                        <View className="py-10 items-center justify-center">
+                            <ActivityIndicator size="large" color="#009FB7" />
+                        </View>
+                    ) : stores.length === 0 ? (
+                        <View className="py-10 items-center justify-center">
+                            <Text className="text-[#9CA3AF]">Chưa có câu chuyện nào.</Text>
+                        </View>
+                    ) : (
+                        stores.map((store, index) => (
+                            <View key={store.id || index} className="flex-row items-center justify-between mb-6">
+                                <View className="flex-row items-center flex-1 pr-4">
+                                    <Image
+                                        source={{ uri: store.coverImage || 'https://via.placeholder.com/150' }}
+                                        className="w-[56px] h-[56px] rounded-2xl mr-4 bg-gray-100"
+                                    />
+                                    <View>
+                                        <Text className="text-[16px] font-extrabold text-[#111827] mb-0.5 leading-tight" numberOfLines={1}>
+                                            {store.name}
                                         </Text>
+                                        <View className="flex-row items-center">
+                                            <Ionicons name="time-outline" size={12} color="#9CA3AF" />
+                                            <Text className="text-[12px] text-[#6B7280] ml-1">
+                                                Câu chuyện · Âm thực
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
+                                <TouchableOpacity 
+                                    onPress={() => router.push(`/stall/${store.id}` as any)}
+                                    className="bg-[#F3F4F6] px-4 py-2.5 rounded-full"
+                                >
+                                    <Text className="text-[#009FB7] text-[13px] font-bold">Listen</Text>
+                                </TouchableOpacity>
                             </View>
-                            <TouchableOpacity className="bg-[#F3F4F6] px-4 py-2.5 rounded-full">
-                                <Text className="text-[#009FB7] text-[13px] font-bold">Listen</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ))}
+                        ))
+                    )}
                 </View>
             </ScrollView>
         </SafeAreaView>

@@ -10,16 +10,97 @@ import {
     ScrollView,
     Image,
     ImageBackground,
+    Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../../constants/Api';
 
 export default function LoginScreen() {
     const router = useRouter();
+    const [isLogin, setIsLogin] = useState(true);
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [isPasswordVisible, setPasswordVisible] = useState(false);
+    const [isConfirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleAuth = async () => {
+        if (isLogin) {
+            handleLogin();
+        } else {
+            handleSignUp();
+        }
+    };
+
+    const handleLogin = async () => {
+        if (!email || !password) {
+            Alert.alert('Error', 'Please enter email and password.');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const res = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Login failed');
+            
+            const token = data.accessToken || data.access_token || (data.data && (data.data.accessToken || data.data.access_token));
+            if (token) {
+                await AsyncStorage.setItem('access_token', token);
+            } else {
+                console.warn('Login succeeded but no token found in response', data);
+            }
+            
+            Alert.alert('Success', 'Logged in successfully!');
+            router.replace('/(tabs)/home');
+        } catch (error: any) {
+            Alert.alert('Login Error', error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSignUp = async () => {
+        if (!name || !email || !password || !confirmPassword) {
+            Alert.alert('Error', 'Please fill in all fields.');
+            return;
+        }
+        if (password !== confirmPassword) {
+            Alert.alert('Error', 'Passwords do not match.');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const res = await fetch(`${API_URL}/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Registration failed');
+            
+            const token = data.accessToken || data.access_token || (data.data && (data.data.accessToken || data.data.access_token));
+            if (token) {
+                await AsyncStorage.setItem('access_token', token);
+            }
+            
+            Alert.alert('Success', 'Account created successfully!');
+            router.replace('/(tabs)/home');
+        } catch (error: any) {
+            Alert.alert('Sign Up Error', error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -56,9 +137,9 @@ export default function LoginScreen() {
                                     <Ionicons name="location-outline" size={16} color="#009FB7" />
                                     <Text style={styles.locationText}>STREET FOOD HUB</Text>
                                 </View>
-                                <Text style={styles.welcomeText}>Welcome Back</Text>
+                                <Text style={styles.welcomeText}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
                                 <Text style={styles.welcomeSubtext}>
-                                    Discover flavors through our GPS audio guides
+                                    {isLogin ? 'Discover flavors through our GPS audio guides' : 'Join us to explore the best street food'}
                                 </Text>
                             </View>
                         </ImageBackground>
@@ -66,6 +147,24 @@ export default function LoginScreen() {
 
                     {/* Form */}
                     <View style={styles.formContainer}>
+                        {/* Name Field (Sign Up Only) */}
+                        {!isLogin && (
+                            <>
+                                <Text style={styles.label}>Full Name</Text>
+                                <View style={styles.inputContainer}>
+                                    <Ionicons name="person-outline" size={20} color="#888" style={styles.inputIcon} />
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Enter your full name"
+                                        placeholderTextColor="#A0A0A0"
+                                        value={name}
+                                        onChangeText={setName}
+                                        autoCapitalize="words"
+                                    />
+                                </View>
+                            </>
+                        )}
+
                         {/* Email Field */}
                         <Text style={styles.label}>Email or Phone</Text>
                         <View style={styles.inputContainer}>
@@ -84,9 +183,11 @@ export default function LoginScreen() {
                         {/* Password Field */}
                         <View style={styles.passwordHeader}>
                             <Text style={styles.label}>Password</Text>
-                            <TouchableOpacity>
-                                <Text style={styles.forgotText}>Forgot?</Text>
-                            </TouchableOpacity>
+                            {isLogin && (
+                                <TouchableOpacity>
+                                    <Text style={styles.forgotText}>Forgot?</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                         <View style={styles.inputContainer}>
                             <Ionicons
@@ -115,10 +216,53 @@ export default function LoginScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Login Button */}
-                        <TouchableOpacity style={styles.loginButton} onPress={() => router.replace('/(tabs)/home')}>
-                            <Text style={styles.loginButtonText}>Log In</Text>
-                            <Ionicons name="arrow-forward-outline" size={20} color="#FFF" style={{ marginLeft: 6 }} />
+                        {/* Confirm Password Field (Sign Up Only) */}
+                        {!isLogin && (
+                            <>
+                                <Text style={styles.label}>Confirm Password</Text>
+                                <View style={styles.inputContainer}>
+                                    <Ionicons
+                                        name="lock-closed-outline"
+                                        size={20}
+                                        color="#888"
+                                        style={styles.inputIcon}
+                                    />
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Confirm your password"
+                                        placeholderTextColor="#A0A0A0"
+                                        value={confirmPassword}
+                                        onChangeText={setConfirmPassword}
+                                        secureTextEntry={!isConfirmPasswordVisible}
+                                    />
+                                    <TouchableOpacity
+                                        onPress={() => setConfirmPasswordVisible(!isConfirmPasswordVisible)}
+                                        style={styles.eyeIcon}
+                                    >
+                                        <Ionicons
+                                            name={isConfirmPasswordVisible ? 'eye-outline' : 'eye-off-outline'}
+                                            size={20}
+                                            color="#888"
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        )}
+
+                        {/* Login / Sign Up Button */}
+                        <TouchableOpacity 
+                            style={[styles.loginButton, isLoading && { opacity: 0.7 }]} 
+                            onPress={handleAuth}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <ActivityIndicator color="#FFF" />
+                            ) : (
+                                <>
+                                    <Text style={styles.loginButtonText}>{isLogin ? 'Log In' : 'Sign Up'}</Text>
+                                    <Ionicons name={isLogin ? "arrow-forward-outline" : "person-add-outline"} size={20} color="#FFF" style={{ marginLeft: 6 }} />
+                                </>
+                            )}
                         </TouchableOpacity>
 
                         {/* Divider */}
@@ -144,11 +288,13 @@ export default function LoginScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Sign Up */}
+                        {/* Sign Up / Log In Toggle */}
                         <View style={styles.signUpContainer}>
-                            <Text style={styles.signUpText}>Don't have an account? </Text>
-                            <TouchableOpacity>
-                                <Text style={styles.signUpLink}>Sign Up</Text>
+                            <Text style={styles.signUpText}>
+                                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                            </Text>
+                            <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
+                                <Text style={styles.signUpLink}>{isLogin ? 'Sign Up' : 'Log In'}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

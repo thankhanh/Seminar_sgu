@@ -13,6 +13,7 @@ import StoreManagement from './pages/StoreManagement';
 import MerchantApproval from './pages/MerchantApproval';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import SubscriptionManagement from './pages/SubscriptionManagement';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
               <Route path="store" element={<StoreManagement />} />
               <Route path="store-info" element={<StoreInfo />} />
               <Route path="menu-management" element={<MenuManagement />} />
+              <Route path="subscriptions" element={<SubscriptionManagement />} />
             </Route>
           </Route>
         </Routes>

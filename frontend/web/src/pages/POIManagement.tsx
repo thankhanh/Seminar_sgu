@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
-import { storesApi, merchantApi, adminApi } from '../utils/api';
+import { storesApi, merchantApi, adminApi, subscriptionsApi } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { Store } from '../types';
 import MapSelector from '../components/MapSelector';
@@ -22,6 +22,7 @@ const POIManagement: React.FC = () => {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [selectedPoi, setSelectedPoi] = useState<any | null>(null);
     const [merchants, setMerchants] = useState<any[]>([]);
+    const [subscription, setSubscription] = useState<any>(null);
 
     const [formData, setFormData] = useState({
         name: '', address: '', description: '', lat: 10.4967, lng: 105.1167,
@@ -43,7 +44,13 @@ const POIManagement: React.FC = () => {
                 setMerchants(merchantRes.data || []);
             } else {
                 // If merchant, get their ID from their profile then fetch their stores with pagination
-                const merchantProfile = await merchantApi.getMe();
+                const [merchantProfile, subRes] = await Promise.all([
+                    merchantApi.getMe(),
+                    subscriptionsApi.getMy()
+                ]);
+                
+                setSubscription(subRes);
+
                 if (merchantProfile && merchantProfile.id) {
                     const storeRes = await storesApi.getAll(pageNum, limit, 'all', merchantProfile.id);
                     setPois(storeRes.data || []);
@@ -139,12 +146,26 @@ const POIManagement: React.FC = () => {
                     <p className="text-slate-500">Đồng bộ dữ liệu điểm tham quan với hệ thống Mobile App.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {user?.role === 'merchant' && (
+                        <div className={`px-4 py-2 rounded-xl border font-bold text-sm ${
+                            totalPois >= (subscription?.maxStore || 1) 
+                                ? 'bg-rose-50 border-rose-200 text-rose-600' 
+                                : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                        }`}>
+                            Giới hạn: {totalPois} / {subscription?.maxStore || 1} POI
+                        </div>
+                    )}
                     <button onClick={() => fetchData()} className="p-2.5 text-slate-500 hover:text-primary-600 bg-white border border-slate-200 rounded-xl transition-all shadow-sm">
                         <Loader2 className={loading ? 'animate-spin' : ''} size={20} />
                     </button>
                     <button
+                        disabled={user?.role === 'merchant' && totalPois >= (subscription?.maxStore || 1)}
                         onClick={() => { setFormData({ name: '', address: '', description: '', lat: 10.4967, lng: 105.1167, openTime: '08:00', closeTime: '22:00', coverImage: '', status: 'active', merchantId: '' }); setIsAddPoiOpen(true); }}
-                        className="bg-primary-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-700 transition-all shadow-sm shadow-primary-500/20"
+                        className={`px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm ${
+                            user?.role === 'merchant' && totalPois >= (subscription?.maxStore || 1)
+                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                                : 'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-500/20'
+                        }`}
                     >
                         <Plus size={20} /> Thêm địa điểm
                     </button>

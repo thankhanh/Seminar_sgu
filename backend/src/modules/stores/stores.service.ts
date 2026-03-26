@@ -14,11 +14,26 @@ export class StoresService {
       if (!dto.merchantId) {
         throw new ForbiddenException('Admin phải cung cấp merchantId để tạo store');
       }
-      merchantId = dto.merchantId;
     } else {
       const merchant = await this.prisma.merchant.findUnique({ where: { userId: user.id } });
       if (!merchant) throw new ForbiddenException('Bạn chưa đăng ký làm merchant');
       merchantId = merchant.id;
+    }
+
+    // Kiểm tra giới hạn POI dựa trên gói đăng ký
+    const [currentCount, activeSub] = await Promise.all([
+      this.prisma.store.count({ where: { merchantId } }),
+      this.prisma.merchantSubscription.findFirst({
+        where: { merchantId, status: 'active' },
+      }),
+    ]);
+
+    const maxStore = activeSub ? activeSub.maxStore : 1; // Mặc định 1 POI nếu chưa có gói
+
+    if (currentCount >= maxStore) {
+      throw new ForbiddenException(
+        `Bạn đã đạt giới hạn tối đa ${maxStore} cửa hàng cho gói hiện tại. Vui lòng nâng cấp gói dịch vụ để thêm mới.`
+      );
     }
 
     return this.prisma.store.create({

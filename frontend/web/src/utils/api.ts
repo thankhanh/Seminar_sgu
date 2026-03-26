@@ -155,3 +155,23 @@ export const menusApi = {
     }),
     remove: (id: string) => apiFetch(`/menus/${id}`, { method: 'DELETE' }),
 };
+
+// --- Subscriptions ---
+export const subscriptionsApi = {
+    create: (dto: any) => apiFetch('/merchant-subscriptions', {
+        method: 'POST',
+        body: JSON.stringify(dto),
+    }),
+    getMy: () => apiFetch('/merchant-subscriptions/my'),
+    getAll: (page = 1, limit = 10) => apiFetch(`/merchant-subscriptions?page=${page}&limit=${limit}`),
+    cancel: (id: string) => apiFetch(`/merchant-subscriptions/${id}/cancel`, { method: 'PATCH' }),
+};
+
+// --- Payments ---
+export const paymentsApi = {
+    create: (dto: any) => apiFetch('/payments/create', {
+        method: 'POST',
+        body: JSON.stringify(dto),
+    }),
+    getHistory: () => apiFetch('/payments/history'),
+};

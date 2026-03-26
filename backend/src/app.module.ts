@@ -24,6 +24,7 @@ import { MerchantModule } from './modules/merchant/merchant.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { LanguagesModule } from './modules/languages/languages.module';
 import { QrModule } from './modules/qr/qr.module';
+import { MerchantSubscriptionsModule } from './modules/merchant-subscriptions/merchant-subscriptions.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { QrModule } from './modules/qr/qr.module';
     AdminModule,
     LanguagesModule,
     QrModule,
+    MerchantSubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [

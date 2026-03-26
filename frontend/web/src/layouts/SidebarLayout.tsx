@@ -12,7 +12,8 @@ import {
     Languages,
     Store,
     Utensils,
-    ShieldCheck
+    ShieldCheck,
+    CreditCard
 } from 'lucide-react';
 
 // NavItem used within the sidebar list structure
@@ -71,6 +72,7 @@ const SidebarLayout: React.FC = () => {
                                     <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" path="/" />
                                     <NavItem icon={<UserIcon size={20} />} label="Người dùng" path="/users" />
                                     <NavItem icon={<ShieldCheck size={20} />} label="Duyệt Merchant" path="/merchants" />
+                                    <NavItem icon={<CreditCard size={20} />} label="Quản lý Gói Merchant" path="/subscriptions" />
                                 </ul>
                             </div>
                             <div className="mb-6">
@@ -89,6 +91,7 @@ const SidebarLayout: React.FC = () => {
                                 <ul className="space-y-1 relative">
                                     <NavItem icon={<Store size={20} />} label="Thông tin quán" path="/store-info" />
                                     <NavItem icon={<Utensils size={20} />} label="Quản lý Menu" path="/menu-management" />
+                                    <NavItem icon={<CreditCard size={20} />} label="Gói dịch vụ" path="/subscriptions" />
                                 </ul>
                             </div>
                             <div className="mb-6">

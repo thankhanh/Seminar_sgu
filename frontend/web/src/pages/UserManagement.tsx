@@ -6,12 +6,16 @@ import {
 } from 'lucide-react';
 import { adminApi } from '../utils/api';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 import type { User, Merchant } from '../types';
 
 const UserManagement: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [merchants, setMerchants] = useState<Merchant[]>([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [totalUsers, setTotalUsers] = useState(0);
+    const limit = 10;
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -26,20 +30,26 @@ const UserManagement: React.FC = () => {
         role: 'user' as 'user' | 'merchant' | 'admin',
     });
 
-    const fetchData = async () => {
+    const fetchData = async (pageNum = page) => {
         setLoading(true);
         try {
             const [usersRes, merchantsRes] = await Promise.all([
-                adminApi.getUsers(1, 100),
-                adminApi.getMerchants(1, 100)
+                adminApi.getUsers(pageNum, limit),
+                adminApi.getMerchants(1, 100) // Keep fetching active merchants list for badges/approval
             ]);
             setUsers(usersRes.data || []);
+            setTotalUsers(usersRes.total || 0);
             setMerchants(merchantsRes.data || []);
         } catch (err) {
             console.error('Lỗi khi lấy dữ liệu người dùng:', err);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage);
+        fetchData(newPage);
     };
 
     useEffect(() => {
@@ -207,7 +217,7 @@ const UserManagement: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {filteredUsers.map((user: User) => {
+                            {users.map((user: User) => {
                                 const merchant = merchants.find(m => m.userId === user.id);
                                 return (
                                     <tr key={user.id} className="hover:bg-slate-50 transition-colors group">
@@ -265,13 +275,13 @@ const UserManagement: React.FC = () => {
                         </tbody>
                     </table>
                 </div>
-                <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-bold">
-                    <span>HIỂN THỊ {filteredUsers.length} TÀI KHOẢN</span>
-                    <div className="flex gap-2">
-                        <button className="px-3 py-1 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors">TRƯỚC</button>
-                        <button className="px-3 py-1 bg-primary-600 text-white rounded-lg">1</button>
-                        <button className="px-3 py-1 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors">SAU</button>
-                    </div>
+                <div className="p-4 bg-slate-50 border-t border-slate-100">
+                    <Pagination 
+                        currentPage={page} 
+                        totalItems={totalUsers} 
+                        itemsPerPage={limit} 
+                        onPageChange={handlePageChange} 
+                    />
                 </div>
             </div>
 

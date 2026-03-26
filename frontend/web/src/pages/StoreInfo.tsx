@@ -45,8 +45,13 @@ const StoreInfo: React.FC = () => {
             }));
             setStores(myStores);
             if (myStores.length > 0) {
-                setSelectedStoreId(myStores[0].id);
-                setStoreForm(myStores[0]);
+                // Determine which store to show (either the one already selected, or the first one)
+                setStoreForm((prevForm) => {
+                    const currentId = prevForm.id || selectedStoreId || myStores[0].id;
+                    const latest = myStores.find(s => s.id === currentId) || myStores[0];
+                    setSelectedStoreId(latest.id);
+                    return latest;
+                });
             }
         } catch (err) {
             console.error('Lỗi khi tải thông tin cửa hàng:', err);
@@ -175,84 +180,14 @@ const StoreInfo: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="mt-4 sm:mt-0 flex w-full sm:w-auto gap-3">
-                            {saved && (
-                                <span className="flex items-center gap-1.5 text-emerald-600 font-semibold text-sm">
-                                    <CheckCircle2 size={18} /> Đã lưu!
-                                </span>
-                            )}
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-2xl font-bold transition-all shadow-lg shadow-primary-500/25 hover:-translate-y-0.5 disabled:opacity-60"
-                            >
-                                {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-                                Lưu thông tin
-                            </button>
+                        <div className="mt-4 sm:mt-0 opacity-0 pointer-events-none">
+                            {/* Placeholder to keep header height if needed, or just remove */}
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                        {/* Primary Info */}
-                        <div className="lg:col-span-2 space-y-6">
-                            <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                                <Info className="text-primary-500" /> Thông tin cơ bản
-                            </h2>
-                            <div className="space-y-5">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Tên cửa hàng / Quán ăn</label>
-                                    <input
-                                        type="text"
-                                        value={storeForm.name}
-                                        onChange={(e) => setStoreForm({ ...storeForm, name: e.target.value })}
-                                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-bold text-lg transition-all shadow-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Mô tả giới thiệu</label>
-                                    <textarea
-                                        rows={4}
-                                        value={storeForm.description}
-                                        onChange={(e) => setStoreForm({ ...storeForm, description: e.target.value })}
-                                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-700 leading-relaxed resize-none transition-all shadow-sm"
-                                        placeholder="Mô tả về cửa hàng của bạn..."
-                                    ></textarea>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Giờ mở cửa</label>
-                                        <input
-                                            type="time"
-                                            value={storeForm.openTime}
-                                            onChange={(e) => setStoreForm({ ...storeForm, openTime: e.target.value })}
-                                            className="w-full px-5 py-3 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-bold transition-all shadow-sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Giờ đóng cửa</label>
-                                        <input
-                                            type="time"
-                                            value={storeForm.closeTime}
-                                            onChange={(e) => setStoreForm({ ...storeForm, closeTime: e.target.value })}
-                                            className="w-full px-5 py-3 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-bold transition-all shadow-sm"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Link ảnh bìa</label>
-                                    <input
-                                        type="text"
-                                        value={storeForm.coverImage}
-                                        onChange={(e) => setStoreForm({ ...storeForm, coverImage: e.target.value })}
-                                        className="w-full px-5 py-3 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-medium transition-all shadow-sm"
-                                        placeholder="https://images.unsplash.com/..."
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Location */}
-                        <div className="space-y-6">
+                        {/* Left Column: Location (Wide) */}
+                        <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
                             <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
                                 <MapPin className="text-primary-500" /> Vị trí trên bản đồ
                             </h2>
@@ -264,7 +199,7 @@ const StoreInfo: React.FC = () => {
                                         <input
                                             type="text"
                                             value={storeForm.address}
-                                            onChange={(e) => setStoreForm({ ...storeForm, address: e.target.value })}
+                                            onChange={(e) => setStoreForm(prev => ({ ...prev, address: e.target.value }))}
                                             className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200/80 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-medium shadow-sm transition-all"
                                             placeholder="Nhập địa chỉ..."
                                         />
@@ -274,7 +209,7 @@ const StoreInfo: React.FC = () => {
                                         <MapSelector 
                                             lat={Number(storeForm.lat) || 10.4967} 
                                             lng={Number(storeForm.lng) || 105.1167} 
-                                            onChange={(lat, lng) => setStoreForm({ ...storeForm, lat, lng })}
+                                            onChange={(lat, lng) => setStoreForm(prev => ({ ...prev, lat, lng }))}
                                             onAddressChange={(address) => setStoreForm(prev => ({ ...prev, address }))}
                                         />
                                     </div>
@@ -286,7 +221,7 @@ const StoreInfo: React.FC = () => {
                                             type="number"
                                             step="any"
                                             value={storeForm.lat}
-                                            onChange={(e) => setStoreForm({ ...storeForm, lat: parseFloat(e.target.value) || 0 })}
+                                            onChange={(e) => setStoreForm(prev => ({ ...prev, lat: parseFloat(e.target.value) || 0 }))}
                                             className="w-full px-4 py-3 bg-white border border-slate-200/80 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-medium shadow-sm transition-all"
                                             placeholder="Ví dụ: 10.762622"
                                         />
@@ -297,13 +232,93 @@ const StoreInfo: React.FC = () => {
                                             type="number"
                                             step="any"
                                             value={storeForm.lng}
-                                            onChange={(e) => setStoreForm({ ...storeForm, lng: parseFloat(e.target.value) || 0 })}
+                                            onChange={(e) => setStoreForm(prev => ({ ...prev, lng: parseFloat(e.target.value) || 0 }))}
                                             className="w-full px-4 py-3 bg-white border border-slate-200/80 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-medium shadow-sm transition-all"
                                             placeholder="Ví dụ: 106.660172"
                                         />
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Right Column: Primary Info (Narrow) */}
+                        <div className="space-y-6 order-1 lg:order-2">
+                            <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                <Info className="text-primary-500" /> Thông tin cơ bản
+                            </h2>
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Tên cửa hàng / Quán ăn</label>
+                                    <input
+                                        type="text"
+                                        value={storeForm.name}
+                                        onChange={(e) => setStoreForm(prev => ({ ...prev, name: e.target.value }))}
+                                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-bold text-lg transition-all shadow-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Mô tả giới thiệu</label>
+                                    <textarea
+                                        rows={4}
+                                        value={storeForm.description}
+                                        onChange={(e) => setStoreForm(prev => ({ ...prev, description: e.target.value }))}
+                                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-700 leading-relaxed resize-none transition-all shadow-sm"
+                                        placeholder="Mô tả về cửa hàng của bạn..."
+                                    ></textarea>
+                                </div>
+                                <div className="space-y-5">
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Giờ mở cửa</label>
+                                        <input
+                                            type="time"
+                                            value={storeForm.openTime}
+                                            onChange={(e) => setStoreForm(prev => ({ ...prev, openTime: e.target.value }))}
+                                            className="w-full px-5 py-3 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-bold transition-all shadow-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Giờ đóng cửa</label>
+                                        <input
+                                            type="time"
+                                            value={storeForm.closeTime}
+                                            onChange={(e) => setStoreForm(prev => ({ ...prev, closeTime: e.target.value }))}
+                                            className="w-full px-5 py-3 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-bold transition-all shadow-sm"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Link ảnh bìa</label>
+                                    <input
+                                        type="text"
+                                        value={storeForm.coverImage}
+                                        onChange={(e) => setStoreForm(prev => ({ ...prev, coverImage: e.target.value }))}
+                                        className="w-full px-5 py-3 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-medium transition-all shadow-sm"
+                                        placeholder="https://images.unsplash.com/..."
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Footer Section with Save Button */}
+                    <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-6">
+                        <div className="flex items-center gap-3 text-slate-500 italic text-sm">
+                            <Info size={16} /> Nhấn "Lưu thông tin" để cập nhật các thay đổi của bạn.
+                        </div>
+                        <div className="flex items-center gap-4 w-full sm:w-auto">
+                            {saved && (
+                                <span className="flex items-center gap-1.5 text-emerald-600 font-semibold text-sm animate-in fade-in zoom-in duration-300">
+                                    <CheckCircle2 size={18} /> Đã lưu thành công!
+                                </span>
+                            )}
+                            <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-10 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-primary-500/25 hover:-translate-y-0.5 disabled:opacity-60 active:scale-95"
+                            >
+                                {saving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
+                                Lưu thông tin
+                            </button>
                         </div>
                     </div>
                 </div>

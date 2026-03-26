@@ -5,6 +5,7 @@ import {
     MoreVertical, CheckCircle2
 } from 'lucide-react';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 import { narrationsApi, languagesApi, merchantApi, storesApi } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { Narration, Language, Store as StoreType } from '../types';
@@ -15,6 +16,9 @@ const AudioManagement: React.FC = () => {
     const [languages, setLanguages] = useState<Language[]>([]);
     const [myStores, setMyStores] = useState<StoreType[]>([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [totalNarrations, setTotalNarrations] = useState(0);
+    const limit = 10;
     const [searchQuery, setSearchQuery] = useState('');
     const [isUploadOpen, setIsUploadOpen] = useState(false);
     const [playingUrl, setPlayingUrl] = useState<string | null>(null);
@@ -27,7 +31,7 @@ const AudioManagement: React.FC = () => {
         textContent: '',
     });
 
-    const fetchData = async () => {
+    const fetchData = async (pageNum = page) => {
         setLoading(true);
         try {
             // 1. Luôn lấy danh sách ngôn ngữ
@@ -37,29 +41,34 @@ const AudioManagement: React.FC = () => {
             if (user?.role === 'admin') {
                 // 2a. Đối với Admin: Lấy tất cả narrations và tất cả stores cho dropdown
                 const [narrRes, storeRes] = await Promise.all([
-                    narrationsApi.getAll(),
-                    storesApi.getAll()
+                    narrationsApi.getAll(pageNum, limit),
+                    storesApi.getAll(1, 100)
                 ]);
                 setNarrations(narrRes.data || []);
+                setTotalNarrations(narrRes.total || 0);
                 setMyStores(storeRes.data || []);
             } else {
-                // 2b. Đối với Merchant: Lấy thông tin cá nhân và narrations theo store
+                // 2b. Đối với Merchant: Lấy thông tin cá nhân và narrations theo merchant
                 const merchantRes = await merchantApi.getMe();
                 const stores = merchantRes.stores || [];
                 setMyStores(stores);
 
-                const allNarrs: Narration[] = [];
-                for (const store of stores) {
-                    const narrs = await storesApi.getNarrations(store.id);
-                    allNarrs.push(...(narrs || []));
+                if (merchantRes.id) {
+                    const narrRes = await narrationsApi.getAll(pageNum, limit, merchantRes.id);
+                    setNarrations(narrRes.data || []);
+                    setTotalNarrations(narrRes.total || 0);
                 }
-                setNarrations(allNarrs);
             }
         } catch (err) {
             console.error('Lỗi khi lấy dữ liệu audio:', err);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage);
+        fetchData(newPage);
     };
 
     useEffect(() => {
@@ -135,7 +144,7 @@ const AudioManagement: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <div className="text-sm font-medium text-slate-500 mb-1">Tổng số audio</div>
-                    <div className="text-2xl font-bold text-slate-900">{narrations.length}</div>
+                    <div className="text-2xl font-bold text-slate-900">{totalNarrations}</div>
                 </div>
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <div className="text-sm font-medium text-slate-500 mb-1">Đang hoạt động</div>
@@ -238,6 +247,15 @@ const AudioManagement: React.FC = () => {
                         <p className="text-slate-500 mt-1">Hãy thêm bản thuyết minh đầu tiên cho các địa điểm của bạn.</p>
                     </div>
                 )}
+            </div>
+
+            <div className="mt-8">
+                <Pagination 
+                    currentPage={page} 
+                    totalItems={totalNarrations} 
+                    itemsPerPage={limit} 
+                    onPageChange={handlePageChange} 
+                />
             </div>
 
             {/* Upload Audio Modal */}

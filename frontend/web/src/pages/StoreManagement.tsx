@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 
 import { storesApi, merchantApi, adminApi } from '../utils/api';
 import type { Store } from '../types';
@@ -14,6 +15,9 @@ const StoreManagement: React.FC = () => {
     const { user } = useAuth();
     const [stores, setStores] = useState<Store[]>([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [totalStores, setTotalStores] = useState(0);
+    const limit = 10;
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddStoreOpen, setIsAddStoreOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -35,25 +39,34 @@ const StoreManagement: React.FC = () => {
         merchantId: '',
     });
 
-    const fetchStores = async () => {
+    const fetchStores = async (pageNum = page) => {
         setLoading(true);
         try {
             if (user?.role === 'admin') {
                 const [storeRes, merchantRes] = await Promise.all([
-                    storesApi.getAll(1, 100, 'all'),
-                    adminApi.getMerchants()
+                    storesApi.getAll(pageNum, limit, 'all'),
+                    adminApi.getMerchants(1, 100)
                 ]);
                 setStores(storeRes.data || []);
+                setTotalStores(storeRes.total || 0);
                 setMerchants(merchantRes.data || []);
             } else {
                 const response = await merchantApi.getMe();
-                setStores(response.stores || []);
+                // Merchant gets all their stores for now (local pagination if needed)
+                const myStores = response.stores || [];
+                setStores(myStores);
+                setTotalStores(myStores.length);
             }
         } catch (err) {
             console.error('Lỗi khi lấy danh sách cửa hàng:', err);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage);
+        fetchStores(newPage);
     };
 
     React.useEffect(() => {
@@ -241,13 +254,13 @@ const StoreManagement: React.FC = () => {
                 </div>
                 
                 {/* Pagination */}
-                <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
-                    <span className="text-sm text-slate-500">Hiển thị {filteredStores.length} kết quả</span>
-                    <div className="flex gap-1">
-                        <button className="px-3 py-1 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50">Trước</button>
-                        <button className="px-3 py-1 bg-primary-50 text-primary-600 border border-primary-200 rounded-lg text-sm font-bold">1</button>
-                        <button className="px-3 py-1 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50">Sau</button>
-                    </div>
+                <div className="px-6 py-4 border-t border-slate-200">
+                    <Pagination 
+                        currentPage={page} 
+                        totalItems={totalStores} 
+                        itemsPerPage={limit} 
+                        onPageChange={handlePageChange} 
+                    />
                 </div>
             </div>
 
@@ -260,11 +273,11 @@ const StoreManagement: React.FC = () => {
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1">Tên cửa hàng/POI</label>
-                        <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Nhập tên cửa hàng..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                        <input type="text" value={formData.name} onChange={e => setFormData(prev => ({...prev, name: e.target.value}))} placeholder="Nhập tên cửa hàng..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
                     </div>
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1">Địa chỉ</label>
-                        <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Địa chỉ chi tiết..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                        <input type="text" value={formData.address} onChange={e => setFormData(prev => ({...prev, address: e.target.value}))} placeholder="Địa chỉ chi tiết..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
                     </div>
                     
                     <div>
@@ -272,7 +285,7 @@ const StoreManagement: React.FC = () => {
                         <MapSelector 
                             lat={formData.lat} 
                             lng={formData.lng} 
-                            onChange={(lat, lng) => setFormData({ ...formData, lat, lng })} 
+                            onChange={(lat, lng) => setFormData(prev => ({ ...prev, lat, lng }))} 
                             onAddressChange={(address) => setFormData(prev => ({ ...prev, address }))}
                         />
                     </div>
@@ -280,30 +293,30 @@ const StoreManagement: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1">Vĩ độ (Lat)</label>
-                            <input type="number" step="any" value={formData.lat} onChange={e => setFormData({...formData, lat: parseFloat(e.target.value) || 0})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                            <input type="number" step="any" value={formData.lat} onChange={e => setFormData(prev => ({...prev, lat: parseFloat(e.target.value) || 0}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1">Kinh độ (Lng)</label>
-                            <input type="number" step="any" value={formData.lng} onChange={e => setFormData({...formData, lng: parseFloat(e.target.value) || 0})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                            <input type="number" step="any" value={formData.lng} onChange={e => setFormData(prev => ({...prev, lng: parseFloat(e.target.value) || 0}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1">Giờ mở cửa</label>
-                            <input type="time" value={formData.openTime} onChange={e => setFormData({...formData, openTime: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                            <input type="time" value={formData.openTime} onChange={e => setFormData(prev => ({...prev, openTime: e.target.value}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1">Giờ đóng cửa</label>
-                            <input type="time" value={formData.closeTime} onChange={e => setFormData({...formData, closeTime: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                            <input type="time" value={formData.closeTime} onChange={e => setFormData(prev => ({...prev, closeTime: e.target.value}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
                         </div>
                     </div>
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1">Link ảnh bìa</label>
-                        <input type="text" value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} placeholder="https://..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                        <input type="text" value={formData.coverImage} onChange={e => setFormData(prev => ({...prev, coverImage: e.target.value}))} placeholder="https://..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900" />
                     </div>
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1">Mô tả</label>
-                        <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Mô tả về địa điểm..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900 h-24" />
+                        <textarea value={formData.description} onChange={e => setFormData(prev => ({...prev, description: e.target.value}))} placeholder="Mô tả về địa điểm..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900 h-24" />
                     </div>
                     {user?.role === 'admin' && (
                         <>
@@ -311,7 +324,7 @@ const StoreManagement: React.FC = () => {
                                 <label className="block text-sm font-semibold text-slate-700 mb-1">Chủ sở hữu (Merchant)</label>
                                 <select 
                                     value={formData.merchantId} 
-                                    onChange={e => setFormData({...formData, merchantId: e.target.value})}
+                                    onChange={e => setFormData(prev => ({...prev, merchantId: e.target.value}))}
                                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900"
                                 >
                                     <option value="">-- Chọn đối tác --</option>
@@ -322,7 +335,7 @@ const StoreManagement: React.FC = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-slate-700 mb-1">Trạng thái</label>
-                                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900">
+                                <select value={formData.status} onChange={e => setFormData(prev => ({...prev, status: e.target.value as any}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 text-slate-900">
                                     <option value="pending">Chờ duyệt (Pending)</option>
                                     <option value="active">Hoạt động (Active)</option>
                                     <option value="hidden">Ẩn (Hidden)</option>
@@ -357,35 +370,35 @@ const StoreManagement: React.FC = () => {
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1">Tên cửa hàng</label>
-                        <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Tên cửa hàng..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                        <input type="text" value={formData.name} onChange={e => setFormData(prev => ({...prev, name: e.target.value}))} placeholder="Tên cửa hàng..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1">Vĩ độ (Lat)</label>
-                            <input type="number" step="any" value={formData.lat} onChange={e => setFormData({...formData, lat: parseFloat(e.target.value) || 0})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                            <input type="number" step="any" value={formData.lat} onChange={e => setFormData(prev => ({...prev, lat: parseFloat(e.target.value) || 0}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1">Kinh độ (Lng)</label>
-                            <input type="number" step="any" value={formData.lng} onChange={e => setFormData({...formData, lng: parseFloat(e.target.value) || 0})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                            <input type="number" step="any" value={formData.lng} onChange={e => setFormData(prev => ({...prev, lng: parseFloat(e.target.value) || 0}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1">Giờ mở cửa</label>
-                            <input type="time" value={formData.openTime} onChange={e => setFormData({...formData, openTime: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                            <input type="time" value={formData.openTime} onChange={e => setFormData(prev => ({...prev, openTime: e.target.value}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1">Giờ đóng cửa</label>
-                            <input type="time" value={formData.closeTime} onChange={e => setFormData({...formData, closeTime: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                            <input type="time" value={formData.closeTime} onChange={e => setFormData(prev => ({...prev, closeTime: e.target.value}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
                         </div>
                     </div>
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1">Link ảnh bìa</label>
-                        <input type="text" value={formData.coverImage} onChange={e => setFormData({...formData, coverImage: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                        <input type="text" value={formData.coverImage} onChange={e => setFormData(prev => ({...prev, coverImage: e.target.value}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
                     </div>
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-1">Địa chỉ</label>
-                        <input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
+                        <input type="text" value={formData.address} onChange={e => setFormData(prev => ({...prev, address: e.target.value}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
                     </div>
 
                     <div>
@@ -393,14 +406,14 @@ const StoreManagement: React.FC = () => {
                         <MapSelector 
                             lat={formData.lat} 
                             lng={formData.lng} 
-                            onChange={(lat, lng) => setFormData({ ...formData, lat, lng })} 
+                            onChange={(lat, lng) => setFormData(prev => ({ ...prev, lat, lng }))} 
                             onAddressChange={(address) => setFormData(prev => ({ ...prev, address }))}
                         />
                     </div>
                     {user?.role === 'admin' && (
                         <div>
                             <label className="block text-sm font-semibold text-slate-700 mb-1">Trạng thái</label>
-                            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900">
+                            <select value={formData.status} onChange={e => setFormData(prev => ({...prev, status: e.target.value as any}))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900">
                                 <option value="pending">Chờ duyệt (Pending)</option>
                                 <option value="active">Hoạt động (Active)</option>
                                 <option value="hidden">Ẩn (Hidden)</option>

@@ -27,12 +27,14 @@ export class StoresController {
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiQuery({ name: 'status', required: false, type: String, example: 'active' })
+  @ApiQuery({ name: 'merchantId', required: false, type: String })
   findAll(
     @Query('page') page = 1,
     @Query('limit') limit = 20,
     @Query('status') status?: string,
+    @Query('merchantId') merchantId?: string,
   ) {
-    return this.storesService.findAll(+page, +limit, status);
+    return this.storesService.findAll(+page, +limit, status, merchantId);
   }
 
   @Get(':id')

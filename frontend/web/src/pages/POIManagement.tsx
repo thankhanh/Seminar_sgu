@@ -4,6 +4,7 @@ import {
     Loader2, Music, Utensils
 } from 'lucide-react';
 import Modal from '../components/Modal';
+import Pagination from '../components/Pagination';
 import { storesApi, merchantApi, adminApi } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { Store } from '../types';
@@ -13,6 +14,9 @@ const POIManagement: React.FC = () => {
     const { user } = useAuth();
     const [pois, setPois] = useState<Store[]>([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [totalPois, setTotalPois] = useState(0);
+    const limit = 10;
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddPoiOpen, setIsAddPoiOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -26,25 +30,36 @@ const POIManagement: React.FC = () => {
         merchantId: ''
     });
 
-    const fetchData = async () => {
+    const fetchData = async (pageNum = page) => {
         setLoading(true);
         try {
             if (user?.role === 'admin') {
                 const [storeRes, merchantRes] = await Promise.all([
-                    storesApi.getAll(1, 100),
-                    adminApi.getMerchants()
+                    storesApi.getAll(pageNum, limit, 'all'),
+                    adminApi.getMerchants(1, 100)
                 ]);
                 setPois(storeRes.data || []);
+                setTotalPois(storeRes.total || 0);
                 setMerchants(merchantRes.data || []);
             } else {
-                const res = await merchantApi.getMe();
-                setPois(res.stores || []);
+                // If merchant, get their ID from their profile then fetch their stores with pagination
+                const merchantProfile = await merchantApi.getMe();
+                if (merchantProfile && merchantProfile.id) {
+                    const storeRes = await storesApi.getAll(pageNum, limit, 'all', merchantProfile.id);
+                    setPois(storeRes.data || []);
+                    setTotalPois(storeRes.total || 0);
+                }
             }
         } catch (err) {
             console.error('Lỗi khi tải dữ liệu:', err);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage);
+        fetchData(newPage);
     };
 
     useEffect(() => {
@@ -113,100 +128,25 @@ const POIManagement: React.FC = () => {
         (poi.address || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const FormFields = () => (
-        <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Tên địa điểm (POI)</label>
-                    <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Nhập tên điểm dừng..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
-                </div>
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Địa chỉ</label>
-                    <input type="text" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="Địa chỉ cụ thể..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
-                </div>
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400">Chọn vị trí trên bản đồ</label>
-                    <MapSelector 
-                        lat={formData.lat ? parseFloat(String(formData.lat)) : 10.4967} 
-                        lng={formData.lng ? parseFloat(String(formData.lng)) : 105.1167} 
-                        onChange={(lat, lng) => setFormData({ ...formData, lat: lat, lng: lng })} 
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Vĩ độ (Lat)</label>
-                    <input type="number" step="any" value={formData.lat} onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) || 0 })} placeholder="10.762622" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
-                </div>
-                <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Kinh độ (Lng)</label>
-                    <input type="number" step="any" value={formData.lng} onChange={e => setFormData({ ...formData, lng: parseFloat(e.target.value) || 0 })} placeholder="106.660172" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
-                </div>
-                <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Giờ mở cửa</label>
-                    <input type="time" value={formData.openTime} onChange={e => setFormData({ ...formData, openTime: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
-                </div>
-                <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Giờ đóng cửa</label>
-                    <input type="time" value={formData.closeTime} onChange={e => setFormData({ ...formData, closeTime: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
-                </div>
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Ảnh bìa (URL)</label>
-                    <div className="flex gap-2">
-                        <input type="text" value={formData.coverImage} onChange={e => setFormData({ ...formData, coverImage: e.target.value })} placeholder="https://..." className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
-                        {formData.coverImage && <img src={formData.coverImage} alt="Preview" className="w-10 h-10 rounded object-cover border border-slate-200" />}
-                    </div>
-                </div>
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Mô tả điểm đến</label>
-                    <textarea rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Mô tả về địa điểm này..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 resize-none"></textarea>
-                </div>
-                {user?.role === 'admin' && (
-                    <>
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Chủ sở hữu (Merchant)</label>
-                            <select
-                                value={formData.merchantId}
-                                onChange={e => setFormData({ ...formData, merchantId: e.target.value })}
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500"
-                            >
-                                <option value="">-- Chọn đối tác sở hữu --</option>
-                                {merchants.map(m => (
-                                    <option key={m.id} value={m.id}>{m.businessName} ({m.user?.email})</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Trạng thái hiển thị</label>
-                            <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500">
-                                <option value="active">Hoạt động (Active)</option>
-                                <option value="pending">Chờ duyệt (Pending)</option>
-                                <option value="hidden">Ẩn (Hidden)</option>
-                            </select>
-                        </div>
-                    </>
-                )}
-            </div>
-        </div>
-    );
-
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
                         <MapPin className="text-primary-600" size={32} />
-                        Quản lý POI
+                        Vị trí (POI)
                     </h1>
                     <p className="text-slate-500">Đồng bộ dữ liệu điểm tham quan với hệ thống Mobile App.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button onClick={fetchData} className="p-2.5 text-slate-500 hover:text-primary-600 bg-white border border-slate-200 rounded-xl transition-all shadow-sm">
+                    <button onClick={() => fetchData()} className="p-2.5 text-slate-500 hover:text-primary-600 bg-white border border-slate-200 rounded-xl transition-all shadow-sm">
                         <Loader2 className={loading ? 'animate-spin' : ''} size={20} />
                     </button>
                     <button
                         onClick={() => { setFormData({ name: '', address: '', description: '', lat: 10.4967, lng: 105.1167, openTime: '08:00', closeTime: '22:00', coverImage: '', status: 'active', merchantId: '' }); setIsAddPoiOpen(true); }}
                         className="bg-primary-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-700 transition-all shadow-sm shadow-primary-500/20"
                     >
-                        <Plus size={20} /> Thêm điểm mới
+                        <Plus size={20} /> Thêm địa điểm
                     </button>
                 </div>
             </div>
@@ -238,7 +178,7 @@ const POIManagement: React.FC = () => {
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
                             <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold rounded uppercase">
-                                {poi.status}
+                                {poi.status === 'active' ? 'Hoạt động' : poi.status === 'pending' ? 'Chờ duyệt' : 'Ẩn'}
                             </div>
                         </div>
                         <div className="flex-1 p-5 flex flex-col">
@@ -266,7 +206,7 @@ const POIManagement: React.FC = () => {
                                         <Music size={14} />
                                     </div>
                                     <div>
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase">Audio</div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase">Thuyết minh</div>
                                         <div className="text-sm font-bold text-slate-700">{poi._count?.narrations || 0} bản</div>
                                     </div>
                                 </div>
@@ -285,6 +225,15 @@ const POIManagement: React.FC = () => {
                 ))}
             </div>
 
+            <div className="mt-8">
+                <Pagination 
+                    currentPage={page} 
+                    totalItems={totalPois} 
+                    itemsPerPage={limit} 
+                    onPageChange={handlePageChange} 
+                />
+            </div>
+
             {!loading && filteredPOI.length === 0 && (
                 <div className="bg-white border border-slate-200 rounded-2xl py-20 text-center">
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -295,26 +244,172 @@ const POIManagement: React.FC = () => {
                 </div>
             )}
 
-            {/* Modals ... (Add/Edit logic remains but using FormFields) */}
-            <Modal isOpen={isAddPoiOpen} onClose={() => setIsAddPoiOpen(false)} title="Thêm POI mới" maxWidth="max-w-2xl">
-                <FormFields />
+            {/* Modals with enhanced side-by-side layout */}
+            <Modal isOpen={isAddPoiOpen} onClose={() => setIsAddPoiOpen(false)} title="Thêm POI mới" maxWidth="max-w-5xl">
+                <FormFields formData={formData} setFormData={setFormData} user={user} merchants={merchants} />
                 <div className="flex items-center justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
                     <button onClick={() => setIsAddPoiOpen(false)} className="px-5 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Hủy</button>
-                    <button onClick={handleCreate} className="px-5 py-2.5 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all">Lưu thông tin</button>
+                    <button onClick={handleCreate} className="px-5 py-2.5 rounded-xl font-bold text-white bg-primary-600 hover:bg-primary-700 shadow-xl shadow-primary-500/20 transition-all">Lưu thông tin</button>
                 </div>
             </Modal>
 
-            <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title={`Chỉnh sửa: ${selectedPoi?.name}`} maxWidth="max-w-2xl">
-                <FormFields />
+            <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title={`Chỉnh sửa: ${selectedPoi?.name}`} maxWidth="max-w-5xl">
+                <FormFields formData={formData} setFormData={setFormData} user={user} merchants={merchants} />
                 <div className="flex items-center justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
                     <button onClick={() => setIsEditOpen(false)} className="px-5 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Hủy</button>
-                    <button onClick={handleUpdate} className="px-5 py-2.5 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all">Lưu thay đổi</button>
+                    <button onClick={handleUpdate} className="px-5 py-2.5 rounded-xl font-bold text-white bg-primary-600 hover:bg-primary-700 shadow-xl shadow-primary-500/20 transition-all">Lưu thay đổi</button>
                 </div>
             </Modal>
 
         </div>
     );
 };
+
+// Extracted to avoid focus loss bug
+const FormFields: React.FC<{
+    formData: any,
+    setFormData: React.Dispatch<React.SetStateAction<any>>,
+    user: any,
+    merchants: any[]
+}> = ({ formData, setFormData, user, merchants }) => (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Map & Location (Wide) */}
+        <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
+            <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-5">
+                <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-[10px]">Tên địa điểm (POI)</label>
+                    <input 
+                        type="text" 
+                        value={formData.name} 
+                        onChange={e => setFormData((prev: any) => ({ ...prev, name: e.target.value }))} 
+                        placeholder="Nhập tên điểm dừng..." 
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 font-bold" 
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-[10px]">Địa chỉ thực tế</label>
+                    <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-500/60" size={18} />
+                        <input 
+                            type="text" 
+                            value={formData.address} 
+                            onChange={e => setFormData((prev: any) => ({ ...prev, address: e.target.value }))} 
+                            placeholder="Địa chỉ cụ thể..." 
+                            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500" 
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider text-[10px]">Chọn vị trí trên bản đồ</label>
+                    <MapSelector 
+                        lat={formData.lat ? parseFloat(String(formData.lat)) : 10.4967} 
+                        lng={formData.lng ? parseFloat(String(formData.lng)) : 105.1167} 
+                        onChange={(lat, lng) => setFormData((prev: any) => ({ ...prev, lat, lng }))} 
+                        onAddressChange={(address) => setFormData((prev: any) => ({ ...prev, address }))}
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">Vĩ độ (Lat)</label>
+                        <input 
+                            type="number" 
+                            step="any" 
+                            value={formData.lat} 
+                            onChange={e => setFormData((prev: any) => ({ ...prev, lat: parseFloat(e.target.value) || 0 }))} 
+                            className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500" 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">Kinh độ (Lng)</label>
+                        <input 
+                            type="number" 
+                            step="any" 
+                            value={formData.lng} 
+                            onChange={e => setFormData((prev: any) => ({ ...prev, lng: parseFloat(e.target.value) || 0 }))} 
+                            className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500" 
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* Right Column: Details (Narrow) */}
+        <div className="space-y-6 order-1 lg:order-2">
+            <div className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">Mở cửa</label>
+                        <input 
+                            type="time" 
+                            value={formData.openTime} 
+                            onChange={e => setFormData((prev: any) => ({ ...prev, openTime: e.target.value }))} 
+                            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500 font-medium" 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">Đóng cửa</label>
+                        <input 
+                            type="time" 
+                            value={formData.closeTime} 
+                            onChange={e => setFormData((prev: any) => ({ ...prev, closeTime: e.target.value }))} 
+                            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500 font-medium" 
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">Link ảnh bìa</label>
+                    <input 
+                        type="text" 
+                        value={formData.coverImage} 
+                        onChange={e => setFormData((prev: any) => ({ ...prev, coverImage: e.target.value }))} 
+                        placeholder="https://images.unsplash.com/..." 
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500" 
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">Mô tả địa điểm</label>
+                    <textarea 
+                        rows={4} 
+                        value={formData.description} 
+                        onChange={e => setFormData((prev: any) => ({ ...prev, description: e.target.value }))} 
+                        placeholder="Giới thiệu về địa điểm này..." 
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500 resize-none h-32" 
+                    />
+                </div>
+
+                {user?.role === 'admin' && (
+                    <div className="pt-4 border-t border-slate-100 space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">Merchant sở hữu</label>
+                            <select
+                                value={formData.merchantId}
+                                onChange={e => setFormData((prev: any) => ({ ...prev, merchantId: e.target.value }))}
+                                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500"
+                            >
+                                <option value="">-- Chọn đối tác --</option>
+                                {merchants.map(m => (
+                                    <option key={m.id} value={m.id}>{m.businessName}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-wider text-[10px]">Trạng thái</label>
+                            <select 
+                                value={formData.status} 
+                                onChange={e => setFormData((prev: any) => ({ ...prev, status: e.target.value as any }))} 
+                                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-500"
+                            >
+                                <option value="active">Hoạt động</option>
+                                <option value="pending">Chờ duyệt</option>
+                                <option value="hidden">Ẩn</option>
+                            </select>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    </div>
+);
 
 export default POIManagement;
 

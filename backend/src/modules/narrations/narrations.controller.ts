@@ -36,8 +36,9 @@ export class NarrationsController {
   findAll(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('merchantId') merchantId?: string,
   ) {
-    return this.narrService.findAll(Number(page) || 1, Number(limit) || 20);
+    return this.narrService.findAll(Number(page) || 1, Number(limit) || 20, merchantId);
   }
 
   @Patch('narrations/:id')

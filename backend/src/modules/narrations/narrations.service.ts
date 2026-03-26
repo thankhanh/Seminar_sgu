@@ -53,12 +53,18 @@ export class NarrationsService {
     });
   }
 
-  async findAll(page = 1, limit = 20) {
+  async findAll(page = 1, limit = 20, merchantId?: string) {
     const skip = (page - 1) * limit;
+    const where: any = {};
+    if (merchantId) {
+      where.store = { merchantId };
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.narration.findMany({
         skip,
         take: limit,
+        where,
         include: { 
           language: true,
           store: { select: { name: true } }

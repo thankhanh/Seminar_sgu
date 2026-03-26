@@ -32,11 +32,12 @@ export class StoresService {
         openTime: dto.openTime,
         closeTime: dto.closeTime,
         coverImage: dto.coverImage,
+        status: dto.status as any,
       },
     });
   }
 
-  async findAll(page = 1, limit = 20, status?: string) {
+  async findAll(page = 1, limit = 20, status?: string, merchantId?: string) {
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -46,6 +47,10 @@ export class StoresService {
       where.status = status;
     } else {
       where.status = 'active'; // Default for public
+    }
+
+    if (merchantId) {
+      where.merchantId = merchantId;
     }
 
     const [data, total] = await Promise.all([

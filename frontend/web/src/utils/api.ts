@@ -18,6 +18,8 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
         (headers as any)['Authorization'] = `Bearer ${token}`;
     }
 
+    console.log(`API Request: ${options.method || 'GET'} ${endpoint}`, options.body ? JSON.parse(options.body as string) : '');
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers,
@@ -26,6 +28,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const result = await response.json();
 
     if (!response.ok) {
+        console.error(`API Error: ${options.method || 'GET'} ${endpoint}`, result);
         const message = result.error?.message || result.message || 'Có lỗi xảy ra khi gọi API';
         throw new Error(message);
     }
@@ -93,8 +96,8 @@ export const merchantApi = {
 
 // --- Stores ---
 export const storesApi = {
-    getAll: (page = 1, limit = 20, status?: string) => 
-        apiFetch(`/stores?page=${page}&limit=${limit}${status ? `&status=${status}` : ''}`),
+    getAll: (page = 1, limit = 20, status?: string, merchantId?: string) => 
+        apiFetch(`/stores?page=${page}&limit=${limit}${status ? `&status=${status}` : ''}${merchantId ? `&merchantId=${merchantId}` : ''}`),
     getOne: (id: string) => apiFetch(`/stores/${id}`),
     create: (dto: any) => apiFetch('/stores', {
         method: 'POST',
@@ -116,7 +119,8 @@ export const storesApi = {
 
 // --- Narrations (Global) ---
 export const narrationsApi = {
-    getAll: (page = 1, limit = 20) => apiFetch(`/narrations?page=${page}&limit=${limit}`),
+    getAll: (page = 1, limit = 20, merchantId?: string) => 
+        apiFetch(`/narrations?page=${page}&limit=${limit}${merchantId ? `&merchantId=${merchantId}` : ''}`),
     update: (id: string, dto: any) => apiFetch(`/narrations/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(dto),

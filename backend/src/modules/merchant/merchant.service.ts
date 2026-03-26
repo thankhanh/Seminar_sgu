@@ -31,9 +31,7 @@ export class MerchantService {
     const merchant = await this.prisma.merchant.findUnique({
       where: { userId },
       include: {
-        stores: {
-          select: { id: true, name: true, status: true, address: true },
-        },
+        stores: true,
       },
     });
     if (!merchant) throw new NotFoundException('Bạn chưa đăng ký làm merchant');

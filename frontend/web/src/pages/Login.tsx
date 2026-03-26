@@ -4,8 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { MapPin, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 
 const Login: React.FC = () => {
-  const [email, setEmail] = useState('admin@example.com');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('admin@vinhkhanh.vn');
+  const [password, setPassword] = useState('Admin@123');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   

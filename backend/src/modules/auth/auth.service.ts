@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { UserRole, MerchantStatus } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -33,6 +34,19 @@ export class AuthService {
     });
 
     const tokens = await this.generateTokens(user.id, user.email, user.role);
+
+    // Nếu là merchant, tự động tạo bản ghi Merchant (auto-approve cho dev)
+    if (user.role === 'merchant') {
+      await this.prisma.merchant.create({
+        data: {
+          userId: user.id,
+          businessName: dto.businessName || `${user.name}'s Business`,
+          taxCode: dto.taxCode,
+          status: 'approved' as MerchantStatus,
+        },
+      });
+    }
+
     return { user, ...tokens };
   }
 

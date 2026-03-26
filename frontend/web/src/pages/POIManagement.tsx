@@ -1,201 +1,320 @@
-import React, { useState } from 'react';
-import { MapPin, Search, Plus, Filter, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+    MapPin, Search, Plus, Filter, Edit2, Trash2, 
+    Loader2, Music, Utensils
+} from 'lucide-react';
 import Modal from '../components/Modal';
-
-const MOCK_POI_DATA = [
-    { id: 1, name: 'Ốc Oanh', category: 'Hải sản', location: 'Khu B - Gian 04', status: 'Hoạt động', reviews: '4.8 (1.2k)', image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=150&h=150&fit=crop' },
-    { id: 2, name: 'Bánh Khọt Cô Ba', category: 'Ăn vặt', location: 'Khu A - Gian 12', status: 'Hoạt động', reviews: '4.5 (856)', image: 'https://images.unsplash.com/photo-1564834724105-918b73d1b9e0?w=150&h=150&fit=crop' },
-    { id: 3, name: 'Trà Sữa Nhà Làm', category: 'Đồ uống', location: 'Khu C - Gian 01', status: 'Tạm nghỉ', reviews: '4.2 (320)', image: 'https://images.unsplash.com/photo-1541658016709-15ce70e1cbb?w=150&h=150&fit=crop' },
-    { id: 4, name: 'Bún Bò Huế Chợ Cũ', category: 'Ăn chính', location: 'Khu A - Gian 02', status: 'Hoạt động', reviews: '4.9 (2.1k)', image: 'https://images.unsplash.com/photo-1596662951482-0c4ba74a6df6?w=150&h=150&fit=crop' },
-];
+import { storesApi, merchantApi, adminApi } from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
+import type { Store } from '../types';
+import MapSelector from '../components/MapSelector';
 
 const POIManagement: React.FC = () => {
+    const { user } = useAuth();
+    const [pois, setPois] = useState<Store[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddPoiOpen, setIsAddPoiOpen] = useState(false);
-    
-    const filteredPOI = MOCK_POI_DATA.filter(poi => 
-        poi.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        poi.category.toLowerCase().includes(searchQuery.toLowerCase())
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [selectedPoi, setSelectedPoi] = useState<any | null>(null);
+    const [merchants, setMerchants] = useState<any[]>([]);
+
+    const [formData, setFormData] = useState({
+        name: '', address: '', description: '', lat: 10.4967, lng: 105.1167,
+        openTime: '08:00', closeTime: '22:00', coverImage: '',
+        status: 'active' as 'active' | 'pending' | 'hidden',
+        merchantId: ''
+    });
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            if (user?.role === 'admin') {
+                const [storeRes, merchantRes] = await Promise.all([
+                    storesApi.getAll(1, 100),
+                    adminApi.getMerchants()
+                ]);
+                setPois(storeRes.data || []);
+                setMerchants(merchantRes.data || []);
+            } else {
+                const res = await merchantApi.getMe();
+                setPois(res.stores || []);
+            }
+        } catch (err) {
+            console.error('Lỗi khi tải dữ liệu:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (user) fetchData();
+    }, [user]);
+
+    const handleCreate = async () => {
+        try {
+            await storesApi.create({
+                ...formData,
+                lat: Number(formData.lat) || 0,
+                lng: Number(formData.lng) || 0,
+                merchantId: user?.role === 'admin' ? formData.merchantId : undefined
+            });
+            setIsAddPoiOpen(false);
+            fetchData();
+        } catch (err: any) {
+            alert(err.message || 'Lỗi khi tạo POI');
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!selectedPoi) return;
+        try {
+            await storesApi.update(selectedPoi.id, {
+                ...formData,
+                lat: Number(formData.lat) || 0,
+                lng: Number(formData.lng) || 0,
+            });
+            setIsEditOpen(false);
+            fetchData();
+        } catch (err: any) {
+            alert(err.message || 'Lỗi khi cập nhật POI');
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('Bạn có chắc muốn xóa điểm POI này?')) return;
+        try {
+            await storesApi.remove(id);
+            fetchData();
+        } catch (err: any) {
+            alert(err.message || 'Lỗi khi xóa POI');
+        }
+    };
+
+    const openEdit = (poi: Store) => {
+        setSelectedPoi(poi);
+        setFormData({
+            name: poi.name,
+            address: poi.address || '',
+            description: poi.description || '',
+            lat: Number(poi.lat),
+            lng: Number(poi.lng),
+            openTime: poi.openTime || '08:00',
+            closeTime: poi.closeTime || '22:00',
+            coverImage: poi.coverImage || '',
+            status: (poi.status as any) || 'active',
+            merchantId: poi.merchantId || ''
+        });
+        setIsEditOpen(true);
+    };
+
+    const filteredPOI = pois.filter(poi =>
+        poi.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (poi.address || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const FormFields = () => (
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Tên địa điểm (POI)</label>
+                    <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Nhập tên điểm dừng..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Địa chỉ</label>
+                    <input type="text" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="Địa chỉ cụ thể..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400">Chọn vị trí trên bản đồ</label>
+                    <MapSelector 
+                        lat={formData.lat ? parseFloat(String(formData.lat)) : 10.4967} 
+                        lng={formData.lng ? parseFloat(String(formData.lng)) : 105.1167} 
+                        onChange={(lat, lng) => setFormData({ ...formData, lat: lat, lng: lng })} 
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Vĩ độ (Lat)</label>
+                    <input type="number" step="any" value={formData.lat} onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) || 0 })} placeholder="10.762622" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Kinh độ (Lng)</label>
+                    <input type="number" step="any" value={formData.lng} onChange={e => setFormData({ ...formData, lng: parseFloat(e.target.value) || 0 })} placeholder="106.660172" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Giờ mở cửa</label>
+                    <input type="time" value={formData.openTime} onChange={e => setFormData({ ...formData, openTime: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Giờ đóng cửa</label>
+                    <input type="time" value={formData.closeTime} onChange={e => setFormData({ ...formData, closeTime: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Ảnh bìa (URL)</label>
+                    <div className="flex gap-2">
+                        <input type="text" value={formData.coverImage} onChange={e => setFormData({ ...formData, coverImage: e.target.value })} placeholder="https://..." className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                        {formData.coverImage && <img src={formData.coverImage} alt="Preview" className="w-10 h-10 rounded object-cover border border-slate-200" />}
+                    </div>
+                </div>
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Mô tả điểm đến</label>
+                    <textarea rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Mô tả về địa điểm này..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 resize-none"></textarea>
+                </div>
+                {user?.role === 'admin' && (
+                    <>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">Chủ sở hữu (Merchant)</label>
+                            <select
+                                value={formData.merchantId}
+                                onChange={e => setFormData({ ...formData, merchantId: e.target.value })}
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500"
+                            >
+                                <option value="">-- Chọn đối tác sở hữu --</option>
+                                {merchants.map(m => (
+                                    <option key={m.id} value={m.id}>{m.businessName} ({m.user?.email})</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-semibold text-slate-700 mb-1">Trạng thái hiển thị</label>
+                            <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500">
+                                <option value="active">Hoạt động (Active)</option>
+                                <option value="pending">Chờ duyệt (Pending)</option>
+                                <option value="hidden">Ẩn (Hidden)</option>
+                            </select>
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
     );
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2">Quản lý POI</h1>
-                    <p className="text-slate-500">Quản lý các điểm tham quan và gian hàng trên bản đồ.</p>
+                    <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+                        <MapPin className="text-primary-600" size={32} />
+                        Quản lý POI
+                    </h1>
+                    <p className="text-slate-500">Đồng bộ dữ liệu điểm tham quan với hệ thống Mobile App.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
-                        <Filter size={18} />
-                        Bộ lọc
+                    <button onClick={fetchData} className="p-2.5 text-slate-500 hover:text-primary-600 bg-white border border-slate-200 rounded-xl transition-all shadow-sm">
+                        <Loader2 className={loading ? 'animate-spin' : ''} size={20} />
                     </button>
-                    <button 
-                        onClick={() => setIsAddPoiOpen(true)}
+                    <button
+                        onClick={() => { setFormData({ name: '', address: '', description: '', lat: 10.4967, lng: 105.1167, openTime: '08:00', closeTime: '22:00', coverImage: '', status: 'active', merchantId: '' }); setIsAddPoiOpen(true); }}
                         className="bg-primary-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-700 transition-all shadow-sm shadow-primary-500/20"
                     >
-                        <Plus size={20} />
-                        Thêm điểm mới
+                        <Plus size={20} /> Thêm điểm mới
                     </button>
                 </div>
             </div>
 
+
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4">
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                    <input 
-                        type="text" 
-                        placeholder="Tìm kiếm danh thắng, món ăn..." 
+                    <input
+                        type="text"
+                        placeholder="Tìm kiếm tên, địa chỉ hoặc mô tả..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">
-                        <Filter size={18} />
-                        Lọc
-                    </button>
-                </div>
-
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-sm">
-                                <th className="px-6 py-4 font-semibold">Tên POI</th>
-                                <th className="px-6 py-4 font-semibold">Danh mục</th>
-                                <th className="px-6 py-4 font-semibold">Vị trí</th>
-                                <th className="px-6 py-4 font-semibold">Đánh giá</th>
-                                <th className="px-6 py-4 font-semibold">Trạng thái</th>
-                                <th className="px-6 py-4 font-semibold text-right">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {filteredPOI.map((poi) => (
-                                <tr key={poi.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 overflow-hidden shadow-sm">
-                                                {poi.image ? (
-                                                    <img src={poi.image} alt={poi.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <img src="https://via.placeholder.com/150" alt="Placeholder" className="w-full h-full object-cover" />
-                                                )}
-                                            </div>
-                                            <div>
-                                                <div className="font-bold text-slate-900">{poi.name}</div>
-                                                <div className="text-xs text-slate-400 mt-0.5">ID: {poi.id.toString().padStart(4, '0')}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 font-medium text-slate-600">{poi.category}</td>
-                                    <td className="px-6 py-4">
-                                        <span className="flex items-center gap-1.5 text-slate-600 text-sm">
-                                            <MapPin size={16} className="text-slate-400" />
-                                            {poi.location}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 font-medium text-slate-900">
-                                        {poi.reviews}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium uppercase ${poi.status === 'Hoạt động' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                                            }`}>
-                                            {poi.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-2 text-slate-400">
-                                            <button className="p-2 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Sửa"><Edit2 size={18} /></button>
-                                            <button className="p-2 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Xóa"><Trash2 size={18} /></button>
-                                            <button className="p-2 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" title="Thêm"><MoreVertical size={18} /></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {filteredPOI.length === 0 && (
-                                <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
-                                        Không tìm thấy điểm đến nào phù hợp.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-                <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
-                    <span className="text-sm text-slate-500">Hiển thị {filteredPOI.length} kết quả</span>
-                    <div className="flex gap-1">
-                        <button className="px-3 py-1 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50">Trước</button>
-                        <button className="px-3 py-1 bg-primary-50 text-primary-600 border border-primary-200 rounded-lg text-sm font-bold">1</button>
-                        <button className="px-3 py-1 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50">Sau</button>
-                    </div>
-                </div>
+                <button className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl font-semibold flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
+                    <Filter size={18} /> Bộ lọc
+                </button>
             </div>
 
-            {/* Add POI Modal */}
-            <Modal 
-                isOpen={isAddPoiOpen} 
-                onClose={() => setIsAddPoiOpen(false)}
-                title="Thêm điểm POI mới"
-                maxWidth="max-w-2xl"
-            >
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">Tên địa điểm (POI)</label>
-                        <input type="text" placeholder="Nhập tên điểm dừng..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Loại POI</label>
-                            <select className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900">
-                                <option>Gian hàng (Store)</option>
-                                <option>Khu vực chung</option>
-                                <option>Điểm check-in</option>
-                            </select>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredPOI.map((poi) => (
+                    <div key={poi.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col md:flex-row">
+                        <div className="w-full md:w-48 h-48 md:h-auto relative">
+                            <img 
+                                src={poi.coverImage || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24'} 
+                                alt={poi.name} 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                            <div className="absolute top-3 left-3 px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold rounded uppercase">
+                                {poi.status}
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Thuộc Cửa hàng (Tùy chọn)</label>
-                            <select className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900">
-                                <option>Không thuộc cửa hàng nào</option>
-                                <option>Ốc Oanh</option>
-                                <option>Bánh Khọt Cô Ba</option>
-                            </select>
+                        <div className="flex-1 p-5 flex flex-col">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-primary-600 transition-colors line-clamp-1">{poi.name}</h3>
+                                    <p className="text-sm text-slate-500 flex items-center gap-1 mt-0.5">
+                                        <MapPin size={14} className="shrink-0" />
+                                        <span className="line-clamp-1">{poi.address}</span>
+                                    </p>
+                                </div>
+                                <div className="flex gap-1">
+                                    <button onClick={() => openEdit(poi)} className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"><Edit2 size={16} /></button>
+                                    <button onClick={() => handleDelete(poi.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-slate-600 line-clamp-2 mb-4 flex-1">
+                                {poi.description || 'Chưa có mô tả cho địa điểm này.'}
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center text-primary-600">
+                                        <Music size={14} />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase">Audio</div>
+                                        <div className="text-sm font-bold text-slate-700">{poi._count?.narrations || 0} bản</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                        <Utensils size={14} />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase">Thực đơn</div>
+                                        <div className="text-sm font-bold text-slate-700">{poi._count?.menus || 0} món</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Tọa độ Latitude</label>
-                            <input type="text" placeholder="Ví dụ: 10.762622" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Tọa độ Longitude</label>
-                            <input type="text" placeholder="Ví dụ: 106.660172" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900" />
-                        </div>
+                ))}
+            </div>
+
+            {!loading && filteredPOI.length === 0 && (
+                <div className="bg-white border border-slate-200 rounded-2xl py-20 text-center">
+                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Search size={40} className="text-slate-300" />
                     </div>
-                    <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">Mô tả ngắn</label>
-                        <textarea rows={3} placeholder="Mô tả về địa điểm này..." className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 text-slate-900 resize-none"></textarea>
-                    </div>
-                    
-                    <div className="flex items-center justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
-                        <button 
-                            onClick={() => setIsAddPoiOpen(false)}
-                            className="px-5 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-                        >
-                            Hủy
-                        </button>
-                        <button 
-                            onClick={() => setIsAddPoiOpen(false)}
-                            className="px-5 py-2.5 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all"
-                        >
-                            Lưu thông tin
-                        </button>
-                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">Không tìm thấy địa điểm nào</h3>
+                    <p className="text-slate-500 mt-1">Thử thay đổi từ khóa tìm kiếm hoặc thêm điểm mới.</p>
+                </div>
+            )}
+
+            {/* Modals ... (Add/Edit logic remains but using FormFields) */}
+            <Modal isOpen={isAddPoiOpen} onClose={() => setIsAddPoiOpen(false)} title="Thêm POI mới" maxWidth="max-w-2xl">
+                <FormFields />
+                <div className="flex items-center justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
+                    <button onClick={() => setIsAddPoiOpen(false)} className="px-5 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Hủy</button>
+                    <button onClick={handleCreate} className="px-5 py-2.5 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all">Lưu thông tin</button>
                 </div>
             </Modal>
+
+            <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title={`Chỉnh sửa: ${selectedPoi?.name}`} maxWidth="max-w-2xl">
+                <FormFields />
+                <div className="flex items-center justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
+                    <button onClick={() => setIsEditOpen(false)} className="px-5 py-2.5 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Hủy</button>
+                    <button onClick={handleUpdate} className="px-5 py-2.5 rounded-xl font-semibold text-white bg-primary-600 hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-all">Lưu thay đổi</button>
+                </div>
+            </Modal>
+
         </div>
     );
 };
 
 export default POIManagement;
+

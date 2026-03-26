@@ -7,19 +7,23 @@ import { UpdateMenuDto } from './dto/update-menu.dto';
 export class MenusService {
   constructor(private prisma: PrismaService) {}
 
-  private async verifyStoreOwner(storeId: string, userId: string) {
+  private async verifyStoreOwner(storeId: string, user: { id: string; role: string }) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
       include: { merchant: true },
     });
     if (!store) throw new NotFoundException('Store không tồn tại');
-    if (store.merchant.userId !== userId)
+
+    // Admin có quyền quản lý mọi store. Merchant chỉ quản lý store của mình.
+    if (user.role !== 'admin' && store.merchant.userId !== user.id) {
       throw new ForbiddenException('Bạn không có quyền quản lý store này');
+    }
+
     return store;
   }
 
-  async create(storeId: string, userId: string, dto: CreateMenuDto) {
-    await this.verifyStoreOwner(storeId, userId);
+  async create(storeId: string, user: { id: string; role: string }, dto: CreateMenuDto) {
+    await this.verifyStoreOwner(storeId, user);
     return this.prisma.menu.create({
       data: {
         storeId,
@@ -41,17 +45,17 @@ export class MenusService {
     });
   }
 
-  async update(id: string, userId: string, dto: UpdateMenuDto) {
+  async update(id: string, user: { id: string; role: string }, dto: UpdateMenuDto) {
     const menu = await this.prisma.menu.findUnique({ where: { id } });
     if (!menu) throw new NotFoundException('Menu item không tồn tại');
-    await this.verifyStoreOwner(menu.storeId, userId);
+    await this.verifyStoreOwner(menu.storeId, user);
     return this.prisma.menu.update({ where: { id }, data: dto });
   }
 
-  async remove(id: string, userId: string) {
+  async remove(id: string, user: { id: string; role: string }) {
     const menu = await this.prisma.menu.findUnique({ where: { id } });
     if (!menu) throw new NotFoundException('Menu item không tồn tại');
-    await this.verifyStoreOwner(menu.storeId, userId);
+    await this.verifyStoreOwner(menu.storeId, user);
     await this.prisma.menu.delete({ where: { id } });
     return { success: true, message: 'Đã xóa menu item' };
   }

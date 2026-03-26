@@ -17,10 +17,10 @@ export class MenusController {
   @ApiOperation({ summary: 'Thêm món ăn vào store (merchant owner)' })
   create(
     @Param('storeId') storeId: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
     @Body() dto: CreateMenuDto,
   ) {
-    return this.menusService.create(storeId, user.id, dto);
+    return this.menusService.create(storeId, user, dto);
   }
 
   @Get('stores/:storeId/menus')
@@ -35,10 +35,10 @@ export class MenusController {
   @ApiOperation({ summary: 'Cập nhật menu item (merchant owner)' })
   update(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
     @Body() dto: UpdateMenuDto,
   ) {
-    return this.menusService.update(id, user.id, dto);
+    return this.menusService.update(id, user, dto);
   }
 
   @Delete('menus/:id')
@@ -47,8 +47,8 @@ export class MenusController {
   @ApiOperation({ summary: 'Xóa menu item (merchant owner)' })
   remove(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
   ) {
-    return this.menusService.remove(id, user.id);
+    return this.menusService.remove(id, user);
   }
 }

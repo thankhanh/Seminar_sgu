@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NarrationsService } from './narrations.service';
 import { CreateNarrationDto } from './dto/create-narration.dto';
@@ -17,10 +17,10 @@ export class NarrationsController {
   @ApiOperation({ summary: 'Tạo narration cho store (merchant owner)' })
   create(
     @Param('storeId') storeId: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
     @Body() dto: CreateNarrationDto,
   ) {
-    return this.narrService.create(storeId, user.id, dto);
+    return this.narrService.create(storeId, user, dto);
   }
 
   @Get('stores/:storeId/narrations')
@@ -29,16 +29,27 @@ export class NarrationsController {
     return this.narrService.findByStore(storeId);
   }
 
+  @Get('narrations')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Danh sách tất cả narration (Admin)' })
+  findAll(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.narrService.findAll(Number(page) || 1, Number(limit) || 20);
+  }
+
   @Patch('narrations/:id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cập nhật narration (merchant owner)' })
   update(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
     @Body() dto: UpdateNarrationDto,
   ) {
-    return this.narrService.update(id, user.id, dto);
+    return this.narrService.update(id, user, dto);
   }
 
   @Delete('narrations/:id')
@@ -47,8 +58,8 @@ export class NarrationsController {
   @ApiOperation({ summary: 'Xóa narration (merchant owner)' })
   remove(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
   ) {
-    return this.narrService.remove(id, user.id);
+    return this.narrService.remove(id, user);
   }
 }

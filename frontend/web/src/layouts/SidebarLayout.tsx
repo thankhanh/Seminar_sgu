@@ -9,35 +9,13 @@ import {
     User as UserIcon,
     MapPin,
     Mic,
-    Map as MapIcon,
     Languages,
     Store,
-    Users,
-    Utensils
+    Utensils,
+    ShieldCheck
 } from 'lucide-react';
 
-interface SidebarItemProps {
-    to: string;
-    icon: React.ReactNode;
-    label: string;
-}
-
-const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon, label }) => (
-    <NavLink
-        to={to}
-        className={({ isActive }) => `
-      flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-      ${isActive
-                ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30'
-                : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-primary-600'}
-    `}
-    >
-        <span className="shrink-0">{icon}</span>
-        <span className="font-medium">{label}</span>
-    </NavLink>
-);
-
-// Assuming NavItem is similar to SidebarItem but might be used within a list structure
+// NavItem used within the sidebar list structure
 interface NavItemProps {
     path: string;
     icon: React.ReactNode;
@@ -80,37 +58,48 @@ const SidebarLayout: React.FC = () => {
                         <LayoutDashboard className="text-white w-6 h-6" />
                     </div>
                     <span className="text-xl font-bold bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">
-                        Vinh Khanh
+                        Merchant CMS
                     </span>
                 </div>
 
                 <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto pb-4">
                     {user?.role === 'admin' ? (
                         <>
-                            <div className="text-xs font-semibold text-slate-400 capitalize px-4 mb-2 mt-2">Tổng quan</div>
-                            <SidebarItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" />
-                            
-                            <div className="text-xs font-semibold text-slate-400 capitalize px-4 mb-2 mt-6">Hệ thống</div>
-                            <SidebarItem to="/users" icon={<Users size={20} />} label="Người dùng (Users)" />
-                            <SidebarItem to="/store" icon={<Store size={20} />} label="Danh sách Cửa hàng" />
-                            <div className="text-xs font-semibold text-slate-400 capitalize px-4 mb-2 mt-6">Quản lý nội dung tổng</div>
+                            <div className="mb-6">
+                                <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Hệ thống</h3>
+                                <ul className="space-y-1 relative">
+                                    <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" path="/" />
+                                    <NavItem icon={<UserIcon size={20} />} label="Người dùng" path="/users" />
+                                    <NavItem icon={<ShieldCheck size={20} />} label="Duyệt Merchant" path="/merchants" />
+                                </ul>
+                            </div>
+                            <div className="mb-6">
+                                <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Dữ liệu tổng</h3>
+                                <ul className="space-y-1 relative">
+                                    <NavItem icon={<Store size={20} />} label="Quản lý POI/Store" path="/store" />
+                                    <NavItem icon={<Mic size={20} />} label="Quản lý Audio" path="/audio" />
+                                    <NavItem icon={<Languages size={20} />} label="Đa ngôn ngữ" path="/translations" />
+                                </ul>
+                            </div>
                         </>
                     ) : (
-                        <div className="mb-6">
-                            <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cửa hàng của tôi</h3>
-                            <ul className="space-y-1 relative">
-                                <NavItem icon={<Store size={20} />} label="Thông tin quán" path="/store-info" />
-                                <NavItem icon={<Utensils size={20} />} label="Quản lý Menu" path="/menu-management" />
-                            </ul>
-                            <div className="text-xs font-semibold text-slate-400 capitalize px-4 mb-2 mt-6">Nội dung hệ thống</div>
-                        </div>
+                        <>
+                            <div className="mb-6">
+                                <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cửa hàng của tôi</h3>
+                                <ul className="space-y-1 relative">
+                                    <NavItem icon={<Store size={20} />} label="Thông tin quán" path="/store-info" />
+                                    <NavItem icon={<Utensils size={20} />} label="Quản lý Menu" path="/menu-management" />
+                                </ul>
+                            </div>
+                            <div className="mb-6">
+                                <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nội dung</h3>
+                                <ul className="space-y-1 relative">
+                                    <NavItem icon={<MapPin size={20} />} label="Vị trí (POI)" path="/poi" />
+                                    <NavItem icon={<Mic size={20} />} label="Thuyết minh Audio" path="/audio" />
+                                </ul>
+                            </div>
+                        </>
                     )}
-
-                    {/* Shared Content Items (Admin manages all, Merchant manages their own) */}
-                    <SidebarItem to="/poi" icon={<MapPin size={20} />} label={user?.role === 'admin' ? "Quản lý POI" : "POI riêng của quán"} />
-                    <SidebarItem to="/audio" icon={<Mic size={20} />} label={user?.role === 'admin' ? "Quản lý Audio" : "Audio giới thiệu"} />
-                    <SidebarItem to="/tours" icon={<MapIcon size={20} />} label={user?.role === 'admin' ? "Quản lý Tour" : "Gói Tour quán"} />
-                    <SidebarItem to="/translations" icon={<Languages size={20} />} label="Bản dịch & Lịch sử" />
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
@@ -142,7 +131,7 @@ const SidebarLayout: React.FC = () => {
                         <div className="flex items-center gap-3 pl-6 border-l border-slate-200 cursor-pointer hover:opacity-80 transition-opacity">
                             <div className="text-right">
                                 <div className="text-sm font-semibold text-slate-900">{user?.name || 'Admin'}</div>
-                                <div className="text-xs text-slate-400 capitalize">{user?.role === 'admin' ? 'Quản trị viên' : 'Quản lý'}</div>
+                                <div className="text-xs text-slate-400 capitalize">{user?.role === 'admin' ? 'Quản trị viên' : 'Đối tác Merchant'}</div>
                             </div>
                             <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center overflow-hidden border-2 border-slate-200 shadow-sm">
                                 {user?.avatar ? (

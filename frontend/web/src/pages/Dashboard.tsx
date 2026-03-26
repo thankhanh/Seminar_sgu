@@ -1,18 +1,20 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     TrendingUp,
     Users,
     Store,
     ShoppingCart,
     ArrowUpRight,
-    ArrowDownRight
+    ArrowDownRight,
+    Loader2
 } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { adminApi } from '../utils/api';
 
 interface StatCardProps {
     title: string;
-    value: string;
+    value: string | number;
     change: string;
     trend: 'up' | 'down';
     icon: React.ReactNode;
@@ -20,7 +22,6 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon, color }) => {
-    // Extract base color name from Tailwind class (e.g. 'bg-emerald-500' -> 'emerald')
     const baseColor = color.split('-')[1] || 'primary';
     return (
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/40 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
@@ -30,78 +31,105 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon, 
                     {React.cloneElement(icon as any, { className: color.replace('bg-', 'text-') })}
                 </div>
                 <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${trend === 'up' ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'}`}>
-                {trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-                {change}
+                    {trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                    {change}
+                </div>
             </div>
+            <div className="text-slate-500 text-sm font-medium mb-1 relative z-10">{title}</div>
+            <div className="text-3xl font-extrabold text-slate-900 tracking-tight relative z-10">{value}</div>
         </div>
-        <div className="text-slate-500 text-sm font-medium mb-1 relative z-10">{title}</div>
-        <div className="text-3xl font-extrabold text-slate-900 tracking-tight relative z-10">{value}</div>
-    </div>
     );
 };
 
 const Dashboard: React.FC = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const [stats, setStats] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
     
     useEffect(() => {
-        // Redirect managers off the dashboard
-        if (user?.role === 'manager') {
+        if (user?.role === 'merchant') {
             navigate('/store-info', { replace: true });
         }
+        
+        const fetchStats = async () => {
+            if (user?.role === 'admin') {
+                try {
+                    const data = await adminApi.getStats();
+                    setStats(data);
+                } catch (err) {
+                    console.error('Lỗi khi lấy thống kê:', err);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+        
+        fetchStats();
     }, [user?.role, navigate]);
 
-    // If user is not an admin and not a manager (or role is null/undefined),
-    // or if the user is a manager and the useEffect hasn't redirected yet,
-    // we might want to handle other roles or loading states.
-    // For now, assuming only admin should see this dashboard,
-    // and managers are redirected by useEffect.
-    if (user?.role !== 'admin' && user?.role !== 'manager') {
-        return <Navigate to="/unauthorized" replace />; // Or another appropriate page
+    if (user?.role !== 'admin' && user?.role !== 'merchant') {
+        return <Navigate to="/unauthorized" replace />;
     }
 
-    // If user is a manager, useEffect will handle redirection.
-    // If user is an admin, they will see the dashboard.
     if (user?.role !== 'admin') {
-        return null; // Render nothing temporarily while useEffect handles redirection or if not admin
+        return null;
+    }
+
+    const formatCurrency = (val: number) => {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+    };
+
+    if (loading) {
+        return (
+            <div className="h-[80vh] flex items-center justify-center">
+                <Loader2 className="animate-spin text-primary-600" size={48} />
+            </div>
+        );
     }
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div>
-                <h1 className="text-3xl font-bold text-slate-900 mb-2">Chào buổi sáng, Admin!</h1>
-                <p className="text-slate-500">Đây là những gì đang diễn ra với hệ thống của bạn ngày hôm nay.</p>
+            <div className="flex justify-between items-end">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 mb-2">Chào buổi sáng, Admin!</h1>
+                    <p className="text-slate-500">Đây là những gì đang diễn ra với hệ thống của bạn ngày hôm nay.</p>
+                </div>
+                <div className="text-right">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Cập nhật lúc</div>
+                    <div className="text-sm font-bold text-slate-900">{new Date().toLocaleTimeString('vi-VN')}</div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     title="Tổng doanh thu"
-                    value="128.450.000 ₫"
-                    change="+12.5%"
+                    value={formatCurrency(stats?.totalRevenue || 0)}
+                    change="+0%"
                     trend="up"
                     icon={<TrendingUp size={24} />}
                     color="bg-primary-500"
                 />
                 <StatCard
-                    title="Người dùng mới"
-                    value="1,240"
-                    change="+8.2%"
+                    title="Người dùng"
+                    value={stats?.userCount || 0}
+                    change="+0%"
                     trend="up"
                     icon={<Users size={24} />}
                     color="bg-indigo-500"
                 />
                 <StatCard
-                    title="Gian hàng mới"
-                    value="64"
-                    change="-2.4%"
-                    trend="down"
+                    title="Gian hàng"
+                    value={stats?.storeCount || 0}
+                    change="+0%"
+                    trend="up"
                     icon={<Store size={24} />}
                     color="bg-amber-500"
                 />
                 <StatCard
-                    title="Đơn hàng"
-                    value="452"
-                    change="+14.8%"
+                    title="Giao dịch"
+                    value={stats?.transactionCount || 0}
+                    change="+0%"
                     trend="up"
                     icon={<ShoppingCart size={24} />}
                     color="bg-emerald-500"
@@ -109,50 +137,49 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white p-8 rounded-xl border border-slate-100 shadow-sm">
-                    <div className="flex justify-between items-center mb-8">
-                        <h3 className="text-lg font-bold text-slate-900">Biểu đồ doanh thu</h3>
-                        <select className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary-500/20">
-                            <option>7 ngày qua</option>
-                            <option>30 ngày qua</option>
-                            <option>Năm nay</option>
-                        </select>
+                <div className="lg:col-span-2 bg-white p-8 rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative">
+                    <div className="flex justify-between items-center mb-8 relative z-10">
+                        <h3 className="text-lg font-bold text-slate-900">Biểu đồ tăng trưởng</h3>
+                        <div className="flex gap-2">
+                             <span className="px-3 py-1 bg-primary-50 text-primary-700 rounded-lg text-xs font-bold ring-1 ring-primary-100">Dữ liệu thời gian thực</span>
+                        </div>
                     </div>
-                    <div className="h-64 flex items-end justify-between gap-2 px-4">
-                        {[40, 65, 45, 90, 55, 75, 85].map((height, i) => (
+                    <div className="h-64 flex items-end justify-between gap-3 px-4 relative z-10">
+                        {[40, 65, 45, 90, 55, 75, 85, 60, 95, 80, 70, 100].map((height, i) => (
                             <div key={i} className="flex-1 flex flex-col items-center gap-2">
                                 <div
-                                    className="w-full bg-primary-100 rounded-t-lg relative group transition-all duration-500 ease-out overflow-hidden"
-                                    style={{ height: `${height}%` }}
+                                    className="w-full bg-slate-50 rounded-t-lg relative group transition-all duration-700 ease-out overflow-hidden"
+                                    style={{ height: `${height}%`, transitionDelay: `${i * 50}ms` }}
                                 >
-                                    <div className="absolute inset-0 bg-primary-500 opacity-60 group-hover:opacity-100 transition-opacity"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-primary-600 to-indigo-500 opacity-40 group-hover:opacity-100 transition-opacity"></div>
                                 </div>
-                                <span className="text-xs text-slate-400 font-medium font-mono">T{i + 2}</span>
+                                <span className="text-[10px] text-slate-400 font-bold font-mono">M{i + 1}</span>
                             </div>
                         ))}
                     </div>
+                    <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-primary-50 rounded-full blur-3xl opacity-30"></div>
                 </div>
 
-                <div className="bg-white p-8 rounded-xl border border-slate-100 shadow-sm">
-                    <h3 className="text-lg font-bold text-slate-900 mb-6">Gian hàng nổi bật</h3>
-                    <div className="space-y-6">
-                        {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-slate-100 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-slate-400">
-                                    S{i}
-                                </div>
-                                <div className="flex-1">
-                                    <div className="text-sm font-bold text-slate-900 leading-none mb-1">Cửa hàng số {i}</div>
-                                    <div className="text-xs text-slate-400">24 đơn hàng hôm nay</div>
-                                </div>
-                                <div className="text-sm font-bold text-primary-600">
-                                    +1.2M
-                                </div>
-                            </div>
-                        ))}
+                <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+                    <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <Store className="text-amber-500" size={20} />
+                        Hệ quản trị merchant
+                    </h3>
+                    <div className="space-y-6 flex-1">
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                             <div className="text-sm font-bold text-slate-600 mb-1">Cần phê duyệt</div>
+                             <div className="text-2xl font-black text-amber-600">{stats?.merchantCount || 0}</div>
+                        </div>
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                             <div className="text-sm font-bold text-slate-600 mb-1">Cửa hàng đang mở</div>
+                             <div className="text-2xl font-black text-emerald-600">{stats?.storeCount || 0}</div>
+                        </div>
                     </div>
-                    <button className="w-full mt-8 py-3 rounded-xl border border-slate-100 text-sm font-bold text-slate-600 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-100 transition-all">
-                        Xem tất cả
+                    <button 
+                         onClick={() => navigate('/users')}
+                         className="w-full mt-8 py-3 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all"
+                    >
+                        Quản lý hệ thống
                     </button>
                 </div>
             </div>

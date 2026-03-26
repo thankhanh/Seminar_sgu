@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsEnum } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsEnum, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -29,4 +29,16 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   preferredLanguage?: string;
+
+  @ApiPropertyOptional({ example: 'Vinh Khanh Coffee' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  businessName?: string;
+
+  @ApiPropertyOptional({ example: '0123456789' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  taxCode?: string;
 }

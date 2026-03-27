@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-nati
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import api from '../../constants/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -44,9 +45,27 @@ export default function QRScannerScreen() {
         );
     }
 
-    const handleBarcodeScanned = ({ type, data }: any) => {
+    const handleBarcodeScanned = async ({ type, data }: any) => {
+        if (scanned) return;
         setScanned(true);
-        alert(`Mã QR: ${data}`);
+        console.log(`[Scanner] Scanned QR Code: ${data}`);
+        
+        try {
+            // data can be a full URL or just a code. 
+            // In our system, we expect the code.
+            const { data: json } = await api.post(`/qr/scan/${data}`);
+            
+            if (json.success && json.data?.storeId) {
+                // Navigate to stall detail
+                router.replace(`/stall/${json.data.storeId}` as any);
+            } else {
+                alert('Mã QR không hợp lệ hoặc không tồn tại trong hệ thống.');
+            }
+        } catch (error: any) {
+            console.warn('[Scanner] Error scanning QR:', error);
+            const errMsg = error.response?.data?.error?.message || 'Có lỗi xảy ra khi kết nối máy chủ.';
+            alert(`Lỗi: ${errMsg}`);
+        }
     };
 
     return (

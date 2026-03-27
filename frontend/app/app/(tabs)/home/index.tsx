@@ -62,9 +62,17 @@ export default function HomeScreen() {
               <Text className="text-base font-extrabold text-[#1F2937]">Vĩnh Khánh Street</Text>
             </View>
           </View>
-          <TouchableOpacity className="w-11 h-11 rounded-full bg-[#F3F4F6] items-center justify-center">
-            <Ionicons name="notifications-outline" size={24} color="#1F2937" />
-          </TouchableOpacity>
+          <View className="flex-row items-center">
+            <TouchableOpacity 
+              onPress={() => router.push('/plans' as any)}
+              className="w-11 h-11 rounded-full bg-[#009FB7]/10 items-center justify-center mr-3"
+            >
+              <MaterialCommunityIcons name="crown" size={24} color="#009FB7" />
+            </TouchableOpacity>
+            <TouchableOpacity className="w-11 h-11 rounded-full bg-[#F3F4F6] items-center justify-center">
+              <Ionicons name="notifications-outline" size={24} color="#1F2937" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* --- Hero Title --- */}
@@ -81,6 +89,30 @@ export default function HomeScreen() {
             placeholderTextColor="#9CA3AF"
           />
         </View>
+
+        {/* --- PROMINENT UPGRADE BANNER --- */}
+        <TouchableOpacity 
+          onPress={() => router.push('/plans' as any)}
+          className="bg-[#1F2937] rounded-[32px] p-5 mb-8 flex-row items-center border border-[#374151] shadow-xl"
+        >
+          <View className="w-14 h-14 rounded-2xl bg-[#009FB7] items-center justify-center">
+            <MaterialCommunityIcons name="crown" size={32} color="white" />
+          </View>
+          <View className="ml-4 flex-1">
+            <View className="flex-row items-center mb-1">
+              <Text className="text-white text-lg font-extrabold mr-2">Hội viên Premium</Text>
+              <View className="bg-[#009FB7] px-2 py-0.5 rounded-full">
+                <Text className="text-white text-[9px] font-bold uppercase">Mới</Text>
+              </View>
+            </View>
+            <Text className="text-gray-400 text-xs leading-4">
+              Mở khóa thuyết minh không giới hạn và các ưu đãi đặc quyền.
+            </Text>
+          </View>
+          <View className="w-10 h-10 rounded-full bg-white/10 items-center justify-center">
+             <Ionicons name="chevron-forward" size={20} color="white" />
+          </View>
+        </TouchableOpacity>
 
         {/* --- Status Cards --- */}
         <View className="flex-row justify-between mb-8">

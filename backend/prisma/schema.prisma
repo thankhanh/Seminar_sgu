@@ -29,6 +29,7 @@ enum StoreStatus {
 }
 
 enum SubscriptionPlan {
+  free
   monthly
   yearly
 }
@@ -48,11 +49,13 @@ enum SubscriptionStatus {
 enum TransactionType {
   user_subscription
   merchant_subscription
+  food_order
 }
 
 enum PaymentMethod {
   momo
   cash
+  vnpay
 }
 
 enum TransactionStatus {
@@ -222,6 +225,7 @@ model MerchantSubscription {
   merchantId  String              @map("merchant_id")
   plan        MerchantPlan
   maxStore    Int                 @map("max_store")
+  maxPOI      Int                 @default(1) @map("max_poi")
   startDate   DateTime            @map("start_date") @db.Date
   endDate     DateTime            @map("end_date") @db.Date
   status      SubscriptionStatus  @default(active)
@@ -230,6 +234,39 @@ model MerchantSubscription {
   merchant    Merchant            @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
   @@map("merchant_subscriptions")
+}
+
+model PlanMetadata {
+  planKey     String   @id @map("plan_key") @db.VarChar(100)
+  name        String   @db.VarChar(200)
+  description String?
+  price       Decimal  @db.Decimal(15, 0)
+  maxStore    Int      @default(1) @map("max_store")
+  maxPOI      Int      @default(1) @map("max_poi")
+  features    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("plan_metadata")
+}
+
+model PaymentVnpay {
+  id               String      @id @default(uuid())
+  transactionId    String      @unique @map("transaction_id")
+  vnpTxnRef        String      @unique @map("vnp_txn_ref") @db.VarChar(100)
+  vnpAmount        BigInt      @map("vnp_amount")
+  vnpOrderInfo     String?     @map("vnp_order_info")
+  vnpResponseCode  String?     @map("vnp_response_code") @db.VarChar(10)
+  vnpTransactionNo String?     @map("vnp_transaction_no") @db.VarChar(100)
+  vnpBankCode      String?     @map("vnp_bank_code") @db.VarChar(50)
+  vnpPayDate       String?     @map("vnp_pay_date") @db.VarChar(20)
+  vnpSecureHash    String?     @map("vnp_secure_hash")
+  rawResponse      Json?       @map("raw_response")
+  createdAt        DateTime    @default(now()) @map("created_at")
+
+  transaction      Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("payment_vnpay")
 }
 
 model Transaction {
@@ -247,6 +284,7 @@ model Transaction {
 
   user            User                @relation(fields: [userId], references: [id])
   momoDetail      PaymentMomo?
+  vnpayDetail     PaymentVnpay?
 
   @@map("transactions")
 }

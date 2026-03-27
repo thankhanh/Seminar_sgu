@@ -52,22 +52,6 @@ export class NarrationsController {
     return this.narrService.findAll(Number(page) || 1, Number(limit) || 20, merchantId);
   }
 
-  @Get('nearby')
-  @ApiOperation({ summary: 'Tìm narrations gần nhất dựa trên vị trí (public)' })
-  @ApiQuery({ name: 'lat', required: true, type: Number, example: 10.7769 })
-  @ApiQuery({ name: 'lng', required: true, type: Number, example: 106.7009 })
-  @ApiQuery({ name: 'language', required: false, type: String, example: 'vi' })
-  @ApiQuery({ name: 'radius', required: false, type: Number, example: 1, description: 'Bán kính tìm kiếm (km)' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  findNearby(
-    @Query('lat') lat: number,
-    @Query('lng') lng: number,
-    @Query('language') language = 'vi',
-    @Query('radius') radius = 1,
-    @Query('limit') limit = 10,
-  ) {
-    return this.narrService.findNearbyNarrations(+lat, +lng, language, +radius, +limit);
-  }
 
   @Post('listen/:narrationId')
   @UseGuards(JwtAuthGuard)

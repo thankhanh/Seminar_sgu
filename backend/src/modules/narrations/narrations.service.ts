@@ -213,6 +213,57 @@ export class NarrationsService {
     return { data, total, page, limit };
   }
 
+  async recordListen(userId: string, narrationId: string, source: 'gps' | 'qr' = 'gps') {
+    const narration = await this.prisma.narration.findUnique({
+      where: { id: narrationId },
+      include: { store: true },
+    });
+    if (!narration) throw new NotFoundException('Narration không tồn tại');
+
+    return this.prisma.listenHistory.create({
+      data: {
+        userId,
+        narrationId,
+        storeId: narration.storeId,
+        source: source === 'qr' ? 'qr' : 'gps',
+      },
+    });
+  }
+
+  async translateNarration(id: string, dto: any) {
+    const narration = await this.prisma.narration.findUnique({
+      where: { id },
+      include: { language: true, store: true },
+    });
+    if (!narration) throw new NotFoundException('Narration không tồn tại');
+
+    // Giả sử dto có targetLanguageCode
+    const targetLangCode = dto.targetLanguageCode || 'en';
+    const translatedText = await this.translateText(narration.textContent || '', narration.language.code, targetLangCode);
+
+    if (dto.save) {
+      const targetLang = await this.prisma.language.findUnique({ where: { code: targetLangCode } });
+      if (!targetLang) throw new NotFoundException(`Ngôn ngữ ${targetLangCode} chưa được hỗ trợ`);
+
+      return this.prisma.narration.upsert({
+        where: { storeId_languageId: { storeId: narration.storeId, languageId: targetLang.id } },
+        update: { textContent: translatedText },
+        create: {
+          storeId: narration.storeId,
+          languageId: targetLang.id,
+          textContent: translatedText,
+          isActive: true,
+        },
+      });
+    }
+
+    return {
+      originalId: id,
+      targetLanguage: targetLangCode,
+      translatedText,
+    };
+  }
+
   async update(id: string, user: { id: string; role: string }, dto: UpdateNarrationDto) {
     const narration = await this.prisma.narration.findUnique({ where: { id } });
     if (!narration) throw new NotFoundException('Narration không tồn tại');

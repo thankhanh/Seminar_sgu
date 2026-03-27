@@ -173,6 +173,16 @@ const SubscriptionManagement: React.FC = () => {
         alert('Cập nhật gói thành công');
     };
 
+    const handleDeletePlan = (plan: any) => {
+        console.log('handleDeletePlan called with plan:', plan);
+        const confirmDelete = window.confirm(`Bạn có chắc chắn muốn xóa gói "${plan.name}"?`);
+        console.log('User confirmed:', confirmDelete);
+        if (confirmDelete) {
+            setPlans((prevPlans) => prevPlans.filter((p) => p.id !== plan.id));
+            alert('Xóa gói thành công');
+        }
+    };
+
     const resetEditFields = () => {
         setEditPlanName('');
         setEditPlanPrice('');
@@ -265,12 +275,20 @@ const SubscriptionManagement: React.FC = () => {
                             ))}
                         </div>
 
-                        <button
-                            onClick={() => handleEditPlan(plan)}
-                            className="w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200"
-                        >
-                            Cập nhật
-                        </button>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => handleEditPlan(plan)}
+                                className="flex-1 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200"
+                            >
+                                Cập nhật
+                            </button>
+                            <button
+                                onClick={() => handleDeletePlan(plan)}
+                                className="flex-1 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-200"
+                            >
+                                Xoá
+                            </button>
+                        </div>
                     </div>
                 ))}
             </div>

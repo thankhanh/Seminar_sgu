@@ -4,7 +4,7 @@ import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCart } from '../../context/CartContext';
-import { API_URL } from '../../constants/Api';
+import { API_URL } from '@/constants/Api';
 
 export default function CheckoutScreen() {
     const router = useRouter();

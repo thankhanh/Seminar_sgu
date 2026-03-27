@@ -5,7 +5,7 @@ import * as Location from 'expo-location';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRouter } from 'expo-router';
-import { API_URL } from '../../../constants/Api';
+import { API_URL } from '@/constants/Api';
 
 const { width, height } = Dimensions.get('window');
 

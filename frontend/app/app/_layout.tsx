@@ -32,7 +32,7 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
-            name="profile/edit"
+            name="(tabs)/profile/edit"
             options={{
               headerShown: false,
               presentation: 'modal'

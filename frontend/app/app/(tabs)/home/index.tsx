@@ -14,7 +14,7 @@ import {
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { API_URL } from '../../../constants/Api';
+import { API_URL } from '@/constants/Api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // import { styled } from 'nativewind';
@@ -110,13 +110,7 @@ export default function HomeScreen() {
             <TouchableOpacity className="w-11 h-11 rounded-full bg-[#F3F4F6] items-center justify-center">
               <Ionicons name="notifications-outline" size={24} color="#1F2937" />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push('/cart' as any)}
-              className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md items-center justify-center border border-white/30 relative"
-            >
-              <Ionicons name="cart-outline" size={24} color="" />
-              <View className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border border-white" />
-            </TouchableOpacity>
+
           </View>
 
         </View>

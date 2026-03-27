@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../../constants/Api';
+import { API_URL } from '@/constants/Api';
 
 export default function EditProfileScreen() {
     const router = useRouter();
@@ -57,7 +57,7 @@ export default function EditProfileScreen() {
             });
             const body = await res.json();
             if (!res.ok) throw new Error(body.message || 'Cập nhật thất bại');
-            
+
             Alert.alert('Thành công', 'Đã cập nhật thông tin cá nhân!');
             router.back();
         } catch (error: any) {
@@ -86,7 +86,7 @@ export default function EditProfileScreen() {
                 <View style={{ width: 26 }} />
             </View>
 
-            <KeyboardAvoidingView 
+            <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 className="flex-1"
             >
@@ -120,7 +120,7 @@ export default function EditProfileScreen() {
 
                 {/* Footer Save Button */}
                 <View className="p-5 bg-white border-t border-[#F3F4F6] pb-8">
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={handleSave}
                         disabled={isSaving}
                         className={`h-14 rounded-2xl items-center justify-center flex-row shadow-lg ${isSaving ? 'bg-[#9CA3AF]' : 'bg-[#009FB7] shadow-[#009FB7]/30'}`}

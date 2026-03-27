@@ -36,6 +36,18 @@ export class CreatePaymentDto {
   @IsString()
   orderInfo?: string;
 
+  @ApiPropertyOptional({ example: 49000 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  amount?: number;
+
+  @ApiPropertyOptional({ example: 'Thanh toán đơn hàng #123' })
+  @IsOptional()
+  @IsString()
+  orderInfo?: string;
+
   @ApiPropertyOptional({ example: '127.0.0.1', description: 'IP người dùng (dùng cho VNPay)' })
   @IsOptional()
   @IsString()

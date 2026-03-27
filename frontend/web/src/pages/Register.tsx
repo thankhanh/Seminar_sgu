@@ -8,6 +8,8 @@ const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [taxCode, setTaxCode] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -23,16 +25,22 @@ const Register: React.FC = () => {
         return;
     }
 
-    if (password.length < 6) {
-        setError('Mật khẩu phải có ít nhất 6 ký tự.');
+    if (password.length < 8) {
+        setError('Mật khẩu phải có ít nhất 8 ký tự.');
         return;
     }
 
     setIsSubmitting(true);
     
     try {
-      await register(name, email, password);
-      navigate('/');
+      const result = await register(name, email, password, 'merchant', businessName, taxCode);
+      
+      if (!result.accessToken) {
+        alert('Đăng ký thành công! Tài khoản của bạn hiện đang chờ quản trị viên phê duyệt. Bạn sẽ có thể đăng nhập sau khi tài khoản được kích hoạt.');
+        navigate('/login');
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
     } finally {
@@ -55,10 +63,10 @@ const Register: React.FC = () => {
             </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900 tracking-tight">
-          Tạo tài khoản mới
+          Đăng ký Chủ quán
         </h2>
         <p className="mt-2 text-center text-sm text-slate-500">
-          Gia nhập hệ thống quản lý của <span className="font-semibold text-primary-600">Smart Tour</span>
+          Gia nhập hệ thống đối tác của <span className="font-semibold text-primary-600">Smart Tour</span>
         </p>
       </div>
 
@@ -94,7 +102,7 @@ const Register: React.FC = () => {
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-                Email
+                Email liên hệ
               </label>
               <div className="mt-1 relative rounded-xl shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -110,6 +118,41 @@ const Register: React.FC = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="focus:ring-2 focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 sm:text-sm border-slate-200 rounded-xl py-3 transition-colors bg-slate-50 hover:bg-white"
                   placeholder="admin@example.com"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="businessName" className="block text-sm font-medium text-slate-700">
+                Tên cơ sở kinh doanh
+              </label>
+              <div className="mt-1">
+                <input
+                  id="businessName"
+                  name="businessName"
+                  type="text"
+                  required
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  className="focus:ring-2 focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-slate-200 rounded-xl py-3 transition-colors bg-slate-50 hover:bg-white px-4"
+                  placeholder="VD: Cà phê Vinh Khánh"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="taxCode" className="block text-sm font-medium text-slate-700">
+                Mã số thuế (Tùy chọn)
+              </label>
+              <div className="mt-1">
+                <input
+                  id="taxCode"
+                  name="taxCode"
+                  type="text"
+                  value={taxCode}
+                  onChange={(e) => setTaxCode(e.target.value)}
+                  className="focus:ring-2 focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-slate-200 rounded-xl py-3 transition-colors bg-slate-50 hover:bg-white px-4"
+                  placeholder="VD: 0123456789"
                 />
               </div>
             </div>

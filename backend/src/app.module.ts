@@ -24,7 +24,9 @@ import { MerchantModule } from './modules/merchant/merchant.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { LanguagesModule } from './modules/languages/languages.module';
 import { QrModule } from './modules/qr/qr.module';
-
+import { MerchantSubscriptionsModule } from './modules/merchant-subscriptions/merchant-subscriptions.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { PlanMetadataModule } from './modules/plan-metadata/plan-metadata.module';
 
 @Module({
   imports: [
@@ -55,7 +57,8 @@ import { QrModule } from './modules/qr/qr.module';
     AdminModule,
     LanguagesModule,
     QrModule,
-
+    MerchantSubscriptionsModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [
@@ -64,4 +67,4 @@ import { QrModule } from './modules/qr/qr.module';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
-export class AppModule { }
+export class AppModule {}

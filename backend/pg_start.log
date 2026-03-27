@@ -1,0 +1,3 @@
+2026-03-26 15:32:49 +07 LOG:  redirecting log output to logging collector process
+2026-03-26 15:32:49 +07 HINT:  Future log output will appear in directory "log".
+^C

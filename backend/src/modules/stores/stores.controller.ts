@@ -19,18 +19,37 @@ export class StoresController {
     @CurrentUser() user: { id: string; role: string },
     @Body() dto: CreateStoreDto,
   ) {
-    return this.storesService.create(user.id, dto);
+    return this.storesService.create(user, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Danh sách store (public)' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({ name: 'status', required: false, type: String, example: 'active' })
+  @ApiQuery({ name: 'merchantId', required: false, type: String })
   findAll(
     @Query('page') page = 1,
     @Query('limit') limit = 20,
+    @Query('status') status?: string,
+    @Query('merchantId') merchantId?: string,
   ) {
-    return this.storesService.findAll(+page, +limit);
+    return this.storesService.findAll(+page, +limit, status, merchantId);
+  }
+
+  @Get('nearby')
+  @ApiOperation({ summary: 'Tìm stores gần nhất dựa trên vị trí (public)' })
+  @ApiQuery({ name: 'lat', required: true, type: Number, example: 10.7769 })
+  @ApiQuery({ name: 'lng', required: true, type: Number, example: 106.7009 })
+  @ApiQuery({ name: 'radius', required: false, type: Number, example: 5, description: 'Bán kính tìm kiếm (km)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  findNearby(
+    @Query('lat') lat: number,
+    @Query('lng') lng: number,
+    @Query('radius') radius = 5,
+    @Query('limit') limit = 20,
+  ) {
+    return this.storesService.findNearby(+lat, +lng, +radius, +limit);
   }
 
   @Get(':id')
@@ -42,23 +61,23 @@ export class StoresController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cập nhật store (merchant owner)' })
+  @ApiOperation({ summary: 'Cập nhật store (merchant owner/admin)' })
   update(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
     @Body() dto: UpdateStoreDto,
   ) {
-    return this.storesService.update(id, user.id, dto);
+    return this.storesService.update(id, user, dto);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Xóa store (merchant owner)' })
+  @ApiOperation({ summary: 'Xóa store (merchant owner/admin)' })
   remove(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
   ) {
-    return this.storesService.remove(id, user.id);
+    return this.storesService.remove(id, user);
   }
 }

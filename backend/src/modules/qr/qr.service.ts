@@ -56,4 +56,35 @@ export class QrService {
 
     return this.prisma.qrCode.findMany({ where: { storeId }, orderBy: { createdAt: 'desc' } });
   }
+  async scanQr(code: string, userId: string) {
+    const qr = await this.prisma.qrCode.findUnique({
+      where: { code },
+      include: {
+        store: {
+          include: {
+            merchant: { select: { businessName: true } },
+            narrations: { include: { language: true } },
+            menus: true,
+          },
+        },
+      },
+    });
+    if (!qr || !qr.isActive) throw new NotFoundException('QR code không hợp lệ hoặc đã hết hạn');
+
+    // Tìm narration mặc định (tiếng Việt)
+    const defaultNarration = qr.store.narrations.find(n => n.language.code === 'vi' && n.isActive);
+    if (defaultNarration) {
+      // Ghi nhận listen
+      await this.prisma.listenHistory.create({
+        data: {
+          userId,
+          storeId: qr.store.id,
+          narrationId: defaultNarration.id,
+          source: 'qr',
+        },
+      });
+    }
+
+    return { store: qr.store, listened: !!defaultNarration };
+  }
 }

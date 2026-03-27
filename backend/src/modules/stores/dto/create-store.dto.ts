@@ -45,4 +45,19 @@ export class CreateStoreDto {
   @IsOptional()
   @IsString()
   coverImage?: string;
+
+  @ApiPropertyOptional({ example: 'merchant-uuid' })
+  @IsOptional()
+  @IsString()
+  merchantId?: string;
+
+  @ApiPropertyOptional({ enum: ['pending', 'active', 'hidden'], example: 'active' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @ApiPropertyOptional({ example: ['https://image1.jpg', 'https://image2.jpg'] })
+  @IsOptional()
+  @IsString({ each: true })
+  images?: string[];
 }

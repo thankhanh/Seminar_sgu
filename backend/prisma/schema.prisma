@@ -7,6 +7,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model PlanMetadata {
+  id          String   @id @default(uuid())
+  planKey     String   @unique @map("plan_key")
+  name        String   @db.VarChar(100)
+  price       Float    @default(0)
+  description String?
+  features    String[] @default([])
+  maxPOI      Int      @default(1) @map("max_poi")
+  maxStore    Int      @default(1) @map("max_store")
+  color       String?  @db.VarChar(50)
+  icon        String?  @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("plan_metadata")
+}
+
 model User {
   id                String          @id @default(uuid())
   name              String          @db.VarChar(100)
@@ -152,6 +169,7 @@ model MerchantSubscription {
   merchantId String             @map("merchant_id")
   plan       MerchantPlan
   maxStore   Int                @map("max_store")
+  maxPOI     Int                @default(1) @map("max_poi")
   startDate  DateTime           @map("start_date") @db.Date
   endDate    DateTime           @map("end_date") @db.Date
   status     SubscriptionStatus @default(active)
@@ -171,6 +189,7 @@ model Transaction {
   paymentRefId  String?           @map("payment_ref_id")
   status        TransactionStatus @default(pending)
   description   String?
+  planKey       String?           @map("plan_key")
   createdAt     DateTime          @default(now()) @map("created_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
   momoDetail    PaymentMomo?
@@ -261,6 +280,7 @@ enum StoreStatus {
 }
 
 enum SubscriptionPlan {
+  free
   monthly
   yearly
 }

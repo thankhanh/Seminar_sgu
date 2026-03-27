@@ -179,15 +179,10 @@ export default function StallDetailScreen() {
                                 <Text className="text-[#6B7280] text-[13px]">Hướng dẫn âm thanh tự động</Text>
                                 <TouchableOpacity
                                     onPress={playNarration}
-                                    className={`mt-6 w-16 h-16 rounded-full items-center justify-center shadow-lg ${isPlaying ? 'bg-red-500' : 'bg-[#009FB7]'}`}
+                                    className={`mt-6 w-20 h-20 rounded-full items-center justify-center shadow-xl ${isPlaying ? 'bg-red-500' : 'bg-[#009FB7]'}`}
                                 >
-                                    <Ionicons name={isPlaying ? "stop" : "play"} size={32} color="white" style={{ marginLeft: isPlaying ? 0 : 4 }} />
+                                    <Ionicons name={isPlaying ? "stop" : "play"} size={40} color="white" style={{ marginLeft: isPlaying ? 0 : 4 }} />
                                 </TouchableOpacity>
-                                {activeNarration.textContent && (
-                                    <Text className="text-[#9CA3AF] text-xs text-center mt-4 px-2" numberOfLines={3}>
-                                        {activeNarration.textContent}
-                                    </Text>
-                                )}
                             </View>
                         </View>
                     )}

@@ -2,21 +2,14 @@ import { Injectable, NotFoundException, ForbiddenException, ConflictException, I
 import { PrismaService } from '../../database/prisma.service';
 import { CreateNarrationDto } from './dto/create-narration.dto';
 import { UpdateNarrationDto } from './dto/update-narration.dto';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import * as fs from 'fs';
+import * as path from 'path';
+// @ts-ignore
+import { translate as googleTranslate } from '@vitalets/google-translate-api';
 
 @Injectable()
 export class NarrationsService {
-  private genAI: GoogleGenerativeAI;
-  private model: any;
-
-  constructor(private prisma: PrismaService) {
-    // Khởi tạo Gemini AI (API Key được lấy từ .env)
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey) {
-      this.genAI = new GoogleGenerativeAI(apiKey);
-      this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    }
-  }
+  constructor(private prisma: PrismaService) {}
 
   private async verifyStoreOwner(storeId: string, user: { id: string; role: string }) {
     const store = await this.prisma.store.findUnique({
@@ -81,54 +74,60 @@ export class NarrationsService {
   }
 
   /**
-   * Dịch thuật nội dung sử dụng Google Gemini AI
+   * Dịch thuật nội dung sử dụng Google Translate API (miễn phí)
    */
   private async translateText(text: string, sourceLang: string, targetLang: string): Promise<string> {
-    if (!this.model) {
-      console.warn('[Gemini] API Key chưa được cấu hình. Trả về text gốc.');
-      return text;
-    }
-
+    // Sử dụng Google Translate (miễn phí, nhanh, không cần API Key phức tạp)
     try {
-      // Prompt được tối ưu cho du lịch và ẩm thực
-      const prompt = `Bạn là một biên dịch viên chuyên nghiệp về du lịch và ẩm thực. 
-      Hãy dịch đoạn giới thiệu quán ăn sau từ ${sourceLang} sang mã ngôn ngữ ${targetLang}. 
-      Yêu cầu: Dịch tự nhiên, cuốn hút, giữ đúng ý nghĩa văn hóa và sự thân thiện. 
-      Chỉ trả về đoạn văn bản đã dịch, không thêm lời dẫn giải hay dấu ngoặc kép.
-      Nội dung cần dịch: "${text}"`;
-
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      let translatedText = response.text();
-
-      // Dọn dẹp dấu ngoặc kép nếu AI tự thêm vào
-      translatedText = translatedText.replace(/^"|"$/g, '').trim();
+      const result = await googleTranslate(text, { from: sourceLang, to: targetLang });
+      const translatedText = result.text?.trim();
       
-      console.log(`[Gemini AI] Đã dịch xong sang ${targetLang}: "${translatedText.substring(0, 30)}..."`);
-      return translatedText;
-    } catch (error) {
-      console.error('Lỗi khi gọi Gemini API:', error);
-      return text; // Fallback: trả về text gốc nếu lỗi
+      if (translatedText) {
+        console.log(`[Google Translate] Dịch ${sourceLang} -> ${targetLang}: "${translatedText.substring(0, 50)}..."`);
+
+        // Ghi log dịch thuật để theo dõi
+        try {
+          const logFilePath = path.join(process.cwd(), 'translations.log');
+          const logMessage = `\n----------------------------------------\n` +
+                             `[${new Date().toISOString()}]\n` +
+                             `[Nguồn - ${sourceLang.toUpperCase()}]: ${text}\n` +
+                             `[Dịch - ${targetLang.toUpperCase()}]: ${translatedText}\n` +
+                             `----------------------------------------\n`;
+          fs.appendFileSync(logFilePath, logMessage, 'utf-8');
+        } catch (_) {}
+
+        return translatedText;
+      }
+    } catch (err: any) {
+      console.error(`[Google Translate] Lỗi khi dịch: ${err.message}`);
     }
+
+    return text; // Nếu lỗi hoàn toàn thì trả về text gốc
   }
 
   /**
    * Tìm thuyết minh gần vị trí hiện tại của app (Có tích hợp Tự động dịch thuật và Caching)
    */
   async findNearby(lat: number, lng: number, targetLangCode: string) {
-    // 1. Tìm cửa hàng gần nhất (bán kính 100m)
+    // 1. Tìm cửa hàng gần nhất (bán kính 50m)
     const stores = await this.prisma.store.findMany({
       where: { status: 'active' },
     });
 
-    const radius = 100;
-    const nearbyStore = stores.find(store => {
+    const radius = 50; // Giới hạn 50m theo yêu cầu mới
+    let nearbyStore = null;
+    let minDistance = radius + 1;
+
+    for (const store of stores) {
       const distance = this.calculateDistance(lat, lng, store.lat, store.lng);
-      return distance <= radius;
-    });
+      if (distance <= radius && distance < minDistance) {
+        minDistance = distance;
+        nearbyStore = store;
+      }
+    }
 
     if (!nearbyStore) {
-      return { found: false, message: 'Không tìm thấy địa điểm thuyết minh nào trong phạm vi 100m' };
+      return { found: false, message: 'Không tìm thấy địa điểm thuyết minh nào trong phạm vi 50m' };
     }
 
     // 2. Tìm ngôn ngữ đích trong DB

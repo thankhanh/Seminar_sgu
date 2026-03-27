@@ -4,5 +4,5 @@
     "rootDir": ".",
     "module": "commonjs"
   },
-  "include": ["prisma/seeds/**/*", "src/**/*"]
+  "include": ["prisma/**/*.ts", "scripts/**/*.ts", "src/**/*"]
 }

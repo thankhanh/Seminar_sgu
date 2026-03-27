@@ -45,7 +45,13 @@ const SubscriptionManagement: React.FC = () => {
     const fetchPlanMetadata = async () => {
         try {
             const data = await subscriptionsApi.getAllPlanMetadata() as any;
-            setPlanMetadata(Array.isArray(data) ? data : []);
+            const uniqueData = Array.isArray(data) ? data.reduce((acc: any[], current: any) => {
+                if (!acc.some(item => item.planKey === current.planKey)) {
+                    acc.push(current);
+                }
+                return acc;
+            }, []) : [];
+            setPlanMetadata(uniqueData);
         } catch (err) {
             console.error('Lỗi khi lấy cấu hình gói:', err);
         }
@@ -88,7 +94,22 @@ const SubscriptionManagement: React.FC = () => {
                 ? await subscriptionsApi.getAllMerchants(page, 10)
                 : await subscriptionsApi.getAllUsers(page, 10)) as any;
             
-            setRecords(result.data || []);
+            const rawData = result.data || [];
+            const uniqueRecords = rawData.reduce((acc: any[], current: any) => {
+                const isDuplicate = acc.some(item => 
+                    item.plan === current.plan &&
+                    item.status === current.status &&
+                    item.startDate === current.startDate &&
+                    item.endDate === current.endDate &&
+                    (activeTab === 'merchant' 
+                        ? item.merchant?.id === current.merchant?.id
+                        : item.user?.id === current.user?.id)
+                );
+                if (!isDuplicate) acc.push(current);
+                return acc;
+            }, []);
+
+            setRecords(uniqueRecords);
             setTotalRecords(result.total || 0);
         } catch (err) {
             console.error('Lỗi khi lấy danh sách gói:', err);

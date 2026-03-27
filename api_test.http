@@ -38,3 +38,8 @@ Content-Type: application/json
 # Lưu ý: Yêu cầu cookie hoặc access_token. Vì NestJS đã set-cookie khi đăng nhập thành công
 # nên request này sẽ tự động gắn cookie kèm theo (nếu test trong Swagger hoặc REST Client có lưu session).
 GET {{baseUrl}}/auth/me
+
+---
+### 4. TÌM THUYẾT MINH GẦN NHẤT (GPS)
+# Thử vị trí quán ăn trong phạm vi 100m
+GET {{baseUrl}}/nearby?lat=10.1234&lng=106.5678&lang=en

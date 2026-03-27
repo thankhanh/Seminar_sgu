@@ -1,11 +1,22 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateNarrationDto } from './dto/create-narration.dto';
 import { UpdateNarrationDto } from './dto/update-narration.dto';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 @Injectable()
 export class NarrationsService {
-  constructor(private prisma: PrismaService) {}
+  private genAI: GoogleGenerativeAI;
+  private model: any;
+
+  constructor(private prisma: PrismaService) {
+    // Khởi tạo Gemini AI (API Key được lấy từ .env)
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      this.genAI = new GoogleGenerativeAI(apiKey);
+      this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    }
+  }
 
   private async verifyStoreOwner(storeId: string, user: { id: string; role: string }) {
     const store = await this.prisma.store.findUnique({
@@ -51,6 +62,132 @@ export class NarrationsService {
       include: { language: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  // Haversine formula to calculate distance in meters
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // in meters
+  }
+
+  /**
+   * Dịch thuật nội dung sử dụng Google Gemini AI
+   */
+  private async translateText(text: string, sourceLang: string, targetLang: string): Promise<string> {
+    if (!this.model) {
+      console.warn('[Gemini] API Key chưa được cấu hình. Trả về text gốc.');
+      return text;
+    }
+
+    try {
+      // Prompt được tối ưu cho du lịch và ẩm thực
+      const prompt = `Bạn là một biên dịch viên chuyên nghiệp về du lịch và ẩm thực. 
+      Hãy dịch đoạn giới thiệu quán ăn sau từ ${sourceLang} sang mã ngôn ngữ ${targetLang}. 
+      Yêu cầu: Dịch tự nhiên, cuốn hút, giữ đúng ý nghĩa văn hóa và sự thân thiện. 
+      Chỉ trả về đoạn văn bản đã dịch, không thêm lời dẫn giải hay dấu ngoặc kép.
+      Nội dung cần dịch: "${text}"`;
+
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      let translatedText = response.text();
+
+      // Dọn dẹp dấu ngoặc kép nếu AI tự thêm vào
+      translatedText = translatedText.replace(/^"|"$/g, '').trim();
+      
+      console.log(`[Gemini AI] Đã dịch xong sang ${targetLang}: "${translatedText.substring(0, 30)}..."`);
+      return translatedText;
+    } catch (error) {
+      console.error('Lỗi khi gọi Gemini API:', error);
+      return text; // Fallback: trả về text gốc nếu lỗi
+    }
+  }
+
+  /**
+   * Tìm thuyết minh gần vị trí hiện tại của app (Có tích hợp Tự động dịch thuật và Caching)
+   */
+  async findNearby(lat: number, lng: number, targetLangCode: string) {
+    // 1. Tìm cửa hàng gần nhất (bán kính 100m)
+    const stores = await this.prisma.store.findMany({
+      where: { status: 'active' },
+    });
+
+    const radius = 100;
+    const nearbyStore = stores.find(store => {
+      const distance = this.calculateDistance(lat, lng, store.lat, store.lng);
+      return distance <= radius;
+    });
+
+    if (!nearbyStore) {
+      return { found: false, message: 'Không tìm thấy địa điểm thuyết minh nào trong phạm vi 100m' };
+    }
+
+    // 2. Tìm ngôn ngữ đích trong DB
+    const targetLanguage = await this.prisma.language.findUnique({
+      where: { code: targetLangCode }
+    });
+    if (!targetLanguage) {
+      return { found: false, message: `Hệ thống chưa hỗ trợ ngôn ngữ ${targetLangCode}` };
+    }
+
+    // 3. Kiểm tra xem đã CÓ BẢN DỊCH sẵn trong DB chưa (Để tránh dịch lại tốn tiền API)
+    let narration = await this.prisma.narration.findUnique({
+      where: { 
+        storeId_languageId: { 
+          storeId: nearbyStore.id, 
+          languageId: targetLanguage.id 
+        } 
+      }
+    });
+
+    // 4. Nếu CHƯA CÓ bản dịch, thực hiện tự động dịch từ bản VI gốc
+    if (!narration) {
+      // 4.1. Lấy bản gốc (VI)
+      const viLanguage = await this.prisma.language.findUnique({ where: { code: 'vi' } });
+      const originalNarration = await this.prisma.narration.findUnique({
+        where: { 
+          storeId_languageId: { 
+            storeId: nearbyStore.id, 
+            languageId: viLanguage.id 
+          } 
+        }
+      });
+
+      if (!originalNarration) {
+        return { found: false, message: 'Địa điểm này chưa có nội dung thuyết minh gốc (Tiếng Việt)' };
+      }
+
+      // 4.2. Gọi hàm dịch thuật
+      const translatedText = await this.translateText(originalNarration.textContent, 'vi', targetLangCode);
+
+      // 4.3. LƯU BẢN DỊCH VÀO DB (Caching) để các user sau dùng luôn
+      narration = await this.prisma.narration.create({
+        data: {
+          storeId: nearbyStore.id,
+          languageId: targetLanguage.id,
+          textContent: translatedText,
+          isActive: true
+        }
+      });
+      console.log(`[Cache] Đã lưu bản dịch mới cho store ${nearbyStore.name} (${targetLangCode})`);
+    }
+
+    return {
+      found: true,
+      storeName: nearbyStore.name,
+      textContent: narration.textContent,
+      language: targetLangCode,
+      distance: Math.round(this.calculateDistance(lat, lng, nearbyStore.lat, nearbyStore.lng))
+    };
   }
 
   async findAll(page = 1, limit = 20, merchantId?: string) {

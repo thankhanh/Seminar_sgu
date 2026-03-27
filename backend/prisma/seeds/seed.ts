@@ -185,28 +185,6 @@ async function main() {
         });
 
         // Add Transactions
-        const tx = await prisma.transaction.create({
-            data: {
-                userId: u.id,
-                amount: new Prisma.Decimal(50000),
-                type: 'user_subscription' as TransactionType,
-                paymentMethod: 'vnpay' as PaymentMethod,
-                status: 'success' as TransactionStatus,
-                description: 'Đăng ký gói tháng người dùng (VNPAY)',
-            }
-        });
-
-        await prisma.paymentVnpay.create({
-            data: {
-                transactionId: tx.id,
-                vnpTxnRef: `VNP-${tx.id.slice(0, 8)}`,
-                vnpAmount: BigInt(5000000), 
-                vnpResponseCode: '00',
-                vnpTransactionNo: `TRANS-${Math.floor(Math.random() * 1000000)}`,
-            }
-        });
-
-        // Add dummy MoMo Transaction
         const txMomo = await prisma.transaction.create({
             data: {
                 userId: u.id,

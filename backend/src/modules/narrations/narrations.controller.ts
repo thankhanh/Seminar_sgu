@@ -29,6 +29,16 @@ export class NarrationsController {
     return this.narrService.findByStore(storeId);
   }
 
+  @Get('nearby')
+  @ApiOperation({ summary: 'Tìm thuyết minh gần vị trí hiện tại của app' })
+  findNearby(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('lang') lang: string,
+  ) {
+    return this.narrService.findNearby(Number(lat), Number(lng), lang || 'vi');
+  }
+
   @Get('narrations')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

@@ -1,198 +1,244 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView, Dimensions } from 'react-native';
-import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
+import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Speech from 'expo-speech';
+import api from '../../constants/api';
 
-// Mock data based on ID
-const MOCK_STALLS: any = {
-    '1': {
-        name: 'Ốc Oanh',
-        tag: 'Seafood',
-        rating: 4.8,
-        reviews: 320,
-        address: '#08 Vĩnh Khánh, Q4',
-        image: 'https://i.pinimg.com/736x/8f/ba/b6/8fbab6011c778408f65cc9e95fae4680.jpg',
-        description: 'Quán Ốc Oanh nổi tiếng với các món ốc tươi sống, hải sản đa dạng được chế biến đậm đà theo phong cách Sài Gòn đặc trưng.',
-        menu: [
-            { id: 1, name: 'Ốc Hương Xào Bơ Tỏi', price: '120.000đ', image: 'https://cdn.tgdd.vn/Files/2021/04/09/1342137/cach-lam-oc-huong-xao-bo-toi-thom-ngon-don-gian-nhat-cho-ca-nha-202201112217154238.jpg' },
-            { id: 2, name: 'Càng Ghẹ Rang Muối', price: '150.000đ', image: 'https://cdn.tgdd.vn/Files/2020/07/21/1272365/2-cach-lam-cang-ghe-rang-muoi-ot-va-muoi-tom-tay-ninh-cay-ngon-cuc-hic-202201041659103859.jpg' },
-        ],
-        audio: { title: 'Lịch sử Ốc Oanh', duration: '3:45' }
-    },
-    '2': {
-        name: 'Quầy #12 - Chè Ngon',
-        tag: 'Dessert',
-        rating: 4.5,
-        reviews: 156,
-        address: '#12 Vĩnh Khánh, Q4',
-        image: 'https://cdn.tgdd.vn/2020/09/CookProduct/sdsd-1200x676.jpg',
-        description: 'Chuyên các loại chè Nam Bộ thanh mát, ngọt dịu. Các nguyên liệu được nấu thủ công mỗi ngày.',
-        menu: [
-            { id: 1, name: 'Chè Khúc Bạch', price: '35.000đ', image: 'https://cdn.tgdd.vn/2021/05/CookRecipe/GalleryStep/thanh-pham-1801.jpg' },
-            { id: 2, name: 'Chè Bưởi', price: '25.000đ', image: 'https://cdn.tgdd.vn/2020/09/CookProduct/1200-1200x676-5.jpg' },
-        ],
-        audio: { title: 'Cách nấu chè truyền thống', duration: '2:10' }
-    },
-    '3': {
-        name: 'Quầy #15 - Bánh Tráng',
-        tag: 'Street Food',
-        rating: 4.2,
-        reviews: 420,
-        address: '#15 Vĩnh Khánh, Q4',
-        image: 'https://cdn.tgdd.vn/Files/2019/12/28/1228945/cach-lam-banh-trang-tron-tai-nha-ngon-nhu-ngoai-hang-202112310931165261.jpeg',
-        description: 'Bánh tráng trộn siêu topping với khô bò, trứng cút, mỡ hành tép sấy. Vị cay cay mặn ngọt chuẩn vị sinh viên.',
-        menu: [
-            { id: 1, name: 'Bánh Tráng Trộn Đặc Biệt', price: '25.000đ', image: 'https://static.vinwonders.com/production/banh-trang-tron-1.jpg' },
-        ],
-        audio: { title: 'Văn hóa Bánh Tráng Trộn', duration: '1:50' }
-    }
+interface StoreDetail {
+    id: string;
+    name: string;
+    address: string;
+    description?: string;
+    coverImage?: string;
+    openTime?: string;
+    closeTime?: string;
+    status: string;
+    merchant?: { businessName: string };
+}
+
+interface MenuItem {
+    id: string;
+    name: string;
+    description?: string;
+    price: number;
+    imageUrl?: string;
+}
+
+interface Narration {
+    id: string;
+    textContent?: string;
+    language: { code: string; name: string; flagIcon: string };
+}
+
+const SPEECH_LANG_MAP: Record<string, string> = {
+    vi: 'vi-VN', en: 'en-US', zh: 'zh-CN', ko: 'ko-KR', ja: 'ja-JP', fr: 'fr-FR',
 };
 
 export default function StallDetailScreen() {
     const params = useLocalSearchParams();
     const router = useRouter();
-    const pathName = usePathname();
-    const [activeTab, setActiveTab] = useState<'intro' | 'menu' | 'audio'>('intro');
-    const [isPlaying, setIsPlaying] = useState(false);
+    const storeId = params?.id as string;
 
-    const id = params?.id;
-    // Luôn ép kiểu về string để khớp với Key của MOCK_STALLS
-    const stallId = (id && MOCK_STALLS[id as string]) ? (id as string) : '1';
-    const stall = MOCK_STALLS[stallId];
+    const [store, setStore] = useState<StoreDetail | null>(null);
+    const [menus, setMenus] = useState<MenuItem[]>([]);
+    const [narrations, setNarrations] = useState<Narration[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [activeNarration, setActiveNarration] = useState<Narration | null>(null);
 
     useEffect(() => {
+        if (!storeId) return;
+        const loadAll = async () => {
+            try {
+                const [storeRes, menuRes, narrRes] = await Promise.all([
+                    api.get(`/stores/${storeId}`),
+                    api.get(`/menus`, { params: { storeId } }),
+                    api.get(`/narrations/store/${storeId}`).catch(() => ({ data: { success: false } })),
+                ]);
+                if (storeRes.data.success) setStore(storeRes.data.data);
+                if (menuRes.data.success) setMenus(menuRes.data.data?.data ?? menuRes.data.data ?? []);
+                if (narrRes.data.success) {
+                    const narrs = narrRes.data.data ?? [];
+                    setNarrations(narrs);
+                    setActiveNarration(narrs[0] ?? null);
+                }
+            } catch (error) {
+                console.warn('Lỗi tải dữ liệu quán:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadAll();
+    }, [storeId]);
 
-        console.log('PathName: ', pathName);
-        console.log('ActiveTab: ', activeTab);
-        console.log('Stall: ', stall);
-    }, []);
+    const playNarration = () => {
+        if (!activeNarration?.textContent) return;
+        if (isPlaying) {
+            Speech.stop();
+            setIsPlaying(false);
+            return;
+        }
+        setIsPlaying(true);
+        Speech.speak(activeNarration.textContent, {
+            language: SPEECH_LANG_MAP[activeNarration.language?.code] ?? 'vi-VN',
+            rate: 0.9,
+            onDone: () => setIsPlaying(false),
+            onError: () => setIsPlaying(false),
+        });
+    };
+
+    if (isLoading) {
+        return (
+            <SafeAreaView className="flex-1 bg-white items-center justify-center">
+                <ActivityIndicator size="large" color="#009FB7" />
+                <Text className="text-[#9CA3AF] mt-4">Đang tải thông tin quán...</Text>
+            </SafeAreaView>
+        );
+    }
+
+    if (!store) {
+        return (
+            <SafeAreaView className="flex-1 bg-white items-center justify-center">
+                <Ionicons name="storefront-outline" size={64} color="#E5E7EB" />
+                <Text className="text-[#9CA3AF] text-base mt-4">Không tìm thấy thông tin quán</Text>
+                <TouchableOpacity onPress={() => router.back()} className="mt-4">
+                    <Text className="text-[#009FB7] font-bold">← Quay lại</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView className="flex-1 bg-white">
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 {/* HERO IMAGE */}
                 <View className="relative w-full h-[210px]">
-                    <Image source={{ uri: stall.image }} className="w-full h-full" resizeMode="cover" />
+                    {store.coverImage ? (
+                        <Image source={{ uri: store.coverImage }} className="w-full h-full" resizeMode="cover" />
+                    ) : (
+                        <View className="w-full h-full bg-[#E5E7EB] items-center justify-center">
+                            <Ionicons name="storefront-outline" size={60} color="#9CA3AF" />
+                        </View>
+                    )}
                     <View className="absolute inset-0 bg-black/40" />
-
                     {/* Header Actions */}
                     <View className="absolute top-4 left-4 right-4 flex-row justify-between items-center z-10">
                         <TouchableOpacity
                             onPress={() => router.back()}
-                            className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md items-center justify-center border border-white/30"
+                            className="w-10 h-10 rounded-full bg-white/20 items-center justify-center border border-white/30"
                         >
                             <Ionicons name="arrow-back" size={24} color="white" />
                         </TouchableOpacity>
-                        <View className="flex-row">
-                            <TouchableOpacity className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md items-center justify-center border border-white/30 mr-2">
-                                <Ionicons name="share-social-outline" size={22} color="white" />
-                            </TouchableOpacity>
-                            <TouchableOpacity className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md items-center justify-center border border-white/30">
-                                <Ionicons name="heart-outline" size={24} color="white" />
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity className="w-10 h-10 rounded-full bg-white/20 items-center justify-center border border-white/30">
+                            <Ionicons name="share-social-outline" size={22} color="white" />
+                        </TouchableOpacity>
                     </View>
-
                     {/* Bottom Info inside Hero */}
                     <View className="absolute bottom-4 left-4 right-4">
                         <View className="bg-[#009FB7] px-2 py-1 rounded-md self-start mb-2">
-                            <Text className="text-[10px] font-bold text-white uppercase tracking-wider">{stall.tag}</Text>
+                            <Text className="text-[10px] font-bold text-white uppercase tracking-wider">
+                                {store.merchant?.businessName ?? 'Quán ăn'}
+                            </Text>
                         </View>
-                        <Text className="text-3xl font-extrabold text-white shadow-lg">{stall.name}</Text>
+                        <Text className="text-3xl font-extrabold text-white shadow-lg">{store.name}</Text>
                         <View className="flex-row items-center mt-2">
                             <Ionicons name="location-outline" size={14} color="white" />
-                            <Text className="text-white text-xs font-medium ml-1 mr-4">{stall.address}</Text>
-                            <Ionicons name="star" size={14} color="#FBBF24" />
-                            <Text className="text-white text-xs font-bold ml-1">{stall.rating}</Text>
-                            <Text className="text-white/80 text-xs ml-1">({stall.reviews})</Text>
+                            <Text className="text-white text-xs font-medium ml-1" numberOfLines={1}>{store.address}</Text>
                         </View>
                     </View>
                 </View>
 
-                <View className="bg-white rounded-t-3xl -mt-4 pt-6 px-5 flex flex-col gap-5 min-h-[500px]">
-                    {/* TAB CONTENT: AUDIO */}
-                    <View className='rounded-xl bg-[#F3F4F6] p-5'>
-                        <View className="items-center mt-6">
-                            <View className="w-24 h-24 rounded-full bg-[#F4FBFC] items-center justify-center border-4 border-[#B3EBF2] shadow-sm mb-6 relative overflow-hidden">
-                                {isPlaying ? <View className="absolute inset-0 bg-[#009FB7] opacity-10" /> : null}
-                                <Ionicons name={isPlaying ? "headset" : "headset-outline"} size={40} color="#009FB7" />
-                            </View>
-
-                            <Text className="text-[#1F2937] font-bold text-lg text-center mb-1">{stall.audio.title}</Text>
-                            <Text className="text-[#6B7280] text-[13px]">Tour Ẩm Thực Vĩnh Khánh</Text>
-
-                            <View className="w-full mt-8">
-                                {/* Progress Bar */}
-                                <View className="w-full h-1.5 bg-gray-200 rounded-full mb-3">
-                                    <View className="w-1/3 h-1.5 bg-[#009FB7] rounded-full" />
+                <View className="bg-white rounded-t-3xl -mt-4 pt-6 px-5 gap-5">
+                    {/* === AUDIO CARD === */}
+                    {activeNarration && (
+                        <View className="rounded-xl bg-[#F3F4F6] p-5">
+                            {narrations.length > 1 && (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                                    {narrations.map((n) => (
+                                        <TouchableOpacity
+                                            key={n.id}
+                                            onPress={() => { Speech.stop(); setIsPlaying(false); setActiveNarration(n); }}
+                                            className={`flex-row items-center px-3 py-1.5 rounded-full mr-2 ${activeNarration.id === n.id ? 'bg-[#009FB7]' : 'bg-white border border-[#E5E7EB]'}`}
+                                        >
+                                            <Text className="text-sm mr-1">{n.language?.flagIcon}</Text>
+                                            <Text className={`text-xs font-bold ${activeNarration.id === n.id ? 'text-white' : 'text-[#4B5563]'}`}>
+                                                {n.language?.name}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            )}
+                            <View className="items-center">
+                                <View className="w-24 h-24 rounded-full bg-[#F4FBFC] items-center justify-center border-4 border-[#B3EBF2] mb-6">
+                                    <Ionicons name={isPlaying ? "headset" : "headset-outline"} size={40} color="#009FB7" />
                                 </View>
-                                <View className="flex-row justify-between w-full">
-                                    <Text className="text-xs text-[#6B7280] font-medium">1:15</Text>
-                                    <Text className="text-xs text-[#6B7280] font-medium">{stall.audio.duration}</Text>
-                                </View>
-                            </View>
-
-                            {/* Controls */}
-                            <View className="flex-row items-center justify-center mt-8 w-full gap-8">
-                                <TouchableOpacity>
-                                    <Ionicons name="play-skip-back" size={32} color="#4B5563" />
-                                </TouchableOpacity>
-
+                                <Text className="text-[#1F2937] font-bold text-lg text-center mb-1">
+                                    Thuyết minh: {activeNarration.language?.name}
+                                </Text>
+                                <Text className="text-[#6B7280] text-[13px]">Hướng dẫn âm thanh tự động</Text>
                                 <TouchableOpacity
-                                    onPress={() => setIsPlaying(!isPlaying)}
-                                    className="w-16 h-16 rounded-full bg-[#009FB7] items-center justify-center shadow-lg"
+                                    onPress={playNarration}
+                                    className={`mt-6 w-16 h-16 rounded-full items-center justify-center shadow-lg ${isPlaying ? 'bg-red-500' : 'bg-[#009FB7]'}`}
                                 >
-                                    <Ionicons name={isPlaying ? "pause" : "play"} size={32} color="white" style={{ marginLeft: isPlaying ? 0 : 4 }} />
+                                    <Ionicons name={isPlaying ? "stop" : "play"} size={32} color="white" style={{ marginLeft: isPlaying ? 0 : 4 }} />
                                 </TouchableOpacity>
-
-                                <TouchableOpacity>
-                                    <Ionicons name="play-skip-forward" size={32} color="#4B5563" />
-                                </TouchableOpacity>
+                                {activeNarration.textContent && (
+                                    <Text className="text-[#9CA3AF] text-xs text-center mt-4 px-2" numberOfLines={3}>
+                                        {activeNarration.textContent}
+                                    </Text>
+                                )}
                             </View>
                         </View>
-                    </View>
-                    {/* TAB CONTENT: INTRODUCTION */}
-                    <View className='rounded-xl bg-[#F3F4F6] p-5'>
-                        <View>
-                            <Text className="text-[#009FB7] text-2xl leading-6 font-bold text-center mb-5">
-                                Giới thiệu
-                            </Text>
-                            <Text className="text-[#1F2937] text-base leading-6 font-medium">
-                                {stall.description}
-                            </Text>
+                    )}
 
-                            <View className="mt-8 flex-row items-center justify-between p-4 bg-[#F4FBFC] border border-[#B3EBF2] rounded-2xl">
-                                <View className="flex-row items-center">
-                                    <View className="w-10 h-10 rounded-full bg-[#009FB7] items-center justify-center">
-                                        <Ionicons name="time-outline" size={20} color="white" />
-                                    </View>
-                                    <View className="ml-3">
-                                        <Text className="text-[#1F2937] font-bold text-[13px]">Giờ hoạt động</Text>
-                                        <Text className="text-[#4B5563] text-xs mt-0.5">16:00 - 23:30 hằng ngày</Text>
-                                    </View>
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-                    {/* TAB CONTENT: MENU */}
-                    <View className='rounded-xl bg-[#F3F4F6] p-5'>
-                        <Text className="text-[#009FB7] text-2xl leading-6 font-bold text-center mb-5">
-                            Thực đơn
+                    {/* === INTRODUCTION === */}
+                    <View className="rounded-xl bg-[#F3F4F6] p-5">
+                        <Text className="text-[#009FB7] text-2xl font-bold text-center mb-5">Giới thiệu</Text>
+                        <Text className="text-[#1F2937] text-base leading-6 font-medium">
+                            {store.description ?? 'Một địa điểm ẩm thực tuyệt vời tại khu phố Vĩnh Khánh.'}
                         </Text>
-                        {stall.menu.map((item: any) => (
-                            <View key={item.id} className="flex-row items-center bg-white border border-gray-100 p-3 rounded-2xl mb-3 shadow-sm">
-                                <Image source={{ uri: item.image }} className="w-20 h-20 rounded-xl bg-gray-100" />
-                                <View className="flex-1 ml-3 h-20 justify-center">
-                                    <Text className="text-[#1F2937] font-bold text-[15px] mb-2">{item.name}</Text>
-                                    <Text className="text-[#009FB7] font-extrabold text-[14px]">{item.price}</Text>
+                        {(store.openTime || store.closeTime) && (
+                            <View className="mt-8 flex-row items-center p-4 bg-[#F4FBFC] border border-[#B3EBF2] rounded-2xl">
+                                <View className="w-10 h-10 rounded-full bg-[#009FB7] items-center justify-center">
+                                    <Ionicons name="time-outline" size={20} color="white" />
                                 </View>
-                                <TouchableOpacity className="w-8 h-8 rounded-full bg-[#F4FBFC] items-center justify-center">
-                                    <Ionicons name="add" size={20} color="#009FB7" />
-                                </TouchableOpacity>
+                                <View className="ml-3">
+                                    <Text className="text-[#1F2937] font-bold text-[13px]">Giờ hoạt động</Text>
+                                    <Text className="text-[#4B5563] text-xs mt-0.5">
+                                        {store.openTime} - {store.closeTime} hằng ngày
+                                    </Text>
+                                </View>
                             </View>
-                        ))}
+                        )}
                     </View>
 
-
+                    {/* === MENU === */}
+                    {menus.length > 0 && (
+                        <View className="rounded-xl bg-[#F3F4F6] p-5 mb-6">
+                            <Text className="text-[#009FB7] text-2xl font-bold text-center mb-5">Thực đơn</Text>
+                            {menus.map((item) => (
+                                <View key={item.id} className="flex-row items-center bg-white border border-gray-100 p-3 rounded-2xl mb-3 shadow-sm">
+                                    {item.imageUrl ? (
+                                        <Image source={{ uri: item.imageUrl }} className="w-20 h-20 rounded-xl bg-gray-100" />
+                                    ) : (
+                                        <View className="w-20 h-20 rounded-xl bg-[#E5E7EB] items-center justify-center">
+                                            <Ionicons name="restaurant-outline" size={28} color="#9CA3AF" />
+                                        </View>
+                                    )}
+                                    <View className="flex-1 ml-3 justify-center">
+                                        <Text className="text-[#1F2937] font-bold text-[15px] mb-2">{item.name}</Text>
+                                        <Text className="text-[#009FB7] font-extrabold text-[14px]">
+                                            {Number(item.price).toLocaleString('vi-VN')}đ
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity className="w-8 h-8 rounded-full bg-[#F4FBFC] items-center justify-center">
+                                        <Ionicons name="add" size={20} color="#009FB7" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </View>
+                    )}
                 </View>
             </ScrollView>
         </SafeAreaView>

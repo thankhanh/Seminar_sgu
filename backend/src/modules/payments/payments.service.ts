@@ -47,7 +47,7 @@ export class PaymentsService {
         where: { planKey: dto.type },
       });
       if (!metadata) throw new BadRequestException('Gói dịch vụ không hợp lệ');
-      amount = metadata.price;
+      amount = Number(metadata.price);
       label = `Thanh toán gói ${metadata.name}`;
     }
 
@@ -229,7 +229,7 @@ export class PaymentsService {
         where: { planKey: dto.type },
       });
       if (!metadata) throw new BadRequestException('Gói dịch vụ không hợp lệ');
-      amount = metadata.price;
+      amount = Number(metadata.price);
       label = `Thanh toán gói ${metadata.name}`;
     }
 

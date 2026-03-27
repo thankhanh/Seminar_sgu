@@ -3,8 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../../../constants/api';
+import api, { authHelpers } from '../../../constants/api';
 
 export default function EditProfileScreen() {
     const router = useRouter();
@@ -16,17 +15,14 @@ export default function EditProfileScreen() {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const token = await AsyncStorage.getItem('access_token');
-                if (!token) {
+                const user = await authHelpers.getUser();
+                if (!user) {
                     router.replace('/(auth)/login');
                     return;
                 }
-                const res = await fetch(`${API_URL}/users/me`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const body = await res.json();
-                if (res.ok) {
-                    const userData = body.data || body.user || body;
+                const { data } = await api.get('/users/me');
+                if (data.success) {
+                    const userData = data.data;
                     setName(userData.name || '');
                     setPhone(userData.phone || '');
                 }
@@ -46,22 +42,14 @@ export default function EditProfileScreen() {
         }
         setIsSaving(true);
         try {
-            const token = await AsyncStorage.getItem('access_token');
-            const res = await fetch(`${API_URL}/users/me`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ name, phone })
-            });
-            const body = await res.json();
-            if (!res.ok) throw new Error(body.message || 'Cập nhật thất bại');
+            const { data } = await api.patch('/users/me', { name, phone });
+            if (!data.success) throw new Error(data.message || 'Cập nhật thất bại');
 
             Alert.alert('Thành công', 'Đã cập nhật thông tin cá nhân!');
             router.back();
         } catch (error: any) {
-            Alert.alert('Lỗi', error.message);
+            const msg = error?.response?.data?.message || error.message;
+            Alert.alert('Lỗi', msg);
         } finally {
             setIsSaving(false);
         }

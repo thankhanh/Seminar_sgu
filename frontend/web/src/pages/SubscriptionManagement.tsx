@@ -26,6 +26,8 @@ const SubscriptionManagement: React.FC = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingPlan, setEditingPlan] = useState<any>(null);
     const [grantForm, setGrantForm] = useState({ email: '', planKey: '' });
+    const [merchantSubs, setMerchantSubs] = useState<any[]>([]);
+    const [userSubs, setUserSubs] = useState<any[]>([]);
 
     useEffect(() => {
         initData();
@@ -34,12 +36,18 @@ const SubscriptionManagement: React.FC = () => {
     const initData = async () => {
         setLoading(true);
         try {
-            const [plansData, subData] = await Promise.all([
+            const [plansData, subData, mSubsData, uSubsData] = await Promise.all([
                 planMetadataApi.getAll(),
-                !isAdmin ? subscriptionsApi.getMy() : Promise.resolve(null)
+                !isAdmin ? subscriptionsApi.getMy() : Promise.resolve(null),
+                isAdmin ? subscriptionsApi.getAll(1, 100).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+                isAdmin ? subscriptionsApi.getAllUser(1, 100).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
             ]);
             setAllPlans(plansData);
             if (!isAdmin) setCurrentSub(subData);
+            if (isAdmin) {
+                setMerchantSubs(mSubsData?.data || []);
+                setUserSubs(uSubsData?.data || []);
+            }
         } catch (err) {
             console.error('Lỗi khi tải dữ liệu:', err);
         } finally {
@@ -210,7 +218,7 @@ const SubscriptionManagement: React.FC = () => {
                                                 </div>
                                                 {activeTab === 'merchant' && (
                                                     <div className="text-slate-400 text-sm flex items-center gap-1">
-                                                        <Store size={14} /> Max {plan.maxStore} stores | {plan.maxPOI} POIs
+                                                        <Store size={14} /> Tối đa {plan.maxPOI} POIs
                                                     </div>
                                                 )}
                                             </div>
@@ -275,6 +283,60 @@ const SubscriptionManagement: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Subscriptions List */}
+                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm mt-8">
+                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                        <h3 className="font-bold text-slate-800 uppercase tracking-wider text-sm flex items-center gap-2">
+                            Danh sách {activeTab === 'merchant' ? 'Chủ quán' : 'Người dùng'} đã đăng ký
+                        </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-slate-200 text-sm text-slate-500 font-bold bg-slate-50">
+                                    <th className="px-6 py-4">Tài khoản</th>
+                                    <th className="px-6 py-4">Gói dịch vụ</th>
+                                    <th className="px-6 py-4">Ngày bắt đầu</th>
+                                    <th className="px-6 py-4">Ngày hết hạn</th>
+                                    <th className="px-6 py-4">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {(activeTab === 'merchant' ? merchantSubs : userSubs).map((sub: any) => (
+                                    <tr key={sub.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-6 py-4 text-sm font-bold text-slate-900">
+                                            {activeTab === 'merchant' ? (
+                                                <div>
+                                                    <div>{sub.merchant?.businessName || 'Không xác định'}</div>
+                                                    <div className="text-slate-500 font-normal">{sub.merchant?.user?.email}</div>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <div>{sub.user?.name || 'Không xác định'}</div>
+                                                    <div className="text-slate-500 font-normal">{sub.user?.email}</div>
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-bold uppercase text-indigo-600">{sub.plan}</td>
+                                        <td className="px-6 py-4 text-sm text-slate-600">{new Date(sub.startDate).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 text-sm text-slate-600">{new Date(sub.endDate).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-3 py-1 text-[10px] font-bold uppercase rounded-full ${sub.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                                {sub.status === 'active' ? 'Hoạt động' : 'Đã hủy/Hết hạn'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {(activeTab === 'merchant' ? merchantSubs : userSubs).length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-8 text-center text-slate-500 font-medium">Chưa có ai đăng ký gói này.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 {/* Edit Modal */}
                 {showEditModal && editingPlan && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -304,18 +366,9 @@ const SubscriptionManagement: React.FC = () => {
                                     />
                                 </div>
                                 {activeTab === 'merchant' && (
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
                                         <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Max. Cửa hàng</label>
-                                            <input
-                                                type="number"
-                                                value={editingPlan.maxStore}
-                                                onChange={e => setEditingPlan({ ...editingPlan, maxStore: e.target.value })}
-                                                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 transition-all font-medium"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Max. POIs</label>
+                                            <label className="block text-sm font-bold text-slate-700 mb-2">Số lượng POI tối đa</label>
                                             <input
                                                 type="number"
                                                 value={editingPlan.maxPOI}
@@ -406,7 +459,7 @@ const SubscriptionManagement: React.FC = () => {
                         </div>
                         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 w-full md:w-auto text-center">
                             <div className="text-sm font-medium text-primary-100 mb-1">Quyền lợi hiện tại</div>
-                            <div className="text-2xl font-bold">{currentSub.maxStore} Cửa hàng | {currentSub.maxPOI} POIs</div>
+                            <div className="text-2xl font-bold">{currentSub.maxPOI} POIs</div>
                         </div>
                     </div>
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
@@ -447,11 +500,7 @@ const SubscriptionManagement: React.FC = () => {
                         <div className="space-y-4 mb-8 flex-1">
                             <div className="flex items-start gap-3 text-sm font-medium text-slate-600">
                                 <Check className="text-emerald-500 shrink-0 mt-0.5" size={16} />
-                                Quản lý tối đa {plan.maxStore} địa điểm
-                            </div>
-                            <div className="flex items-start gap-3 text-sm font-medium text-slate-600">
-                                <Check className="text-emerald-500 shrink-0 mt-0.5" size={16} />
-                                {plan.maxPOI} địa điểm thuyết minh (POI)
+                                Quản lý tối đa {plan.maxPOI} địa điểm thuyết minh (POI)
                             </div>
                             {plan.features?.map((f: string, i: number) => (
                                 <div key={i} className="flex items-start gap-3 text-sm font-medium text-slate-600">

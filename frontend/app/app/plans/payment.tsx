@@ -24,18 +24,9 @@ export default function PaymentScreen() {
 
     setIsProcessing(true);
     try {
-      // Map frontend plan keys to backend SubscriptionTypeEnum
-      // Backend expects: USER_MONTHLY, USER_YEARLY, MERCHANT_STARTER, etc.
-      let type = '';
-      if (planKey.includes('starter')) type = 'merchant_starter';
-      else if (planKey.includes('business')) type = 'merchant_business';
-      else if (planKey.includes('premium')) type = 'merchant_premium';
-      else if (planKey === 'monthly') type = 'user_monthly';
-      else if (planKey === 'yearly') type = 'user_yearly';
-
       const { data: json } = await api.post('/payments/create', {
         method: 'momo',
-        type: type,
+        type: planKey,
         amount: price,
         orderInfo: `Nâng cấp gói ${planName}`,
       });

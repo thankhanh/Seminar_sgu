@@ -115,6 +115,7 @@ export const subscriptionsApi = {
     create: (dto: any) => unwrapData(apiClient.post('/merchant-subscriptions', dto)),
     getMy: () => unwrapData(apiClient.get('/merchant-subscriptions/my')),
     getAll: (page = 1, limit = 10) => unwrapData(apiClient.get(`/merchant-subscriptions`, { params: { page, limit } })),
+    getAllUser: (page = 1, limit = 10) => unwrapData(apiClient.get(`/subscriptions`, { params: { page, limit } })),
     cancel: (id: string) => unwrapData(apiClient.patch(`/merchant-subscriptions/${id}/cancel`)),
     grantMerchantPlan: (dto: { email: string, plan: string }) => unwrapData(apiClient.post('/merchant-subscriptions/admin/grant', dto)),
     grantUserPlan: (dto: { email: string, plan: string }) => unwrapData(apiClient.post('/subscriptions/admin/grant', dto)),

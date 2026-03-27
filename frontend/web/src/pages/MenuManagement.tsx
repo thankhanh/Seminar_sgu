@@ -29,7 +29,9 @@ const MenuManagement: React.FC = () => {
         setLoading(true);
         try {
             const merchantData = (await merchantApi.getMe()) as any;
-            const stores = merchantData.stores || [];
+            const rawStores = (merchantData.stores || []) as StoreType[];
+            // Deduplicate by ID
+            const stores = Array.from(new Map(rawStores.map((s) => [s.id, s])).values());
             setMyStores(stores);
             
             if (stores.length > 0) {

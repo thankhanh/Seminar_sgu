@@ -59,7 +59,7 @@ const SidebarLayout: React.FC = () => {
                         <LayoutDashboard className="text-white w-6 h-6" />
                     </div>
                     <span className="text-xl font-bold bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">
-                        Merchant CMS
+                        {user?.role === 'admin' ? 'Admin CMS' : 'Merchant CMS'}
                     </span>
                 </div>
 

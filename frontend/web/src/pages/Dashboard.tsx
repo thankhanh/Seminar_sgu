@@ -173,11 +173,11 @@ const Dashboard: React.FC = () => {
                     <div className="space-y-6 flex-1">
                         <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
                              <div className="text-sm font-bold text-slate-600 mb-1">Cần phê duyệt</div>
-                             <div className="text-2xl font-black text-amber-600">{stats?.merchantCount || 0}</div>
+                             <div className="text-2xl font-black text-amber-600">{stats?.merchantCountPending || 0}</div>
                         </div>
                         <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
                              <div className="text-sm font-bold text-slate-600 mb-1">Cửa hàng đang mở</div>
-                             <div className="text-2xl font-black text-emerald-600">{stats?.storeCount || 0}</div>
+                             <div className="text-2xl font-black text-emerald-600">{stats?.storeCountActive || 0}</div>
                         </div>
                     </div>
                     <button 

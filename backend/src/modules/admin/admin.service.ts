@@ -124,7 +124,9 @@ export class AdminService {
     const [
       userCount,
       merchantCount,
+      merchantCountPending,
       storeCount,
+      storeCountActive,
       transactionCount,
       totalRevenue,
       lastMonthUserCount,
@@ -134,7 +136,9 @@ export class AdminService {
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.merchant.count(),
+      this.prisma.merchant.count({ where: { status: 'pending' } }),
       this.prisma.store.count(),
+      this.prisma.store.count({ where: { status: 'active' } }),
       this.prisma.transaction.count({ where: { status: 'success' } }),
       this.prisma.transaction.aggregate({
         where: { status: 'success' },
@@ -176,7 +180,9 @@ export class AdminService {
     return {
       userCount,
       merchantCount,
+      merchantCountPending,
       storeCount,
+      storeCountActive,
       transactionCount,
       totalRevenue: Number(totalRevenue._sum.amount || 0),
       userGrowth: calculateGrowth(userCount, lastMonthUserCount),

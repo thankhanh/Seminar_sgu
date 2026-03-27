@@ -48,12 +48,16 @@ const AudioManagement: React.FC = () => {
                 ])) as any[];
                 setNarrations(narrRes.data || []);
                 setTotalNarrations(narrRes.total || 0);
-                setMyStores(storeRes.data || []);
+                
+                const rawStores = (storeRes.data || []) as StoreType[];
+                const uniqueStores = Array.from(new Map(rawStores.map(s => [s.id, s])).values());
+                setMyStores(uniqueStores);
             } else {
                 // 2b. Đối với Merchant: Lấy thông tin cá nhân và narrations theo merchant
                 const merchantRes = (await merchantApi.getMe()) as any;
-                const stores = merchantRes.stores || [];
-                setMyStores(stores);
+                const rawStores = (merchantRes.stores || []) as StoreType[];
+                const uniqueStores = Array.from(new Map(rawStores.map(s => [s.id, s])).values());
+                setMyStores(uniqueStores);
 
                 if (merchantRes.id) {
                     const narrRes = (await narrationsApi.getAll(pageNum, limit, merchantRes.id)) as any;

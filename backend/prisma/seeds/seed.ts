@@ -100,54 +100,78 @@ async function main() {
         ];
 
         for (const sData of storesData) {
-            const store = await prisma.store.create({
-                data: {
+            // Check if store already exists to avoid duplicates
+            let store = await prisma.store.findFirst({
+                where: {
                     merchantId: m.id,
-                    name: sData.name,
-                    address: 'Vĩnh Khánh, Thoại Sơn, An Giang',
-                    description: `Một địa điểm tuyệt vời thuộc hệ thống ${m.businessName}`,
-                    lat: sData.lat,
-                    lng: sData.lng,
-                    status: 'active' as StoreStatus,
-                    openTime: '07:00',
-                    closeTime: '21:00',
-                    coverImage: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24',
-                },
+                    name: sData.name
+                }
             });
+
+            if (!store) {
+                store = await prisma.store.create({
+                    data: {
+                        merchantId: m.id,
+                        name: sData.name,
+                        address: 'Vĩnh Khánh, Thoại Sơn, An Giang',
+                        description: `Một địa điểm tuyệt vời thuộc hệ thống ${m.businessName}`,
+                        lat: sData.lat,
+                        lng: sData.lng,
+                        status: 'active' as StoreStatus,
+                        openTime: '07:00',
+                        closeTime: '21:00',
+                        coverImage: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24',
+                    },
+                });
+            }
             stores.push(store);
 
             await prisma.storeImage.create({
                 data: { storeId: store.id, imageUrl: 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8', sortOrder: 1 }
             });
 
-            await prisma.menu.create({
-                data: {
-                    storeId: store.id,
-                    name: 'Đặc sản địa phương',
-                    price: new Prisma.Decimal(45000),
-                    description: 'Món ăn truyền thống đậm đà bản sắc.',
+            if (store) {
+                // Only create these if they don't exist for the store
+                const existingMenu = await prisma.menu.findFirst({ where: { storeId: store.id, name: 'Đặc sản địa phương' } });
+                if (!existingMenu) {
+                    await prisma.menu.create({
+                        data: {
+                            storeId: store.id,
+                            name: 'Đặc sản địa phương',
+                            price: new Prisma.Decimal(45000),
+                            description: 'Món ăn truyền thống đậm đà bản sắc.',
+                        }
+                    });
                 }
-            });
 
-            await prisma.qrCode.create({
-                data: {
-                    storeId: store.id,
-                    code: `QR-${store.id.slice(0, 8)}`,
-                    qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=TOUR-${store.id}`,
-                },
-            });
+                const existingQr = await prisma.qrCode.findFirst({ where: { storeId: store.id } });
+                if (!existingQr) {
+                    await prisma.qrCode.create({
+                        data: {
+                            storeId: store.id,
+                            code: `QR-${store.id.slice(0, 8)}`,
+                            qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=TOUR-${store.id}`,
+                        },
+                    });
+                }
 
-            // Narrations in multiple languages
-            for (let i = 0; i < 2; i++) {
-                await prisma.narration.create({
-                    data: {
-                        storeId: store.id,
-                        languageId: languages[i].id,
-                        textContent: `Chào mừng bạn đến với ${store.name}. Đây là điểm dừng chân lý tưởng dành cho du khách.`,
-                        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-                        duration: 180,
-                    },
-                });
+                // Narrations in multiple languages
+                for (let i = 0; i < 2; i++) {
+                    const existingNarr = await prisma.narration.findFirst({ 
+                        where: { storeId: store.id, languageId: languages[i].id } 
+                    });
+                    if (!existingNarr) {
+                        await prisma.narration.create({
+                            data: {
+                                storeId: store.id,
+                                languageId: languages[i].id,
+                                textContent: `Chào mừng bạn đến với ${store.name}. Đây là điểm dừng chân lý tưởng dành cho du khách.`,
+                                audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+                                duration: 180,
+                            },
+                        });
+                    }
+                }
             }
         }
     }

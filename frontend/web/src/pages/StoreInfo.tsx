@@ -31,7 +31,11 @@ const StoreInfo: React.FC = () => {
         setLoading(true);
         try {
             const merchant = await merchantApi.getMe();
-            const myStores: StoreForm[] = (merchant.stores || []).map((s: any) => ({
+            const rawStores = merchant.stores || [];
+            // Deduplicate by ID
+            const uniqueRawStores = Array.from(new Map(rawStores.map((s: any) => [s.id, s])).values());
+            
+            const myStores: StoreForm[] = uniqueRawStores.map((s: any) => ({
                 id: s.id,
                 name: s.name,
                 address: s.address || '',
@@ -43,6 +47,7 @@ const StoreInfo: React.FC = () => {
                 coverImage: s.coverImage || '',
                 status: s.status || '',
             }));
+            
             setStores(myStores);
             if (myStores.length > 0) {
                 // Determine which store to show (either the one already selected, or the first one)

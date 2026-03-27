@@ -33,10 +33,10 @@ const UserManagement: React.FC = () => {
     const fetchData = async (pageNum = page) => {
         setLoading(true);
         try {
-            const [usersRes, merchantsRes] = await Promise.all([
+            const [usersRes, merchantsRes] = (await Promise.all([
                 adminApi.getUsers(pageNum, limit),
-                adminApi.getMerchants(1, 100) // Keep fetching active merchants list for badges/approval
-            ]);
+                adminApi.getMerchants(1, 100)
+            ])) as any[];
             setUsers(usersRes.data || []);
             setTotalUsers(usersRes.total || 0);
             setMerchants(merchantsRes.data || []);

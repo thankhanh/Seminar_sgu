@@ -37,26 +37,26 @@ const AudioManagement: React.FC = () => {
         setLoading(true);
         try {
             // 1. Luôn lấy danh sách ngôn ngữ
-            const langRes = await languagesApi.getAll();
+            const langRes = (await languagesApi.getAll()) as any;
             setLanguages(langRes || []);
 
             if (user?.role === 'admin') {
                 // 2a. Đối với Admin: Lấy tất cả narrations và tất cả stores cho dropdown
-                const [narrRes, storeRes] = await Promise.all([
+                const [narrRes, storeRes] = (await Promise.all([
                     narrationsApi.getAll(pageNum, limit),
                     storesApi.getAll(1, 100)
-                ]);
+                ])) as any[];
                 setNarrations(narrRes.data || []);
                 setTotalNarrations(narrRes.total || 0);
                 setMyStores(storeRes.data || []);
             } else {
                 // 2b. Đối với Merchant: Lấy thông tin cá nhân và narrations theo merchant
-                const merchantRes = await merchantApi.getMe();
+                const merchantRes = (await merchantApi.getMe()) as any;
                 const stores = merchantRes.stores || [];
                 setMyStores(stores);
 
                 if (merchantRes.id) {
-                    const narrRes = await narrationsApi.getAll(pageNum, limit, merchantRes.id);
+                    const narrRes = (await narrationsApi.getAll(pageNum, limit, merchantRes.id)) as any;
                     setNarrations(narrRes.data || []);
                     setTotalNarrations(narrRes.total || 0);
                 }

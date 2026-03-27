@@ -6,38 +6,49 @@ export declare class MerchantController {
     register(user: {
         id: string;
     }, dto: RegisterMerchantDto): Promise<{
-        status: import(".prisma/client").$Enums.MerchantStatus;
-        businessName: string;
-        taxCode: string | null;
         id: string;
         createdAt: Date;
+        businessName: string;
+        taxCode: string | null;
+        status: import(".prisma/client").$Enums.MerchantStatus;
         rejectReason: string | null;
         userId: string;
     }>;
     getMyMerchant(user: {
         id: string;
     }): Promise<{
-        stores: {
-            status: import(".prisma/client").$Enums.StoreStatus;
-            description: string | null;
-            name: string;
+        merchantSubscriptions: {
             id: string;
             createdAt: Date;
+            status: import(".prisma/client").$Enums.SubscriptionStatus;
+            merchantId: string;
+            plan: import(".prisma/client").$Enums.MerchantPlan;
+            maxStore: number;
+            maxPOI: number;
+            startDate: Date;
+            endDate: Date;
+        }[];
+        stores: {
+            id: string;
+            name: string;
+            createdAt: Date;
             updatedAt: Date;
+            status: import(".prisma/client").$Enums.StoreStatus;
+            description: string | null;
+            merchantId: string;
             address: string;
             lat: number;
             lng: number;
             openTime: string | null;
             closeTime: string | null;
             coverImage: string | null;
-            merchantId: string;
         }[];
     } & {
-        status: import(".prisma/client").$Enums.MerchantStatus;
-        businessName: string;
-        taxCode: string | null;
         id: string;
         createdAt: Date;
+        businessName: string;
+        taxCode: string | null;
+        status: import(".prisma/client").$Enums.MerchantStatus;
         rejectReason: string | null;
         userId: string;
     }>;

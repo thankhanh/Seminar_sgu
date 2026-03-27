@@ -30,7 +30,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('admin_token');
       if (token) {
         try {
-          const { user: userData } = await authApi.getMe();
+          const data = await authApi.getMe() as any;
+          const { user: userData } = data;
           setUser(userData);
         } catch (err) {
           console.error('Token expired or invalid', err);
@@ -47,8 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const response = await authApi.login({ email, password });
-      // response is { success, data: { accessToken, user } } OR just { accessToken, user } 
-      // based on my apiFetch wrapper
+      // response is { success, data: { accessToken, user } }
       const { accessToken, user: userData } = response.data;
       
       localStorage.setItem('admin_token', accessToken);

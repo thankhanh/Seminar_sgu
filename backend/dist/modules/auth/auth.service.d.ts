@@ -13,10 +13,10 @@ export declare class AuthService {
         accessToken: string;
         refreshToken: string;
         user: {
-            name: string;
-            email: string;
-            role: import(".prisma/client").$Enums.UserRole;
             id: string;
+            email: string;
+            name: string;
+            role: import(".prisma/client").$Enums.UserRole;
             createdAt: Date;
         };
     }>;
@@ -24,12 +24,12 @@ export declare class AuthService {
         accessToken: string;
         refreshToken: string;
         user: {
-            name: string;
+            id: string;
             email: string;
+            name: string;
             phone: string | null;
             role: import(".prisma/client").$Enums.UserRole;
             preferredLanguage: string;
-            id: string;
             avatarUrl: string | null;
             isActive: boolean;
             createdAt: Date;

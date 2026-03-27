@@ -12,9 +12,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MerchantService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../database/prisma.service");
+const merchant_subscriptions_service_1 = require("../merchant-subscriptions/merchant-subscriptions.service");
+const client_1 = require("@prisma/client");
 let MerchantService = class MerchantService {
-    constructor(prisma) {
+    constructor(prisma, merchantSubscriptionsService) {
         this.prisma = prisma;
+        this.merchantSubscriptionsService = merchantSubscriptionsService;
     }
     async register(userId, dto) {
         const existing = await this.prisma.merchant.findUnique({ where: { userId } });
@@ -38,6 +41,11 @@ let MerchantService = class MerchantService {
             where: { userId },
             include: {
                 stores: true,
+                merchantSubscriptions: {
+                    where: { status: 'active' },
+                    take: 1,
+                    orderBy: { createdAt: 'desc' },
+                },
             },
         });
         if (!merchant)
@@ -65,10 +73,12 @@ let MerchantService = class MerchantService {
             where: { id: merchant.userId },
             data: { isActive: true }
         });
-        return this.prisma.merchant.update({
+        const updatedMerchant = await this.prisma.merchant.update({
             where: { id },
             data: { status: 'approved' },
         });
+        await this.merchantSubscriptionsService.activatePlan(merchant.id, client_1.MerchantPlan.starter);
+        return updatedMerchant;
     }
     async rejectMerchant(id, reason) {
         const merchant = await this.prisma.merchant.findUnique({ where: { id } });
@@ -83,6 +93,7 @@ let MerchantService = class MerchantService {
 exports.MerchantService = MerchantService;
 exports.MerchantService = MerchantService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        merchant_subscriptions_service_1.MerchantSubscriptionsService])
 ], MerchantService);
 //# sourceMappingURL=merchant.service.js.map

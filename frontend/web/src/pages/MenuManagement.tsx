@@ -28,7 +28,7 @@ const MenuManagement: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const merchantData = await merchantApi.getMe();
+            const merchantData = (await merchantApi.getMe()) as any;
             const stores = merchantData.stores || [];
             setMyStores(stores);
             
@@ -36,7 +36,7 @@ const MenuManagement: React.FC = () => {
                 const storeId = selectedStoreId || stores[0].id;
                 if (!selectedStoreId) setSelectedStoreId(storeId);
                 
-                const menuData = await menusApi.getByStore(storeId);
+                const menuData = (await menusApi.getByStore(storeId)) as any;
                 setMenus(menuData || []);
             }
         } catch (err) {

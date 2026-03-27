@@ -92,7 +92,7 @@ const Dashboard: React.FC = () => {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex justify-between items-end">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2">Chào buổi sáng, Admin!</h1>
+                    <h1 className="text-3xl font-bold text-slate-900 mb-2">Chào buổi sáng, {user?.name || 'Admin'}!</h1>
                     <p className="text-slate-500">Đây là những gì đang diễn ra với hệ thống của bạn ngày hôm nay.</p>
                 </div>
                 <div className="text-right">
@@ -105,32 +105,32 @@ const Dashboard: React.FC = () => {
                 <StatCard
                     title="Tổng doanh thu"
                     value={formatCurrency(stats?.totalRevenue || 0)}
-                    change="+0%"
-                    trend="up"
+                    change={`${stats?.revenueGrowth >= 0 ? '+' : ''}${stats?.revenueGrowth || 0}%`}
+                    trend={stats?.revenueGrowth >= 0 ? 'up' : 'down'}
                     icon={<TrendingUp size={24} />}
                     color="bg-primary-500"
                 />
                 <StatCard
                     title="Người dùng"
                     value={stats?.userCount || 0}
-                    change="+0%"
-                    trend="up"
+                    change={`${stats?.userGrowth >= 0 ? '+' : ''}${stats?.userGrowth || 0}%`}
+                    trend={stats?.userGrowth >= 0 ? 'up' : 'down'}
                     icon={<Users size={24} />}
                     color="bg-indigo-500"
                 />
                 <StatCard
                     title="Gian hàng"
                     value={stats?.storeCount || 0}
-                    change="+0%"
-                    trend="up"
+                    change={`${stats?.storeGrowth >= 0 ? '+' : ''}${stats?.storeGrowth || 0}%`}
+                    trend={stats?.storeGrowth >= 0 ? 'up' : 'down'}
                     icon={<Store size={24} />}
                     color="bg-amber-500"
                 />
                 <StatCard
                     title="Giao dịch"
                     value={stats?.transactionCount || 0}
-                    change="+0%"
-                    trend="up"
+                    change={`${stats?.transactionGrowth >= 0 ? '+' : ''}${stats?.transactionGrowth || 0}%`}
+                    trend={stats?.transactionGrowth >= 0 ? 'up' : 'down'}
                     icon={<ShoppingCart size={24} />}
                     color="bg-emerald-500"
                 />
@@ -145,17 +145,22 @@ const Dashboard: React.FC = () => {
                         </div>
                     </div>
                     <div className="h-64 flex items-end justify-between gap-3 px-4 relative z-10">
-                        {[40, 65, 45, 90, 55, 75, 85, 60, 95, 80, 70, 100].map((height, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                                <div
-                                    className="w-full bg-slate-50 rounded-t-lg relative group transition-all duration-700 ease-out overflow-hidden"
-                                    style={{ height: `${height}%`, transitionDelay: `${i * 50}ms` }}
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-t from-primary-600 to-indigo-500 opacity-40 group-hover:opacity-100 transition-opacity"></div>
+                        {(stats?.monthlyRevenue || [0,0,0,0,0,0,0,0,0,0,0,0]).map((revenue: number, i: number) => {
+                            const maxVal = Math.max(...(stats?.monthlyRevenue || [100]));
+                            const height = maxVal > 0 ? (revenue / maxVal) * 100 : 0;
+                            return (
+                                <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                                    <div
+                                        className="w-full bg-slate-50 rounded-t-lg relative group transition-all duration-700 ease-out overflow-hidden"
+                                        style={{ height: `${Math.max(height, 5)}%`, transitionDelay: `${i * 50}ms` }}
+                                        title={formatCurrency(revenue)}
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-t from-primary-600 to-indigo-500 opacity-40 group-hover:opacity-100 transition-opacity"></div>
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-bold font-mono">T{((new Date().getMonth() - 11 + i + 12) % 12) + 1}</span>
                                 </div>
-                                <span className="text-[10px] text-slate-400 font-bold font-mono">M{i + 1}</span>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                     <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-primary-50 rounded-full blur-3xl opacity-30"></div>
                 </div>

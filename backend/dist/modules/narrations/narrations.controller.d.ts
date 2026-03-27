@@ -10,8 +10,8 @@ export declare class NarrationsController {
         role: string;
     }, dto: CreateNarrationDto): Promise<{
         language: {
-            name: string;
             id: string;
+            name: string;
             isActive: boolean;
             code: string;
             flagIcon: string | null;
@@ -28,8 +28,8 @@ export declare class NarrationsController {
     }>;
     findByStore(storeId: string): Promise<({
         language: {
-            name: string;
             id: string;
+            name: string;
             isActive: boolean;
             code: string;
             flagIcon: string | null;
@@ -47,8 +47,8 @@ export declare class NarrationsController {
     findAll(page?: number, limit?: number, merchantId?: string): Promise<{
         data: ({
             language: {
-                name: string;
                 id: string;
+                name: string;
                 isActive: boolean;
                 code: string;
                 flagIcon: string | null;
@@ -74,8 +74,8 @@ export declare class NarrationsController {
         data: {
             distance: number;
             language: {
-                name: string;
                 id: string;
+                name: string;
                 isActive: boolean;
                 code: string;
                 flagIcon: string | null;

@@ -8,32 +8,32 @@ export declare class StoresService {
         id: string;
         role: string;
     }, dto: CreateStoreDto): Promise<{
-        status: import(".prisma/client").$Enums.StoreStatus;
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import(".prisma/client").$Enums.StoreStatus;
+        description: string | null;
+        merchantId: string;
         address: string;
         lat: number;
         lng: number;
         openTime: string | null;
         closeTime: string | null;
         coverImage: string | null;
-        merchantId: string;
     }>;
     findAll(page?: number, limit?: number, status?: string, merchantId?: string): Promise<{
         data: {
-            status: import(".prisma/client").$Enums.StoreStatus;
             merchant: {
                 businessName: string;
             };
-            name: string;
             id: string;
+            name: string;
             _count: {
                 menus: number;
                 narrations: number;
             };
+            status: import(".prisma/client").$Enums.StoreStatus;
             address: string;
             lat: number;
             lng: number;
@@ -48,12 +48,12 @@ export declare class StoresService {
     findNearby(lat: number, lng: number, radiusKm?: number, limit?: number): Promise<{
         data: {
             distance: number;
-            status: import(".prisma/client").$Enums.StoreStatus;
             merchant: {
                 businessName: string;
             };
-            name: string;
             id: string;
+            name: string;
+            status: import(".prisma/client").$Enums.StoreStatus;
             address: string;
             lat: number;
             lng: number;
@@ -70,18 +70,11 @@ export declare class StoresService {
         merchant: {
             businessName: string;
         };
-        images: {
-            id: string;
-            createdAt: Date;
-            imageUrl: string;
-            sortOrder: number;
-            storeId: string;
-        }[];
         menus: {
-            description: string | null;
-            name: string;
             id: string;
+            name: string;
             createdAt: Date;
+            description: string | null;
             imageUrl: string | null;
             storeId: string;
             price: import("@prisma/client/runtime/library").Decimal;
@@ -89,8 +82,8 @@ export declare class StoresService {
         }[];
         narrations: ({
             language: {
-                name: string;
                 id: string;
+                name: string;
                 isActive: boolean;
                 code: string;
                 flagIcon: string | null;
@@ -105,38 +98,45 @@ export declare class StoresService {
             textContent: string | null;
             duration: number | null;
         })[];
+        images: {
+            id: string;
+            createdAt: Date;
+            imageUrl: string;
+            sortOrder: number;
+            storeId: string;
+        }[];
     } & {
-        status: import(".prisma/client").$Enums.StoreStatus;
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import(".prisma/client").$Enums.StoreStatus;
+        description: string | null;
+        merchantId: string;
         address: string;
         lat: number;
         lng: number;
         openTime: string | null;
         closeTime: string | null;
         coverImage: string | null;
-        merchantId: string;
     }>;
     update(id: string, user: {
         id: string;
         role: string;
     }, dto: UpdateStoreDto): Promise<{
-        status: import(".prisma/client").$Enums.StoreStatus;
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import(".prisma/client").$Enums.StoreStatus;
+        description: string | null;
+        merchantId: string;
         address: string;
         lat: number;
         lng: number;
         openTime: string | null;
         closeTime: string | null;
         coverImage: string | null;
-        merchantId: string;
     }>;
     remove(id: string, user: {
         id: string;

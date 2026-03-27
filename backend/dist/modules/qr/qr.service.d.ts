@@ -16,10 +16,10 @@ export declare class QrService {
                 businessName: string;
             };
             menus: {
-                description: string | null;
-                name: string;
                 id: string;
+                name: string;
                 createdAt: Date;
+                description: string | null;
                 imageUrl: string | null;
                 storeId: string;
                 price: import("@prisma/client/runtime/library").Decimal;
@@ -27,8 +27,8 @@ export declare class QrService {
             }[];
             narrations: ({
                 language: {
-                    name: string;
                     id: string;
+                    name: string;
                     isActive: boolean;
                     code: string;
                     flagIcon: string | null;
@@ -44,19 +44,19 @@ export declare class QrService {
                 duration: number | null;
             })[];
         } & {
-            status: import(".prisma/client").$Enums.StoreStatus;
-            description: string | null;
-            name: string;
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
+            status: import(".prisma/client").$Enums.StoreStatus;
+            description: string | null;
+            merchantId: string;
             address: string;
             lat: number;
             lng: number;
             openTime: string | null;
             closeTime: string | null;
             coverImage: string | null;
-            merchantId: string;
         };
     }>;
     getStoreQrCodes(storeId: string, userId: string): Promise<{
@@ -73,10 +73,10 @@ export declare class QrService {
                 businessName: string;
             };
             menus: {
-                description: string | null;
-                name: string;
                 id: string;
+                name: string;
                 createdAt: Date;
+                description: string | null;
                 imageUrl: string | null;
                 storeId: string;
                 price: import("@prisma/client/runtime/library").Decimal;
@@ -84,8 +84,8 @@ export declare class QrService {
             }[];
             narrations: ({
                 language: {
-                    name: string;
                     id: string;
+                    name: string;
                     isActive: boolean;
                     code: string;
                     flagIcon: string | null;
@@ -101,19 +101,19 @@ export declare class QrService {
                 duration: number | null;
             })[];
         } & {
-            status: import(".prisma/client").$Enums.StoreStatus;
-            description: string | null;
-            name: string;
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
+            status: import(".prisma/client").$Enums.StoreStatus;
+            description: string | null;
+            merchantId: string;
             address: string;
             lat: number;
             lng: number;
             openTime: string | null;
             closeTime: string | null;
             coverImage: string | null;
-            merchantId: string;
         };
         listened: boolean;
     }>;

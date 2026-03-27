@@ -35,24 +35,24 @@ const POIManagement: React.FC = () => {
         setLoading(true);
         try {
             if (user?.role === 'admin') {
-                const [storeRes, merchantRes] = await Promise.all([
+                const [storeRes, merchantRes] = (await Promise.all([
                     storesApi.getAll(pageNum, limit, 'all'),
                     adminApi.getMerchants(1, 100)
-                ]);
+                ])) as any[];
                 setPois(storeRes.data || []);
                 setTotalPois(storeRes.total || 0);
                 setMerchants(merchantRes.data || []);
             } else {
                 // If merchant, get their ID from their profile then fetch their stores with pagination
-                const [merchantProfile, subRes] = await Promise.all([
+                const [merchantProfile, subRes] = (await Promise.all([
                     merchantApi.getMe(),
-                    subscriptionsApi.getMy()
-                ]);
+                    subscriptionsApi.getMyMerchant()
+                ])) as any[];
                 
                 setSubscription(subRes);
 
                 if (merchantProfile && merchantProfile.id) {
-                    const storeRes = await storesApi.getAll(pageNum, limit, 'all', merchantProfile.id);
+                    const storeRes = (await storesApi.getAll(pageNum, limit, 'all', merchantProfile.id)) as any;
                     setPois(storeRes.data || []);
                     setTotalPois(storeRes.total || 0);
                 }
@@ -148,21 +148,21 @@ const POIManagement: React.FC = () => {
                 <div className="flex items-center gap-3">
                     {user?.role === 'merchant' && (
                         <div className={`px-4 py-2 rounded-xl border font-bold text-sm ${
-                            totalPois >= (subscription?.maxStore || 1) 
+                            totalPois >= (subscription?.maxPOI || 1) 
                                 ? 'bg-rose-50 border-rose-200 text-rose-600' 
                                 : 'bg-emerald-50 border-emerald-200 text-emerald-600'
                         }`}>
-                            Giới hạn: {totalPois} / {subscription?.maxStore || 1} POI
+                            Giới hạn: {totalPois} / {subscription?.maxPOI || 1} POI
                         </div>
                     )}
                     <button onClick={() => fetchData()} className="p-2.5 text-slate-500 hover:text-primary-600 bg-white border border-slate-200 rounded-xl transition-all shadow-sm">
                         <Loader2 className={loading ? 'animate-spin' : ''} size={20} />
                     </button>
                     <button
-                        disabled={user?.role === 'merchant' && totalPois >= (subscription?.maxStore || 1)}
+                        disabled={user?.role === 'merchant' && totalPois >= (subscription?.maxPOI || 1)}
                         onClick={() => { setFormData({ name: '', address: '', description: '', lat: 10.4967, lng: 105.1167, openTime: '08:00', closeTime: '22:00', coverImage: '', status: 'active', merchantId: '' }); setIsAddPoiOpen(true); }}
                         className={`px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm ${
-                            user?.role === 'merchant' && totalPois >= (subscription?.maxStore || 1)
+                            user?.role === 'merchant' && totalPois >= (subscription?.maxPOI || 1)
                                 ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                                 : 'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-500/20'
                         }`}

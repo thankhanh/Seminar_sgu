@@ -10,11 +10,13 @@ exports.MerchantModule = void 0;
 const common_1 = require("@nestjs/common");
 const merchant_controller_1 = require("./merchant.controller");
 const merchant_service_1 = require("./merchant.service");
+const merchant_subscriptions_module_1 = require("../merchant-subscriptions/merchant-subscriptions.module");
 let MerchantModule = class MerchantModule {
 };
 exports.MerchantModule = MerchantModule;
 exports.MerchantModule = MerchantModule = __decorate([
     (0, common_1.Module)({
+        imports: [merchant_subscriptions_module_1.MerchantSubscriptionsModule],
         controllers: [merchant_controller_1.MerchantController],
         providers: [merchant_service_1.MerchantService],
         exports: [merchant_service_1.MerchantService],

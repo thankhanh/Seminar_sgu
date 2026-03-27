@@ -1,177 +1,130 @@
-/**
- * API Utility for Smart Tour Web CMS
- * Strictly matches the backend schema and endpoints.
- */
+import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:3000/api/v1';
 
-// --- Base Fetch Wrapper ---
-async function apiFetch(endpoint: string, options: RequestInit = {}) {
-    const token = localStorage.getItem('admin_token');
-    
-    const headers: HeadersInit = {
+// --- Axios Instance ---
+const api = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
-    };
+    },
+});
 
+// --- Request Interceptor ---
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('admin_token');
     if (token) {
-        (headers as any)['Authorization'] = `Bearer ${token}`;
+        config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
 
-    console.log(`API Request: ${options.method || 'GET'} ${endpoint}`, options.body ? JSON.parse(options.body as string) : '');
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers,
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-        console.error(`API Error: ${options.method || 'GET'} ${endpoint}`, result);
-        const message = result.error?.message || result.message || 'Có lỗi xảy ra khi gọi API';
-        throw new Error(message);
+// --- Response Interceptor ---
+api.interceptors.response.use(
+    (response) => {
+        // Backend wraps response in { success: boolean, data: any }
+        return response.data.data;
+    },
+    (error) => {
+        const result = error.response?.data;
+        const message = result?.error?.message || result?.message || 'Có lỗi xảy ra khi gọi API';
+        console.error('API Error:', error.config?.method?.toUpperCase(), error.config?.url, result);
+        return Promise.reject(new Error(message));
     }
+);
 
-    // Backend wraps response in { success: boolean, data: any }
-    return result.data;
-}
+// Define a helper to handle types better if needed, 
+// but for now we'll just ensure the component sees the right data.
 
 // --- Auth ---
 export const authApi = {
     login: async (dto: any) => {
-        const result = await fetch(`${API_BASE_URL}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dto),
-        });
-        const data = await result.json();
-        if (!result.ok) {
-            const message = data.error?.message || data.message || 'Đăng nhập thất bại';
-            throw new Error(message);
-        }
-        return data; // Returns { success, data, message }
+        const response = await axios.post(`${API_BASE_URL}/auth/login`, dto);
+        return response.data; // Auth endpoints often need the full response (tokens)
     },
     register: async (dto: any) => {
-        const response = await fetch(`${API_BASE_URL}/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dto),
-        });
-        const result = await response.json();
-        if (!response.ok) {
-            const message = result.error?.message || result.message || 'Đăng ký thất bại';
-            throw new Error(message);
-        }
-        return result; // Returns { success, data, message }
+        const response = await axios.post(`${API_BASE_URL}/auth/register`, dto);
+        return response.data;
     },
-    getMe: () => apiFetch('/auth/me'),
+    getMe: () => api.get('/auth/me'),
 };
 
 // --- Admin ---
 export const adminApi = {
-    getUsers: (page = 1, limit = 20) => apiFetch(`/admin/users?page=${page}&limit=${limit}`),
-    getMerchants: (page = 1, limit = 20) => apiFetch(`/admin/merchants?page=${page}&limit=${limit}`),
-    approveMerchant: (id: string) => apiFetch(`/admin/merchants/${id}/approve`, { method: 'PATCH' }),
-    rejectMerchant: (id: string, reason: string) => apiFetch(`/admin/merchants/${id}/reject`, {
-        method: 'PATCH',
-        body: JSON.stringify({ reason }),
-    }),
-    toggleUser: (id: string) => apiFetch(`/admin/users/${id}/toggle-active`, { method: 'PATCH' }),
-    getStats: () => apiFetch('/admin/stats'),
-    createUser: (dto: any) => apiFetch('/admin/users', {
-        method: 'POST',
-        body: JSON.stringify(dto),
-    }),
+    getUsers: (page = 1, limit = 20) => api.get(`/admin/users?page=${page}&limit=${limit}`),
+    getMerchants: (page = 1, limit = 20) => api.get(`/admin/merchants?page=${page}&limit=${limit}`),
+    approveMerchant: (id: string) => api.patch(`/admin/merchants/${id}/approve`),
+    rejectMerchant: (id: string, reason: string) => api.patch(`/admin/merchants/${id}/reject`, { reason }),
+    toggleUser: (id: string) => api.patch(`/admin/users/${id}/toggle-active`),
+    getStats: () => api.get('/admin/stats'),
+    createUser: (dto: any) => api.post('/admin/users', dto),
 };
 
 // --- Merchant ---
 export const merchantApi = {
-    getMe: (t: number = Date.now()) => apiFetch(`/merchant/me?t=${t}`),
-    register: (dto: any) => apiFetch('/merchant/register', {
-        method: 'POST',
-        body: JSON.stringify(dto),
-    }),
+    getMe: (t: number = Date.now()) => api.get(`/merchant/me?t=${t}`),
+    register: (dto: any) => api.post('/merchant/register', dto),
 };
 
 // --- Stores ---
 export const storesApi = {
     getAll: (page = 1, limit = 20, status?: string, merchantId?: string) => 
-        apiFetch(`/stores?page=${page}&limit=${limit}${status ? `&status=${status}` : ''}${merchantId ? `&merchantId=${merchantId}` : ''}`),
-    getOne: (id: string) => apiFetch(`/stores/${id}`),
-    create: (dto: any) => apiFetch('/stores', {
-        method: 'POST',
-        body: JSON.stringify(dto),
-    }),
-    update: (id: string, dto: any) => apiFetch(`/stores/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(dto),
-    }),
-    remove: (id: string) => apiFetch(`/stores/${id}`, { method: 'DELETE' }),
+        api.get(`/stores?page=${page}&limit=${limit}${status ? `&status=${status}` : ''}${merchantId ? `&merchantId=${merchantId}` : ''}`),
+    getOne: (id: string) => api.get(`/stores/${id}`),
+    create: (dto: any) => api.post('/stores', dto),
+    update: (id: string, dto: any) => api.patch(`/stores/${id}`, dto),
+    remove: (id: string) => api.delete(`/stores/${id}`),
     
     // Narrations (related to stores)
-    getNarrations: (storeId: string) => apiFetch(`/stores/${storeId}/narrations`),
-    createNarration: (storeId: string, dto: any) => apiFetch(`/stores/${storeId}/narrations`, {
-        method: 'POST',
-        body: JSON.stringify(dto),
-    }),
+    getNarrations: (storeId: string) => api.get(`/stores/${storeId}/narrations`),
+    createNarration: (storeId: string, dto: any) => api.post(`/stores/${storeId}/narrations`, dto),
 };
 
 // --- Narrations (Global) ---
 export const narrationsApi = {
     getAll: (page = 1, limit = 20, merchantId?: string) => 
-        apiFetch(`/narrations?page=${page}&limit=${limit}${merchantId ? `&merchantId=${merchantId}` : ''}`),
-    update: (id: string, dto: any) => apiFetch(`/narrations/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(dto),
-    }),
-    remove: (id: string) => apiFetch(`/narrations/${id}`, { method: 'DELETE' }),
+        api.get(`/narrations?page=${page}&limit=${limit}${merchantId ? `&merchantId=${merchantId}` : ''}`),
+    update: (id: string, dto: any) => api.patch(`/narrations/${id}`, dto),
+    remove: (id: string) => api.delete(`/narrations/${id}`),
 };
 
 // --- Languages ---
 export const languagesApi = {
-    getAll: () => apiFetch('/languages'),
-    create: (dto: any) => apiFetch('/languages', {
-        method: 'POST',
-        body: JSON.stringify(dto),
-    }),
-    update: (id: string, dto: any) => apiFetch(`/languages/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(dto),
-    }),
-    remove: (id: string) => apiFetch(`/languages/${id}`, { method: 'DELETE' }),
+    getAll: () => api.get('/languages'),
+    create: (dto: any) => api.post('/languages', dto),
+    update: (id: string, dto: any) => api.patch(`/languages/${id}`, dto),
+    remove: (id: string) => api.delete(`/languages/${id}`),
 };
 
 // --- Menus ---
 export const menusApi = {
-    getByStore: (storeId: string) => apiFetch(`/stores/${storeId}/menus`),
-    create: (storeId: string, dto: any) => apiFetch(`/stores/${storeId}/menus`, {
-        method: 'POST',
-        body: JSON.stringify(dto),
-    }),
-    update: (id: string, dto: any) => apiFetch(`/menus/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(dto),
-    }),
-    remove: (id: string) => apiFetch(`/menus/${id}`, { method: 'DELETE' }),
+    getByStore: (storeId: string) => api.get(`/stores/${storeId}/menus`),
+    create: (storeId: string, dto: any) => api.post(`/stores/${storeId}/menus`, dto),
+    update: (id: string, dto: any) => api.patch(`/menus/${id}`, dto),
+    remove: (id: string) => api.delete(`/menus/${id}`),
 };
 
 // --- Subscriptions ---
 export const subscriptionsApi = {
-    create: (dto: any) => apiFetch('/merchant-subscriptions', {
-        method: 'POST',
-        body: JSON.stringify(dto),
-    }),
-    getMy: () => apiFetch('/merchant-subscriptions/my'),
-    getAll: (page = 1, limit = 10) => apiFetch(`/merchant-subscriptions?page=${page}&limit=${limit}`),
-    cancel: (id: string) => apiFetch(`/merchant-subscriptions/${id}/cancel`, { method: 'PATCH' }),
+    createMerchant: (dto: any) => api.post('/merchant-subscriptions', dto),
+    createMerchantByAdmin: (dto: any) => api.post('/merchant-subscriptions/admin', dto),
+    getMyMerchant: () => api.get('/merchant-subscriptions/my'),
+    getAllMerchants: (page = 1, limit = 10) => api.get(`/merchant-subscriptions?page=${page}&limit=${limit}`),
+    cancelMerchant: (id: string) => api.patch(`/merchant-subscriptions/${id}/cancel`),
+
+    createUser: (dto: any) => api.post('/subscriptions', dto),
+    getMyUser: () => api.get('/subscriptions/my'),
+    getAllUsers: (page = 1, limit = 10) => api.get(`/subscriptions?page=${page}&limit=${limit}`),
+    cancelUser: (id: string) => api.patch(`/subscriptions/${id}/cancel`),
+
+    getAllPlanMetadata: () => api.get('/plan-metadata'),
+    updatePlanMetadata: (key: string, data: any) => api.patch(`/plan-metadata/${key}`, data),
 };
 
 // --- Payments ---
 export const paymentsApi = {
-    create: (dto: any) => apiFetch('/payments/create', {
-        method: 'POST',
-        body: JSON.stringify(dto),
-    }),
-    getHistory: () => apiFetch('/payments/history'),
+    create: (dto: any) => api.post('/payments/create', dto),
+    getHistory: () => api.get('/payments/history'),
 };

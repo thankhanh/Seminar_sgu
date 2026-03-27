@@ -33,6 +33,21 @@ export declare class PaymentsService {
         message: string;
     }>;
     getTransactionHistory(userId: string): Promise<({
+        momoDetail: {
+            id: string;
+            createdAt: Date;
+            amount: bigint;
+            rawResponse: import("@prisma/client/runtime/library").JsonValue | null;
+            transactionId: string;
+            orderId: string;
+            requestId: string | null;
+            orderInfo: string | null;
+            momoTransId: string | null;
+            resultCode: number | null;
+            message: string | null;
+            payType: string | null;
+            signature: string | null;
+        };
         vnpayDetail: {
             id: string;
             createdAt: Date;
@@ -47,29 +62,14 @@ export declare class PaymentsService {
             rawResponse: import("@prisma/client/runtime/library").JsonValue | null;
             transactionId: string;
         };
-        momoDetail: {
-            message: string | null;
-            id: string;
-            createdAt: Date;
-            amount: bigint;
-            orderInfo: string | null;
-            rawResponse: import("@prisma/client/runtime/library").JsonValue | null;
-            transactionId: string;
-            orderId: string;
-            requestId: string | null;
-            momoTransId: string | null;
-            resultCode: number | null;
-            payType: string | null;
-            signature: string | null;
-        };
     } & {
-        status: import(".prisma/client").$Enums.TransactionStatus;
-        description: string | null;
-        type: import(".prisma/client").$Enums.TransactionType;
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        status: import(".prisma/client").$Enums.TransactionStatus;
         userId: string;
+        description: string | null;
+        type: import(".prisma/client").$Enums.TransactionType;
         amount: import("@prisma/client/runtime/library").Decimal;
         currency: string;
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod;

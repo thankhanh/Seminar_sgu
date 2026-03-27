@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 
-import { storesApi, merchantApi, adminApi } from '../utils/api';
+import { storesApi, merchantApi, adminApi, subscriptionsApi } from '../utils/api';
 import type { Store } from '../types';
 import MapSelector from '../components/MapSelector';
 
@@ -24,6 +24,7 @@ const StoreManagement: React.FC = () => {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [selectedStore, setSelectedStore] = useState<Store | null>(null);
     const [merchants, setMerchants] = useState<any[]>([]);
+    const [subscription, setSubscription] = useState<any>(null);
 
     // Form states
     const [formData, setFormData] = useState({
@@ -44,15 +45,20 @@ const StoreManagement: React.FC = () => {
         setLoading(true);
         try {
             if (user?.role === 'admin') {
-                const [storeRes, merchantRes] = await Promise.all([
+                const [storeRes, merchantRes] = (await Promise.all([
                     storesApi.getAll(pageNum, limit, 'all'),
                     adminApi.getMerchants(1, 100)
-                ]);
+                ])) as any[];
                 setStores(storeRes.data || []);
                 setTotalStores(storeRes.total || 0);
                 setMerchants(merchantRes.data || []);
             } else {
-                const response = await merchantApi.getMe();
+                const [response, subRes] = (await Promise.all([
+                    merchantApi.getMe(),
+                    subscriptionsApi.getMyMerchant()
+                ])) as any[];
+                
+                setSubscription(subRes);
                 // Merchant gets all their stores for now (local pagination if needed)
                 const myStores = response.stores || [];
                 setStores(myStores);
@@ -143,13 +149,29 @@ const StoreManagement: React.FC = () => {
                     </h1>
                     <p className="text-slate-500 mt-1">Quản lý danh sách các gian hàng và đối tác kinh doanh.</p>
                 </div>
-                <button 
-                    onClick={() => setIsAddStoreOpen(true)}
-                    className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl font-medium transition-colors shadow-sm shadow-primary-500/20"
-                >
-                    <Plus size={20} />
-                    <span>Thêm cửa hàng</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    {user?.role === 'merchant' && (
+                        <div className={`px-4 py-2 rounded-xl border font-bold text-sm ${
+                            totalStores >= (subscription?.maxStore || 1) 
+                                ? 'bg-rose-50 border-rose-200 text-rose-600' 
+                                : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                        }`}>
+                            Giới hạn: {totalStores} / {subscription?.maxStore || 1} Cửa hàng
+                        </div>
+                    )}
+                    <button 
+                        disabled={user?.role === 'merchant' && totalStores >= (subscription?.maxStore || 1)}
+                        onClick={() => setIsAddStoreOpen(true)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors shadow-sm ${
+                            user?.role === 'merchant' && totalStores >= (subscription?.maxStore || 1)
+                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                                : 'bg-primary-600 hover:bg-primary-700 text-white shadow-primary-500/20'
+                        }`}
+                    >
+                        <Plus size={20} />
+                        <span>Thêm cửa hàng</span>
+                    </button>
+                </div>
             </div>
 
             {/* Filters */}

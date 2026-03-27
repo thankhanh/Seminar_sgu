@@ -33,4 +33,10 @@ export class MerchantSubscriptionsController {
   async cancel(@Param('id') id: string) {
     return this.subscriptionsService.cancel(id);
   }
+
+  @Post('admin')
+  @Roles('admin')
+  async createByAdmin(@Body() dto: any) {
+    return this.subscriptionsService.createByAdmin(dto);
+  }
 }

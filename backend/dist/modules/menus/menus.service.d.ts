@@ -9,20 +9,20 @@ export declare class MenusService {
         id: string;
         role: string;
     }, dto: CreateMenuDto): Promise<{
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
+        description: string | null;
         imageUrl: string | null;
         storeId: string;
         price: import("@prisma/client/runtime/library").Decimal;
         isAvailable: boolean;
     }>;
     findByStore(storeId: string): Promise<{
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
+        description: string | null;
         imageUrl: string | null;
         storeId: string;
         price: import("@prisma/client/runtime/library").Decimal;
@@ -32,10 +32,10 @@ export declare class MenusService {
         id: string;
         role: string;
     }, dto: UpdateMenuDto): Promise<{
-        description: string | null;
-        name: string;
         id: string;
+        name: string;
         createdAt: Date;
+        description: string | null;
         imageUrl: string | null;
         storeId: string;
         price: import("@prisma/client/runtime/library").Decimal;

@@ -6,12 +6,12 @@ export declare class UsersController {
     getProfile(user: {
         id: string;
     }): Promise<{
-        name: string;
+        id: string;
         email: string;
+        name: string;
         phone: string;
         role: import(".prisma/client").$Enums.UserRole;
         preferredLanguage: string;
-        id: string;
         avatarUrl: string;
         isActive: boolean;
         createdAt: Date;
@@ -20,12 +20,12 @@ export declare class UsersController {
     updateProfile(user: {
         id: string;
     }, dto: UpdateProfileDto): Promise<{
-        name: string;
+        id: string;
         email: string;
+        name: string;
         phone: string;
         role: import(".prisma/client").$Enums.UserRole;
         preferredLanguage: string;
-        id: string;
         avatarUrl: string;
         updatedAt: Date;
     }>;

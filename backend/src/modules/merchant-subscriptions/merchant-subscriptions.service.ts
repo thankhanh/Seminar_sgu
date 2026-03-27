@@ -2,16 +2,14 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../database/prisma.service';
 import { MerchantPlan, SubscriptionStatus } from '@prisma/client';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
+import { PlanMetadataService } from '../plan-metadata/plan-metadata.service';
 
 @Injectable()
 export class MerchantSubscriptionsService {
-  constructor(private prisma: PrismaService) {}
-
-  private readonly PLAN_LIMITS = {
-    [MerchantPlan.starter]: 1,
-    [MerchantPlan.business]: 5,
-    [MerchantPlan.premium]: 10,
-  };
+  constructor(
+    private prisma: PrismaService,
+    private planMetadataService: PlanMetadataService,
+  ) {}
 
   /**
    * Kích hoạt gói cho Merchant (Dùng cho cả gói Free và sau khi thanh toán thành công)
@@ -32,11 +30,17 @@ export class MerchantSubscriptionsService {
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + 1); // Thời hạn 1 tháng
 
+    // Fetch limits from DB
+    const metadata = await this.planMetadataService.findByKey(`merchant_${plan.toLowerCase()}`);
+    const maxStore = metadata?.maxStore ?? 1;
+    const maxPOI = metadata?.maxPOI ?? 1;
+
     return this.prisma.merchantSubscription.create({
       data: {
         merchantId,
         plan,
-        maxStore: this.PLAN_LIMITS[plan],
+        maxStore,
+        maxPOI,
         startDate,
         endDate,
         status: SubscriptionStatus.active,
@@ -59,11 +63,12 @@ export class MerchantSubscriptionsService {
     }
 
     // Nếu là gói trả phí, trả về thông tin để Frontend chuyển hướng sang trang thanh toán
-    // (Thực tế Frontend sẽ gọi sang module Payments riêng)
+    const metadata = await this.planMetadataService.findByKey(`merchant_${dto.plan.toLowerCase()}`);
+    
     return { 
       requiresPayment: true, 
       plan: dto.plan,
-      price: dto.plan === MerchantPlan.business ? 500000 : 2000000 
+      price: metadata?.price || 0 
     };
   }
 
@@ -87,6 +92,9 @@ export class MerchantSubscriptionsService {
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
       this.prisma.merchantSubscription.findMany({
+        where: {
+          plan: { not: MerchantPlan.starter }
+        },
         skip,
         take: limit,
         include: {
@@ -98,7 +106,11 @@ export class MerchantSubscriptionsService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.merchantSubscription.count(),
+      this.prisma.merchantSubscription.count({
+        where: {
+          plan: { not: MerchantPlan.starter }
+        }
+      }),
     ]);
 
     return { data, total, page, limit };
@@ -108,6 +120,51 @@ export class MerchantSubscriptionsService {
     return this.prisma.merchantSubscription.update({
       where: { id },
       data: { status: SubscriptionStatus.cancelled },
+    });
+  }
+
+  async createByAdmin(dto: any) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+      include: { merchant: true }
+    });
+
+    if (!user || !user.merchant) {
+      throw new NotFoundException('Không tìm thấy Merchant với email này');
+    }
+
+    const merchantId = user.merchant.id;
+
+    // Cancel existing active subscriptions for this merchant
+    await this.prisma.merchantSubscription.updateMany({
+      where: {
+        merchantId: merchantId,
+        status: SubscriptionStatus.active,
+      },
+      data: {
+        status: SubscriptionStatus.cancelled,
+      },
+    });
+
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + 1);
+
+    // Fetch limits from DB
+    const metadata = await this.planMetadataService.findByKey(`merchant_${dto.plan.toLowerCase()}`);
+    const maxStore = metadata?.maxStore ?? 1;
+    const maxPOI = metadata?.maxPOI ?? 1;
+
+    return this.prisma.merchantSubscription.create({
+      data: {
+        merchantId: merchantId,
+        plan: dto.plan,
+        maxStore,
+        maxPOI,
+        startDate,
+        endDate,
+        status: SubscriptionStatus.active,
+      },
     });
   }
 }

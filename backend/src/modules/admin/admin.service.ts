@@ -1,11 +1,16 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { MerchantSubscriptionsService } from '../merchant-subscriptions/merchant-subscriptions.service';
+import { MerchantPlan } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private merchantSubscriptionsService: MerchantSubscriptionsService,
+  ) {}
 
   async createUser(dto: CreateUserDto) {
     const existingUser = await this.prisma.user.findUnique({
@@ -85,10 +90,15 @@ export class AdminService {
       data: { isActive: true }
     });
 
-    return this.prisma.merchant.update({
+    const updatedMerchant = await this.prisma.merchant.update({
       where: { id },
       data: { status: 'approved' },
     });
+
+    // Tự động kích hoạt gói Starter khi được duyệt
+    await this.merchantSubscriptionsService.activatePlan(merchant.id, MerchantPlan.starter);
+
+    return updatedMerchant;
   }
 
   async rejectMerchant(id: string, reason?: string) {
@@ -108,23 +118,75 @@ export class AdminService {
   }
 
   async getStats() {
-    const [userCount, merchantCount, storeCount, transactionCount, totalRevenue] = await Promise.all([
+    const now = new Date();
+    const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      userCount,
+      merchantCount,
+      storeCount,
+      transactionCount,
+      totalRevenue,
+      lastMonthUserCount,
+      lastMonthStoreCount,
+      lastMonthTransactionCount,
+      lastMonthRevenue,
+    ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.merchant.count(),
       this.prisma.store.count(),
-      this.prisma.transaction.count(),
+      this.prisma.transaction.count({ where: { status: 'success' } }),
       this.prisma.transaction.aggregate({
         where: { status: 'success' },
         _sum: { amount: true },
       }),
+      // Cumulative count before this month started
+      this.prisma.user.count({ where: { createdAt: { lt: firstDayCurrentMonth } } }),
+      this.prisma.store.count({ where: { createdAt: { lt: firstDayCurrentMonth } } }),
+      this.prisma.transaction.count({
+        where: { status: 'success', createdAt: { lt: firstDayCurrentMonth } },
+      }),
+      this.prisma.transaction.aggregate({
+        where: { status: 'success', createdAt: { lt: firstDayCurrentMonth } },
+        _sum: { amount: true },
+      }),
     ]);
+
+    // Monthly revenue for the last 12 months (chart data)
+    const monthlyRevenue = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextD = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const rev = await this.prisma.transaction.aggregate({
+        where: {
+          status: 'success',
+          createdAt: { gte: d, lt: nextD },
+        },
+        _sum: { amount: true },
+      });
+      monthlyRevenue.push(Number(rev._sum.amount || 0));
+    }
+
+    const calculateGrowth = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      const growth = ((current - previous) / previous) * 100;
+      return Math.round(growth * 10) / 10; // 1 decimal place
+    };
 
     return {
       userCount,
       merchantCount,
       storeCount,
       transactionCount,
-      totalRevenue: totalRevenue._sum.amount || 0,
+      totalRevenue: Number(totalRevenue._sum.amount || 0),
+      userGrowth: calculateGrowth(userCount, lastMonthUserCount),
+      storeGrowth: calculateGrowth(storeCount, lastMonthStoreCount),
+      transactionGrowth: calculateGrowth(transactionCount, lastMonthTransactionCount),
+      revenueGrowth: calculateGrowth(
+        Number(totalRevenue._sum.amount || 0),
+        Number(lastMonthRevenue._sum.amount || 0),
+      ),
+      monthlyRevenue,
     };
   }
 }

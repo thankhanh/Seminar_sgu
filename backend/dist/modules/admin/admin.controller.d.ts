@@ -5,19 +5,19 @@ export declare class AdminController {
     private readonly adminService;
     constructor(adminService: AdminService);
     createUser(dto: CreateUserDto): Promise<{
-        name: string;
-        email: string;
-        role: import(".prisma/client").$Enums.UserRole;
         id: string;
+        email: string;
+        name: string;
+        role: import(".prisma/client").$Enums.UserRole;
         createdAt: Date;
     }>;
     getAllUsers(page?: number, limit?: number): Promise<{
         data: {
-            name: string;
+            id: string;
             email: string;
+            name: string;
             phone: string;
             role: import(".prisma/client").$Enums.UserRole;
-            id: string;
             isActive: boolean;
             createdAt: Date;
         }[];
@@ -28,22 +28,22 @@ export declare class AdminController {
     getAllMerchants(page?: number, limit?: number): Promise<{
         data: ({
             user: {
-                name: string;
-                email: string;
-                phone: string;
                 id: string;
+                email: string;
+                name: string;
+                phone: string;
             };
             stores: {
-                status: import(".prisma/client").$Enums.StoreStatus;
-                name: string;
                 id: string;
+                name: string;
+                status: import(".prisma/client").$Enums.StoreStatus;
             }[];
         } & {
-            status: import(".prisma/client").$Enums.MerchantStatus;
-            businessName: string;
-            taxCode: string | null;
             id: string;
             createdAt: Date;
+            businessName: string;
+            taxCode: string | null;
+            status: import(".prisma/client").$Enums.MerchantStatus;
             rejectReason: string | null;
             userId: string;
         })[];
@@ -52,27 +52,27 @@ export declare class AdminController {
         limit: number;
     }>;
     approveMerchant(id: string): Promise<{
-        status: import(".prisma/client").$Enums.MerchantStatus;
-        businessName: string;
-        taxCode: string | null;
         id: string;
         createdAt: Date;
+        businessName: string;
+        taxCode: string | null;
+        status: import(".prisma/client").$Enums.MerchantStatus;
         rejectReason: string | null;
         userId: string;
     }>;
     rejectMerchant(id: string, dto: RejectMerchantDto): Promise<{
-        status: import(".prisma/client").$Enums.MerchantStatus;
-        businessName: string;
-        taxCode: string | null;
         id: string;
         createdAt: Date;
+        businessName: string;
+        taxCode: string | null;
+        status: import(".prisma/client").$Enums.MerchantStatus;
         rejectReason: string | null;
         userId: string;
     }>;
     toggleUserActive(id: string): Promise<{
-        name: string;
-        email: string;
         id: string;
+        email: string;
+        name: string;
         isActive: boolean;
     }>;
     getStats(): Promise<{
@@ -80,6 +80,11 @@ export declare class AdminController {
         merchantCount: number;
         storeCount: number;
         transactionCount: number;
-        totalRevenue: number | import("@prisma/client/runtime/library").Decimal;
+        totalRevenue: number;
+        userGrowth: number;
+        storeGrowth: number;
+        transactionGrowth: number;
+        revenueGrowth: number;
+        monthlyRevenue: any[];
     }>;
 }

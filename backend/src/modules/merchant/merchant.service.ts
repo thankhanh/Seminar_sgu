@@ -1,10 +1,15 @@
 import { Injectable, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { RegisterMerchantDto } from './dto/register-merchant.dto';
+import { MerchantSubscriptionsService } from '../merchant-subscriptions/merchant-subscriptions.service';
+import { MerchantPlan } from '@prisma/client';
 
 @Injectable()
 export class MerchantService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private merchantSubscriptionsService: MerchantSubscriptionsService,
+  ) {}
 
   async register(userId: string, dto: RegisterMerchantDto) {
     const existing = await this.prisma.merchant.findUnique({ where: { userId } });
@@ -32,6 +37,11 @@ export class MerchantService {
       where: { userId },
       include: {
         stores: true,
+        merchantSubscriptions: {
+          where: { status: 'active' },
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
     if (!merchant) throw new NotFoundException('Bạn chưa đăng ký làm merchant');
@@ -61,10 +71,15 @@ export class MerchantService {
       data: { isActive: true }
     });
 
-    return this.prisma.merchant.update({
+    const updatedMerchant = await this.prisma.merchant.update({
       where: { id },
       data: { status: 'approved' },
     });
+
+    // Tự động kích hoạt gói Starter khi được duyệt
+    await this.merchantSubscriptionsService.activatePlan(merchant.id, MerchantPlan.starter);
+
+    return updatedMerchant;
   }
 
   async rejectMerchant(id: string, reason?: string) {

@@ -12,10 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../database/prisma.service");
+const merchant_subscriptions_service_1 = require("../merchant-subscriptions/merchant-subscriptions.service");
+const client_1 = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 let AdminService = class AdminService {
-    constructor(prisma) {
+    constructor(prisma, merchantSubscriptionsService) {
         this.prisma = prisma;
+        this.merchantSubscriptionsService = merchantSubscriptionsService;
     }
     async createUser(dto) {
         const existingUser = await this.prisma.user.findUnique({
@@ -87,10 +90,12 @@ let AdminService = class AdminService {
             where: { id: merchant.userId },
             data: { isActive: true }
         });
-        return this.prisma.merchant.update({
+        const updatedMerchant = await this.prisma.merchant.update({
             where: { id },
             data: { status: 'approved' },
         });
+        await this.merchantSubscriptionsService.activatePlan(merchant.id, client_1.MerchantPlan.starter);
+        return updatedMerchant;
     }
     async rejectMerchant(id, reason) {
         return this.prisma.merchant.update({
@@ -107,28 +112,64 @@ let AdminService = class AdminService {
         });
     }
     async getStats() {
-        const [userCount, merchantCount, storeCount, transactionCount, totalRevenue] = await Promise.all([
+        const now = new Date();
+        const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const [userCount, merchantCount, storeCount, transactionCount, totalRevenue, lastMonthUserCount, lastMonthStoreCount, lastMonthTransactionCount, lastMonthRevenue,] = await Promise.all([
             this.prisma.user.count(),
             this.prisma.merchant.count(),
             this.prisma.store.count(),
-            this.prisma.transaction.count(),
+            this.prisma.transaction.count({ where: { status: 'success' } }),
             this.prisma.transaction.aggregate({
                 where: { status: 'success' },
                 _sum: { amount: true },
             }),
+            this.prisma.user.count({ where: { createdAt: { lt: firstDayCurrentMonth } } }),
+            this.prisma.store.count({ where: { createdAt: { lt: firstDayCurrentMonth } } }),
+            this.prisma.transaction.count({
+                where: { status: 'success', createdAt: { lt: firstDayCurrentMonth } },
+            }),
+            this.prisma.transaction.aggregate({
+                where: { status: 'success', createdAt: { lt: firstDayCurrentMonth } },
+                _sum: { amount: true },
+            }),
         ]);
+        const monthlyRevenue = [];
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const nextD = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+            const rev = await this.prisma.transaction.aggregate({
+                where: {
+                    status: 'success',
+                    createdAt: { gte: d, lt: nextD },
+                },
+                _sum: { amount: true },
+            });
+            monthlyRevenue.push(Number(rev._sum.amount || 0));
+        }
+        const calculateGrowth = (current, previous) => {
+            if (previous === 0)
+                return current > 0 ? 100 : 0;
+            const growth = ((current - previous) / previous) * 100;
+            return Math.round(growth * 10) / 10;
+        };
         return {
             userCount,
             merchantCount,
             storeCount,
             transactionCount,
-            totalRevenue: totalRevenue._sum.amount || 0,
+            totalRevenue: Number(totalRevenue._sum.amount || 0),
+            userGrowth: calculateGrowth(userCount, lastMonthUserCount),
+            storeGrowth: calculateGrowth(storeCount, lastMonthStoreCount),
+            transactionGrowth: calculateGrowth(transactionCount, lastMonthTransactionCount),
+            revenueGrowth: calculateGrowth(Number(totalRevenue._sum.amount || 0), Number(lastMonthRevenue._sum.amount || 0)),
+            monthlyRevenue,
         };
     }
 };
 exports.AdminService = AdminService;
 exports.AdminService = AdminService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        merchant_subscriptions_service_1.MerchantSubscriptionsService])
 ], AdminService);
 //# sourceMappingURL=admin.service.js.map

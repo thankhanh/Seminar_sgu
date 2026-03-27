@@ -1,23 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import {
     CreditCard, Check, Zap, Shield, Crown,
-    Calendar, AlertCircle, Loader2, ArrowRight,
-    Smartphone, Globe
+    Calendar, AlertCircle, Loader2
 } from 'lucide-react';
-import { subscriptionsApi, paymentsApi } from '../utils/api';
+import { subscriptionsApi } from '../utils/api';
 
 const SubscriptionManagement: React.FC = () => {
     const [currentSub, setCurrentSub] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
     const [showAddPlanModal, setShowAddPlanModal] = useState(false);
     const [newPlanName, setNewPlanName] = useState('');
     const [newPlanPrice, setNewPlanPrice] = useState('');
     const [newPlanDescription, setNewPlanDescription] = useState('');
     const [newPlanBenefits, setNewPlanBenefits] = useState('');
+
+    const [showEditPlanModal, setShowEditPlanModal] = useState(false);
+    const [editingPlan, setEditingPlan] = useState<any>(null);
+    const [editPlanName, setEditPlanName] = useState('');
+    const [editPlanPrice, setEditPlanPrice] = useState('');
+    const [editPlanDescription, setEditPlanDescription] = useState('');
+    const [editPlanBenefits, setEditPlanBenefits] = useState('');
 
     const [plans, setPlans] = useState([
         {
@@ -86,49 +89,6 @@ const SubscriptionManagement: React.FC = () => {
         }
     };
 
-    const handlePlanClick = (plan: any) => {
-        if (plan.id === 'starter') {
-            handleSubscribe(plan.id);
-        } else {
-            setSelectedPlan(plan);
-            setShowPaymentModal(true);
-        }
-    };
-
-    const handleSubscribe = async (planId: string) => {
-        setIsSubmitting(true);
-        try {
-            const res = await subscriptionsApi.create({ plan: planId });
-            if (res.requiresPayment) {
-                // Should not happen for starter
-            } else {
-                alert('Kích hoạt gói thành công!');
-                fetchSubscription();
-            }
-        } catch (err: any) {
-            alert(err.message || 'Lỗi khi kích hoạt gói');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handlePayment = async (method: 'momo' | 'vnpay') => {
-        if (!selectedPlan) return;
-        setIsSubmitting(true);
-        try {
-            const res = await paymentsApi.create({
-                method,
-                type: selectedPlan.type
-            });
-            if (res.paymentUrl) {
-                window.location.href = res.paymentUrl;
-            }
-        } catch (err: any) {
-            alert(err.message || 'Lỗi khởi tạo thanh toán');
-            setIsSubmitting(false);
-        }
-    };
-
     const resetNewPlanFields = () => {
         setNewPlanName('');
         setNewPlanPrice('');
@@ -167,6 +127,57 @@ const SubscriptionManagement: React.FC = () => {
         setShowAddPlanModal(false);
         resetNewPlanFields();
         alert('Tạo gói mới thành công');
+    };
+
+    const handleEditPlan = (plan: any) => {
+        setEditingPlan(plan);
+        setEditPlanName(plan.name);
+        setEditPlanPrice(plan.rawPrice.toString());
+        setEditPlanDescription(plan.description);
+        setEditPlanBenefits(plan.features.join('\n'));
+        setShowEditPlanModal(true);
+    };
+
+    const handleUpdatePlan = () => {
+        if (!editPlanName.trim() || !editingPlan) {
+            alert('Vui lòng nhập tên gói');
+            return;
+        }
+
+        const updatedBenefitsList = editPlanBenefits
+            .split('\n')
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+        const rawPrice = Number(editPlanPrice.toString().replace(/[^0-9]/g, '')) || 0;
+        const formattedPrice = rawPrice > 0 ? `${rawPrice.toLocaleString('vi-VN')}đ` : '0đ';
+
+        setPlans((prevPlans) =>
+            prevPlans.map((plan) =>
+                plan.id === editingPlan.id
+                    ? {
+                        ...plan,
+                        name: editPlanName.trim(),
+                        price: formattedPrice,
+                        rawPrice,
+                        description: editPlanDescription.trim(),
+                        features: updatedBenefitsList.length ? updatedBenefitsList : ['Không có quyền lợi cụ thể']
+                    }
+                    : plan
+            )
+        );
+
+        setShowEditPlanModal(false);
+        setEditingPlan(null);
+        resetEditFields();
+        alert('Cập nhật gói thành công');
+    };
+
+    const resetEditFields = () => {
+        setEditPlanName('');
+        setEditPlanPrice('');
+        setEditPlanDescription('');
+        setEditPlanBenefits('');
     };
 
     if (loading) {
@@ -255,18 +266,10 @@ const SubscriptionManagement: React.FC = () => {
                         </div>
 
                         <button
-                            onClick={() => handlePlanClick(plan)}
-                            disabled={isSubmitting || currentSub?.plan === plan.id}
-                            className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${currentSub?.plan === plan.id
-                                ? 'bg-emerald-50 text-emerald-600 cursor-default'
-                                : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200'
-                                }`}
+                            onClick={() => handleEditPlan(plan)}
+                            className="w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200"
                         >
-                            {currentSub?.plan === plan.id ? (
-                                <>Đang sử dụng <Check size={18} /></>
-                            ) : (
-                                <>Chọn ngay <ArrowRight size={18} /></>
-                            )}
+                            Cập nhật
                         </button>
                     </div>
                 ))}
@@ -335,42 +338,66 @@ const SubscriptionManagement: React.FC = () => {
                 </div>
             )}
 
-            {/* Payment Modal */}
-            {showPaymentModal && selectedPlan && (
+            {/* Edit Plan Modal */}
+            {showEditPlanModal && editingPlan && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-300">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">Chọn phương thức thanh toán</h2>
-                        <p className="text-slate-500 text-center mb-8">Thanh toán cho gói <span className="font-bold text-primary-600">{selectedPlan.name}</span></p>
-
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">Chỉnh sửa gói</h2>
                         <div className="space-y-4">
-                            <button
-                                onClick={() => handlePayment('momo')}
-                                className="w-full p-4 rounded-2xl border-2 border-slate-100 hover:border-pink-500 hover:bg-pink-50 transition-all flex items-center gap-4 group"
-                            >
-                                <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center text-pink-600 group-hover:scale-110 transition-transform">
-                                    <Smartphone size={24} />
-                                </div>
-                                <div className="text-left font-bold text-slate-900">Thanh toán qua Ví MoMo</div>
-                            </button>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Tên gói</label>
+                                <input
+                                    value={editPlanName}
+                                    onChange={(e) => setEditPlanName(e.target.value)}
+                                    className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Phí</label>
+                                <input
+                                    value={editPlanPrice}
+                                    onChange={(e) => setEditPlanPrice(e.target.value)}
+                                    placeholder="Nhập số (VD: 499000)"
+                                    className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Mô tả</label>
+                                <textarea
+                                    value={editPlanDescription}
+                                    onChange={(e) => setEditPlanDescription(e.target.value)}
+                                    className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Quyền lợi (mỗi dòng 1 quyền lợi)</label>
+                                <textarea
+                                    value={editPlanBenefits}
+                                    onChange={(e) => setEditPlanBenefits(e.target.value)}
+                                    placeholder="Tối đa 2 địa điểm (POI)\nThuyết minh đa ngôn ngữ\nQuản lý thực đơn nâng cao"
+                                    className="w-full mt-1 h-24 px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
 
-                            <button
-                                onClick={() => handlePayment('vnpay')}
-                                className="w-full p-4 rounded-2xl border-2 border-slate-100 hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-4 group"
-                            >
-                                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                                    <Globe size={24} />
-                                </div>
-                                <div className="text-left font-bold text-slate-900">Thanh toán qua VNPay</div>
-                            </button>
+                            <div className="flex items-center justify-between gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowEditPlanModal(false);
+                                        setEditingPlan(null);
+                                        resetEditFields();
+                                    }}
+                                    className="px-4 py-2 text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-100 transition"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    onClick={handleUpdatePlan}
+                                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                                >
+                                    Lưu thay đổi
+                                </button>
+                            </div>
                         </div>
-
-                        <button
-                            disabled={isSubmitting}
-                            onClick={() => setShowPaymentModal(false)}
-                            className="w-full mt-8 py-3 text-slate-500 font-medium hover:text-slate-800 transition-colors"
-                        >
-                            Hủy bỏ
-                        </button>
                     </div>
                 </div>
             )}

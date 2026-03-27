@@ -38,10 +38,10 @@ export declare class PaymentsController {
     }): Promise<({
         momoDetail: {
             id: string;
-            createdAt: Date;
             amount: bigint;
-            rawResponse: import("@prisma/client/runtime/library").JsonValue | null;
+            createdAt: Date;
             transactionId: string;
+            rawResponse: import("@prisma/client/runtime/library").JsonValue | null;
             orderId: string;
             requestId: string | null;
             orderInfo: string | null;
@@ -54,6 +54,7 @@ export declare class PaymentsController {
         vnpayDetail: {
             id: string;
             createdAt: Date;
+            transactionId: string;
             vnpTxnRef: string;
             vnpAmount: bigint;
             vnpOrderInfo: string | null;
@@ -63,19 +64,19 @@ export declare class PaymentsController {
             vnpResponseCode: string | null;
             vnpSecureHash: string | null;
             rawResponse: import("@prisma/client/runtime/library").JsonValue | null;
-            transactionId: string;
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        status: import(".prisma/client").$Enums.TransactionStatus;
-        userId: string;
-        description: string | null;
-        type: import(".prisma/client").$Enums.TransactionType;
         amount: import("@prisma/client/runtime/library").Decimal;
         currency: string;
+        type: import(".prisma/client").$Enums.TransactionType;
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
         paymentRefId: string | null;
+        status: import(".prisma/client").$Enums.TransactionStatus;
+        description: string | null;
+        planKey: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        userId: string;
     })[]>;
 }

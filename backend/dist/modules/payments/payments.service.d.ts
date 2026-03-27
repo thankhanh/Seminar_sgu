@@ -2,11 +2,13 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { MerchantSubscriptionsService } from '../merchant-subscriptions/merchant-subscriptions.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 export declare class PaymentsService {
     private prisma;
     private config;
     private subscriptionService;
-    constructor(prisma: PrismaService, config: ConfigService, subscriptionService: MerchantSubscriptionsService);
+    private userSubscriptionService;
+    constructor(prisma: PrismaService, config: ConfigService, subscriptionService: MerchantSubscriptionsService, userSubscriptionService: SubscriptionsService);
     createVnpayPayment(userId: string, dto: CreatePaymentDto, ipAddr: string): Promise<{
         paymentUrl: string;
         transactionId: string;
@@ -35,10 +37,10 @@ export declare class PaymentsService {
     getTransactionHistory(userId: string): Promise<({
         momoDetail: {
             id: string;
-            createdAt: Date;
             amount: bigint;
-            rawResponse: import("@prisma/client/runtime/library").JsonValue | null;
+            createdAt: Date;
             transactionId: string;
+            rawResponse: import("@prisma/client/runtime/library").JsonValue | null;
             orderId: string;
             requestId: string | null;
             orderInfo: string | null;
@@ -51,6 +53,7 @@ export declare class PaymentsService {
         vnpayDetail: {
             id: string;
             createdAt: Date;
+            transactionId: string;
             vnpTxnRef: string;
             vnpAmount: bigint;
             vnpOrderInfo: string | null;
@@ -60,20 +63,20 @@ export declare class PaymentsService {
             vnpResponseCode: string | null;
             vnpSecureHash: string | null;
             rawResponse: import("@prisma/client/runtime/library").JsonValue | null;
-            transactionId: string;
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        status: import(".prisma/client").$Enums.TransactionStatus;
-        userId: string;
-        description: string | null;
-        type: import(".prisma/client").$Enums.TransactionType;
         amount: import("@prisma/client/runtime/library").Decimal;
         currency: string;
+        type: import(".prisma/client").$Enums.TransactionType;
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
         paymentRefId: string | null;
+        status: import(".prisma/client").$Enums.TransactionStatus;
+        description: string | null;
+        planKey: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        userId: string;
     })[]>;
     private formatDate;
     private postRequest;

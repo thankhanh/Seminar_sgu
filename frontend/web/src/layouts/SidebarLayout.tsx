@@ -70,7 +70,7 @@ const SidebarLayout: React.FC = () => {
                                 <h3 className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Hệ thống</h3>
                                 <ul className="space-y-1 relative">
                                     <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" path="/" />
-                                    <NavItem icon={<UserIcon size={20} />} label="Khách hàng" path="/users" />
+                                    <NavItem icon={<UserIcon size={20} />} label="Người dùng" path="/users" />
                                     <NavItem icon={<ShieldCheck size={20} />} label="Duyệt Merchant" path="/merchants" />
                                     <NavItem icon={<CreditCard size={20} />} label="Quản lý Gói Dịch vụ" path="/subscriptions" />
                                 </ul>

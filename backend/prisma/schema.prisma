@@ -189,6 +189,7 @@ model Transaction {
   paymentRefId  String?           @map("payment_ref_id")
   status        TransactionStatus @default(pending)
   description   String?
+  planKey       String?           @map("plan_key")
   createdAt     DateTime          @default(now()) @map("created_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
   momoDetail    PaymentMomo?

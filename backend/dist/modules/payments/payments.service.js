@@ -19,6 +19,7 @@ const prisma_service_1 = require("../../database/prisma.service");
 const create_payment_dto_1 = require("./dto/create-payment.dto");
 const client_1 = require("@prisma/client");
 const merchant_subscriptions_service_1 = require("../merchant-subscriptions/merchant-subscriptions.service");
+const subscriptions_service_1 = require("../subscriptions/subscriptions.service");
 const crypto = require("crypto");
 const https = require("https");
 const querystring = require("querystring");
@@ -42,10 +43,11 @@ const PLAN_LABELS = {
     [create_payment_dto_1.SubscriptionTypeEnum.MERCHANT_PREMIUM]: 'Gói Merchant Premium',
 };
 let PaymentsService = class PaymentsService {
-    constructor(prisma, config, subscriptionService) {
+    constructor(prisma, config, subscriptionService, userSubscriptionService) {
         this.prisma = prisma;
         this.config = config;
         this.subscriptionService = subscriptionService;
+        this.userSubscriptionService = userSubscriptionService;
     }
     async createVnpayPayment(userId, dto, ipAddr) {
         const amount = dto.amount || (dto.type ? PLAN_PRICES[dto.type] : 0);
@@ -61,6 +63,7 @@ let PaymentsService = class PaymentsService {
                 paymentMethod: 'vnpay',
                 status: 'pending',
                 description: label,
+                planKey: dto.type,
             },
         });
         const tmnCode = this.config.get('VNPAY_TMN_CODE');
@@ -155,19 +158,39 @@ let PaymentsService = class PaymentsService {
     async handlePostPayment(transactionId) {
         const tx = await this.prisma.transaction.findUnique({
             where: { id: transactionId },
+            include: { user: true }
         });
         if (!tx || tx.status !== 'success')
             return;
         if (tx.type === 'merchant_subscription') {
             const merchant = await this.prisma.merchant.findUnique({ where: { userId: tx.userId } });
             if (merchant) {
-                let plan = client_1.MerchantPlan.starter;
-                const amount = Number(tx.amount);
-                if (amount >= 900000)
-                    plan = client_1.MerchantPlan.premium;
-                else if (amount >= 400000)
-                    plan = client_1.MerchantPlan.business;
-                await this.subscriptionService.activatePlan(merchant.id, plan);
+                let plan = null;
+                const planKey = tx.planKey;
+                if (planKey && TYPE_TO_PLAN[planKey]) {
+                    plan = TYPE_TO_PLAN[planKey];
+                }
+                else {
+                    const amount = Number(tx.amount);
+                    if (amount >= 900000)
+                        plan = client_1.MerchantPlan.premium;
+                    else if (amount >= 400000)
+                        plan = client_1.MerchantPlan.business;
+                }
+                if (plan) {
+                    await this.subscriptionService.activatePlan(merchant.id, plan);
+                }
+            }
+        }
+        else if (tx.type === 'user_subscription') {
+            const planKey = tx.planKey;
+            const email = tx.user?.email;
+            if (planKey && email) {
+                const plan = planKey.replace('user_', '');
+                await this.userSubscriptionService.create({
+                    email,
+                    plan
+                });
             }
         }
     }
@@ -189,6 +212,7 @@ let PaymentsService = class PaymentsService {
                 paymentMethod: 'momo',
                 status: 'pending',
                 description: label,
+                planKey: dto.type,
             },
         });
         const partnerCode = this.config.get('MOMO_PARTNER_CODE');
@@ -357,8 +381,10 @@ exports.PaymentsService = PaymentsService;
 exports.PaymentsService = PaymentsService = __decorate([
     (0, common_1.Injectable)(),
     __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => merchant_subscriptions_service_1.MerchantSubscriptionsService))),
+    __param(3, (0, common_1.Inject)((0, common_1.forwardRef)(() => subscriptions_service_1.SubscriptionsService))),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         config_1.ConfigService,
-        merchant_subscriptions_service_1.MerchantSubscriptionsService])
+        merchant_subscriptions_service_1.MerchantSubscriptionsService,
+        subscriptions_service_1.SubscriptionsService])
 ], PaymentsService);
 //# sourceMappingURL=payments.service.js.map

@@ -10,6 +10,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreatePaymentDto, PaymentMethodEnum, SubscriptionTypeEnum } from './dto/create-payment.dto';
 import { TransactionType, MerchantPlan } from '@prisma/client';
 import { MerchantSubscriptionsService } from '../merchant-subscriptions/merchant-subscriptions.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import * as crypto from 'crypto';
 import * as https from 'https';
 import * as querystring from 'querystring';
@@ -44,6 +45,8 @@ export class PaymentsService {
     private config: ConfigService,
     @Inject(forwardRef(() => MerchantSubscriptionsService))
     private subscriptionService: MerchantSubscriptionsService,
+    @Inject(forwardRef(() => SubscriptionsService))
+    private userSubscriptionService: SubscriptionsService,
   ) {}
 
   // ─────────────────────────────────────────────────────────────
@@ -66,7 +69,8 @@ export class PaymentsService {
         paymentMethod: 'vnpay',
         status: 'pending',
         description: label,
-      },
+        planKey: dto.type, // Lưu lại key gói để xử lý sau
+      } as any,
     });
 
     const tmnCode = this.config.get<string>('VNPAY_TMN_CODE');
@@ -184,6 +188,7 @@ export class PaymentsService {
   private async handlePostPayment(transactionId: string) {
     const tx = await this.prisma.transaction.findUnique({
       where: { id: transactionId },
+      include: { user: true }
     });
 
     if (!tx || tx.status !== 'success') return;
@@ -191,13 +196,31 @@ export class PaymentsService {
     if (tx.type === 'merchant_subscription') {
       const merchant = await this.prisma.merchant.findUnique({ where: { userId: tx.userId } });
       if (merchant) {
-        // Xác định Plan dựa trên amount
-        let plan: MerchantPlan = MerchantPlan.starter;
-        const amount = Number(tx.amount);
-        if (amount >= 900000) plan = MerchantPlan.premium;
-        else if (amount >= 400000) plan = MerchantPlan.business;
+        // Ưu tiên dùng planKey nếu có
+        let plan: MerchantPlan | null = null;
+        const planKey = (tx as any).planKey;
+        if (planKey && TYPE_TO_PLAN[planKey]) {
+          plan = TYPE_TO_PLAN[planKey];
+        } else {
+          // Fallback theo amount nếu không có planKey
+          const amount = Number(tx.amount);
+          if (amount >= 900000) plan = MerchantPlan.premium;
+          else if (amount >= 400000) plan = MerchantPlan.business;
+        }
         
-        await this.subscriptionService.activatePlan(merchant.id, plan);
+        if (plan) {
+          await this.subscriptionService.activatePlan(merchant.id, plan);
+        }
+      }
+    } else if (tx.type === 'user_subscription') {
+      const planKey = (tx as any).planKey;
+      const email = (tx as any).user?.email;
+      if (planKey && email) {
+        const plan = planKey.replace('user_', '') as any; // monthly, yearly
+        await this.userSubscriptionService.create({
+            email,
+            plan
+        });
       }
     }
   }
@@ -227,7 +250,8 @@ export class PaymentsService {
         paymentMethod: 'momo',
         status: 'pending',
         description: label,
-      },
+        planKey: dto.type,
+      } as any,
     });
 
     const partnerCode = this.config.get<string>('MOMO_PARTNER_CODE')!;

@@ -4,7 +4,7 @@ import {
     AlertCircle, Loader2, User as UserIcon, Building,
     Calendar
 } from 'lucide-react';
-import { subscriptionsApi } from '../utils/api';
+import { subscriptionsApi, paymentsApi } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const SubscriptionManagement: React.FC = () => {
@@ -28,6 +28,7 @@ const SubscriptionManagement: React.FC = () => {
     const [editingPlan, setEditingPlan] = useState<any>(null);
     const [email, setEmail] = useState(''); // merchant email or user email
     const [selectedPlan, setSelectedPlan] = useState('');
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
     useEffect(() => {
         fetchPlanMetadata();
@@ -113,6 +114,41 @@ const SubscriptionManagement: React.FC = () => {
             fetchRecords();
         } catch (err: any) {
             alert(err.message || 'Lỗi khi cấp gói');
+        }
+    };
+
+    const handleUpgrade = async (plan: any) => {
+        if (isAdmin) return;
+        
+        // Don't pay for free plans
+        if (plan.price === '0đ') {
+            alert('Bạn đang sử dụng gói mặc định này.');
+            return;
+        }
+
+        if (!confirm(`Bạn có đồng ý thanh toán để nâng cấp lên ${plan.name}?`)) return;
+
+        setIsProcessingPayment(true);
+        try {
+            const type = activeTab === 'merchant'
+                ? (plan.id === 'business' ? 'merchant_business' : 'merchant_premium')
+                : (plan.id === 'monthly' ? 'user_monthly' : 'user_yearly');
+
+            const response = await paymentsApi.create({
+                method: 'momo',
+                type: type,
+                orderInfo: `Nâng cấp gói ${plan.name} cho ${user?.email}`
+            }) as any;
+
+            if (response.paymentUrl) {
+                window.location.href = response.paymentUrl;
+            } else {
+                throw new Error('Không nhận được link thanh toán từ MoMo');
+            }
+        } catch (err: any) {
+            alert(err.message || 'Lỗi khi khởi tạo thanh toán');
+        } finally {
+            setIsProcessingPayment(false);
         }
     };
 
@@ -265,13 +301,21 @@ const SubscriptionManagement: React.FC = () => {
                             </button>
                         ) : (
                             <button
-                                disabled={currentSub?.plan === plan.id}
+                                onClick={() => handleUpgrade(plan)}
+                                disabled={currentSub?.plan === plan.id || isProcessingPayment}
                                 className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${currentSub?.plan === plan.id
                                     ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                     : 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl'
                                     }`}
                             >
-                                {currentSub?.plan === plan.id ? 'Đang sử dụng' : 'Nâng cấp ngay'}
+                                {isProcessingPayment ? (
+                                    <>
+                                        <Loader2 className="animate-spin" size={18} />
+                                        Đang xử lý...
+                                    </>
+                                ) : (
+                                    currentSub?.plan === plan.id ? 'Đang sử dụng' : 'Nâng cấp ngay'
+                                )}
                             </button>
                         )}
                     </div>

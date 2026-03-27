@@ -28,9 +28,7 @@ export class PaymentsService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
-    @Inject(forwardRef(() => MerchantSubscriptionsService))
     private subscriptionService: MerchantSubscriptionsService,
-    @Inject(forwardRef(() => SubscriptionsService))
     private userSubscriptionService: SubscriptionsService,
   ) {}
 
@@ -47,7 +45,7 @@ export class PaymentsService {
         where: { planKey: dto.type },
       });
       if (!metadata) throw new BadRequestException('Gói dịch vụ không hợp lệ');
-      amount = metadata.price;
+      amount = Number(metadata.price);
       label = `Thanh toán gói ${metadata.name}`;
     }
 
@@ -229,7 +227,7 @@ export class PaymentsService {
         where: { planKey: dto.type },
       });
       if (!metadata) throw new BadRequestException('Gói dịch vụ không hợp lệ');
-      amount = metadata.price;
+      amount = Number(metadata.price);
       label = `Thanh toán gói ${metadata.name}`;
     }
 

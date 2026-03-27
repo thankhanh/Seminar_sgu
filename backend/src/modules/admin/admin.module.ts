@@ -8,7 +8,7 @@ import { MerchantSubscriptionsModule } from '../merchant-subscriptions/merchant-
 @Module({
   imports: [MerchantSubscriptionsModule],
   controllers: [AdminController],
-  providers: [AdminService, RolesGuard, Reflector],
+  providers: [AdminService],
   exports: [AdminService],
 })
 export class AdminModule {}

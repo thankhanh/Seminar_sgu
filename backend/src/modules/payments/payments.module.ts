@@ -6,8 +6,8 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
-    forwardRef(() => MerchantSubscriptionsModule),
-    forwardRef(() => SubscriptionsModule),
+    MerchantSubscriptionsModule,
+    SubscriptionsModule,
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService],

@@ -8,9 +8,6 @@ const API_BASE_URL = 'http://localhost:3000/api/v1';
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
 });
 
 // Request Interceptor: Attach Token
@@ -122,4 +119,14 @@ export const subscriptionsApi = {
 export const paymentsApi = {
     create: (dto: any) => unwrapData(apiClient.post('/payments/create', dto)),
     getHistory: () => unwrapData(apiClient.get('/payments/history')),
+};
+
+// --- Files ---
+export const filesApi = {
+    upload: async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await apiClient.post('/files/upload', formData);
+        return response; // returns { success, data: { url, filename } }
+    },
 };

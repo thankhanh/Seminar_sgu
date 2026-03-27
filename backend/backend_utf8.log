@@ -1,0 +1,20 @@
+[32m[Nest] 17504  - [39m03/28/2026, 1:03:53 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 17504  - [39m03/28/2026, 1:03:53 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDatabaseModule dependencies initialized[39m[38;5;3m +22ms[39m
+[32m[Nest] 17504  - [39m03/28/2026, 1:03:53 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 17504  - [39m03/28/2026, 1:03:53 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mThrottlerModule dependencies initialized[39m[38;5;3m +4ms[39m
+[32m[Nest] 17504  - [39m03/28/2026, 1:03:53 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 17504  - [39m03/28/2026, 1:03:53 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 17504  - [39m03/28/2026, 1:03:53 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 17504  - [39m03/28/2026, 1:03:53 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +1ms[39m
+[31m[Nest] 17504  - [39m03/28/2026, 1:03:53 AM [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39m[31mJwtStrategy requires a secret or key[39m
+TypeError: JwtStrategy requires a secret or key
+    at new JwtStrategy (C:\Users\Admin\OneDrive\Documents\GitHub\Seminar_sgu\backend\node_modules\passport-jwt\lib\strategy.js:45:15)
+    at new MixinStrategy (C:\Users\Admin\OneDrive\Documents\GitHub\Seminar_sgu\backend\node_modules\@nestjs\passport\dist\passport\passport.strategy.js:32:13)
+    at new JwtStrategy (C:\Users\Admin\OneDrive\Documents\GitHub\Seminar_sgu\backend\src\modules\auth\strategies\jwt.strategy.ts:10:5)
+    at Injector.instantiateClass (C:\Users\Admin\OneDrive\Documents\GitHub\Seminar_sgu\backend\node_modules\@nestjs\core\injector\injector.js:373:19)
+    at callback (C:\Users\Admin\OneDrive\Documents\GitHub\Seminar_sgu\backend\node_modules\@nestjs\core\injector\injector.js:65:45)
+    at async Injector.resolveConstructorParams (C:\Users\Admin\OneDrive\Documents\GitHub\Seminar_sgu\backend\node_modules\@nestjs\core\injector\injector.js:145:24)
+    at async Injector.loadInstance (C:\Users\Admin\OneDrive\Documents\GitHub\Seminar_sgu\backend\node_modules\@nestjs\core\injector\injector.js:70:13)
+    at async Injector.loadProvider (C:\Users\Admin\OneDrive\Documents\GitHub\Seminar_sgu\backend\node_modules\@nestjs\core\injector\injector.js:98:9)
+    at async C:\Users\Admin\OneDrive\Documents\GitHub\Seminar_sgu\backend\node_modules\@nestjs\core\injector\instance-loader.js:56:13
+    at async Promise.all (index 4)

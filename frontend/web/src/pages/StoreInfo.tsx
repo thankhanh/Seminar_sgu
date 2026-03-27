@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, Save, MapPin, Info, Loader2, CheckCircle2 } from 'lucide-react';
-import { merchantApi, storesApi } from '../utils/api';
+import { merchantApi, storesApi, filesApi } from '../utils/api';
 import MapSelector from '../components/MapSelector';
 
 interface StoreForm {
@@ -14,6 +14,7 @@ interface StoreForm {
     closeTime: string;
     coverImage: string;
     status: string;
+    images: { imageUrl: string }[]; // Backend trả về images[].imageUrl
 }
 
 const StoreInfo: React.FC = () => {
@@ -21,21 +22,29 @@ const StoreInfo: React.FC = () => {
     const [selectedStoreId, setSelectedStoreId] = useState<string>('');
     const [storeForm, setStoreForm] = useState<StoreForm>({
         id: '', name: '', address: '', description: '', lat: '', lng: '',
-        openTime: '08:00', closeTime: '22:00', coverImage: '', status: ''
+        openTime: '08:00', closeTime: '22:00', coverImage: '', status: '',
+        images: []
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [uploading, setUploading] = useState(false);
+
+    const coverInputRef = React.useRef<HTMLInputElement>(null);
+    const galleryInputRef = React.useRef<HTMLInputElement>(null);
 
     const fetchStores = async () => {
         setLoading(true);
         try {
             const merchant = await merchantApi.getMe();
             const rawStores = merchant.stores || [];
-            // Deduplicate by ID
-            const uniqueRawStores = Array.from(new Map(rawStores.map((s: any) => [s.id, s])).values());
             
-            const myStores: StoreForm[] = uniqueRawStores.map((s: any) => ({
+            // Lấy thông tin chi tiết từng store để có 'images'
+            const detailedStores = await Promise.all(
+                rawStores.map((s: any) => storesApi.getOne(s.id))
+            );
+            
+            const myStores: StoreForm[] = detailedStores.map((s: any) => ({
                 id: s.id,
                 name: s.name,
                 address: s.address || '',
@@ -46,17 +55,15 @@ const StoreInfo: React.FC = () => {
                 closeTime: (s.closeTime || '22:00').substring(0, 5),
                 coverImage: s.coverImage || '',
                 status: s.status || '',
+                images: s.images || [],
             }));
             
             setStores(myStores);
             if (myStores.length > 0) {
-                // Determine which store to show (either the one already selected, or the first one)
-                setStoreForm((prevForm) => {
-                    const currentId = prevForm.id || selectedStoreId || myStores[0].id;
-                    const latest = myStores.find(s => s.id === currentId) || myStores[0];
-                    setSelectedStoreId(latest.id);
-                    return latest;
-                });
+                const currentId = selectedStoreId || myStores[0].id;
+                const latest = myStores.find(s => s.id === currentId) || myStores[0];
+                setSelectedStoreId(latest.id);
+                setStoreForm(latest);
             }
         } catch (err) {
             console.error('Lỗi khi tải thông tin cửa hàng:', err);
@@ -77,15 +84,49 @@ const StoreInfo: React.FC = () => {
         }
     };
 
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'gallery') => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const res = await filesApi.upload(file) as any;
+            console.log('Upload result:', res);
+            if (res.success) {
+                console.log('Tải ảnh thành công:', res.data.url);
+                if (type === 'cover') {
+                    const newUrl = res.data.url;
+                    setStoreForm(prev => ({ ...prev, coverImage: newUrl }));
+                } else {
+                    const newUrl = res.data.url;
+                    setStoreForm(prev => ({ 
+                        ...prev, 
+                        images: [...prev.images, { imageUrl: newUrl }] 
+                    }));
+                }
+            } else {
+                console.error('Upload failed according to backend:', res);
+                alert('Tải ảnh thất bại: ' + (res.message || 'Lỗi không xác định'));
+            }
+        } catch (err: any) {
+            console.error('Error during upload:', err);
+            alert('Lỗi tải ảnh: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setUploading(false);
+            if (event.target) event.target.value = ''; // Reset input
+        }
+    };
+
+    const removeGalleryImage = (index: number) => {
+        setStoreForm(prev => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index)
+        }));
+    };
+
     const handleSave = async () => {
         setSaving(true);
         try {
-            console.log('Saving store info:', storeForm.id, {
-                name: storeForm.name,
-                address: storeForm.address,
-                lat: storeForm.lat,
-                lng: storeForm.lng
-            });
             await storesApi.update(storeForm.id, {
                 name: storeForm.name,
                 address: storeForm.address,
@@ -95,6 +136,7 @@ const StoreInfo: React.FC = () => {
                 openTime: storeForm.openTime,
                 closeTime: storeForm.closeTime,
                 coverImage: storeForm.coverImage,
+                images: storeForm.images.map(img => img.imageUrl), // Backend nhận mảng string[]
             });
             setSaved(true);
             alert('Cập nhật thông tin thành công!');
@@ -155,7 +197,10 @@ const StoreInfo: React.FC = () => {
 
             <div className="bg-white rounded-3xl border border-slate-200/60 shadow-xl shadow-slate-200/20 overflow-hidden">
                 {/* Cover Banner */}
-                <div className="h-64 sm:h-80 w-full relative group cursor-pointer bg-slate-100">
+                <div 
+                    className="h-64 sm:h-80 w-full relative group cursor-pointer bg-slate-100"
+                    onClick={() => coverInputRef.current?.click()}
+                >
                     <img
                         src={storeForm.coverImage || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&h=400&fit=crop"}
                         alt="Store Cover"
@@ -164,20 +209,26 @@ const StoreInfo: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
                         <div className="bg-white/20 p-3 rounded-full backdrop-blur-md">
-                            <Camera size={32} className="text-white" />
+                            {uploading ? <Loader2 size={32} className="text-white animate-spin" /> : <Camera size={32} className="text-white" />}
                         </div>
-                        <span className="ml-3 text-white font-bold text-lg">Thay đổi ảnh bìa</span>
+                        <span className="ml-3 text-white font-bold text-lg">
+                            {uploading ? 'Đang tải lên...' : 'Thay đổi ảnh bìa'}
+                        </span>
                     </div>
                 </div>
 
                 <div className="px-6 sm:px-10 pb-10 relative">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end -mt-16 sm:-mt-20 mb-8 z-10 relative">
-                        <div className="relative group cursor-pointer">
+                        <div className="relative group cursor-pointer" onClick={() => coverInputRef.current?.click()}>
                             <div className="w-32 h-32 sm:w-40 sm:h-40 bg-white rounded-full p-1.5 shadow-2xl shadow-slate-900/10">
                                 <div className="w-full h-full rounded-full overflow-hidden relative bg-primary-100 flex items-center justify-center">
-                                    <span className="text-5xl font-bold text-primary-500">
-                                        {storeForm.name.charAt(0).toUpperCase()}
-                                    </span>
+                                    {storeForm.coverImage ? (
+                                        <img src={storeForm.coverImage} className="w-full h-full object-cover" alt="Avatar" />
+                                    ) : (
+                                        <span className="text-5xl font-bold text-primary-500">
+                                            {storeForm.name.charAt(0).toUpperCase()}
+                                        </span>
+                                    )}
                                     <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Camera size={24} className="mb-1" />
                                     </div>
@@ -292,20 +343,60 @@ const StoreInfo: React.FC = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Link ảnh bìa</label>
-                                    <input
-                                        type="text"
-                                        value={storeForm.coverImage}
-                                        onChange={(e) => setStoreForm(prev => ({ ...prev, coverImage: e.target.value }))}
-                                        className="w-full px-5 py-3 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-medium transition-all shadow-sm"
-                                        placeholder="https://images.unsplash.com/..."
-                                    />
+                                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs font-mono">Ảnh bìa & Đại diện</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => coverInputRef.current?.click()}
+                                        className="w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-primary-50 text-primary-700 border border-primary-100 rounded-xl hover:bg-primary-100 transition-all font-bold"
+                                    >
+                                        <Camera size={20} /> Thay đổi hình ảnh chính
+                                    </button>
+                                    <p className="mt-2 text-xs text-slate-500 italic text-center">Click trực tiếp vào ảnh ở trên cũng có thể thay đổi.</p>
                                 </div>
+                            </div>
+
+                            {/* Image Gallery Section */}
+                            <div className="mt-10 pt-10 border-t border-slate-100">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                                        <Camera className="text-primary-500" /> Bộ sưu tập ảnh
+                                    </h2>
+                                    <button
+                                        type="button"
+                                        onClick={() => galleryInputRef.current?.click()}
+                                        className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                                    >
+                                        + Thêm ảnh
+                                    </button>
+                                </div>
+                                
+                                {storeForm.images.length === 0 ? (
+                                    <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">
+                                        <p className="text-slate-400 font-medium">Chưa có ảnh nào trong bộ sưu tập.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                        {storeForm.images.map((img, idx) => (
+                                            <div key={idx} className="aspect-square rounded-xl overflow-hidden relative group border border-slate-100">
+                                                <img src={img.imageUrl} className="w-full h-full object-cover" alt={`Gallery ${idx}`} />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <button
+                                                        onClick={() => removeGalleryImage(idx)}
+                                                        className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                                                        title="Xóa ảnh"
+                                                    >
+                                                        <Save size={16} className="rotate-45" /> {/* Using Save as a cross placeholder if needed but X is better */}
+                                                        <span className="font-bold">✕</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Footer Section with Save Button */}
                     <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-6">
                         <div className="flex items-center gap-3 text-slate-500 italic text-sm">
                             <Info size={16} /> Nhấn "Lưu thông tin" để cập nhật các thay đổi của bạn.
@@ -318,7 +409,7 @@ const StoreInfo: React.FC = () => {
                             )}
                             <button
                                 onClick={handleSave}
-                                disabled={saving}
+                                disabled={saving || uploading}
                                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-10 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-primary-500/25 hover:-translate-y-0.5 disabled:opacity-60 active:scale-95"
                             >
                                 {saving ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
@@ -328,6 +419,23 @@ const StoreInfo: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Hidden Inputs cho File Upload */}
+            <input 
+                type="file" 
+                ref={coverInputRef} 
+                className="hidden" 
+                accept="image/*"
+                onChange={(e) => handleFileChange(e, 'cover')}
+            />
+            <input 
+                type="file" 
+                ref={galleryInputRef} 
+                className="hidden" 
+                accept="image/*"
+                multiple
+                onChange={(e) => handleFileChange(e, 'gallery')}
+            />
         </div>
     );
 };

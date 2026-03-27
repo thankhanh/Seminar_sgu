@@ -40,7 +40,8 @@ export class TranslationService {
 
     try {
       // Dynamic import cho ESM module
-      const { translate } = await import('@vitalets/google-translate-api');
+      const gTranslate = await import('@vitalets/google-translate-api');
+      const translate = (gTranslate as any).translate || (gTranslate as any).default || gTranslate;
 
       const result = await translate(text, { from: fromLang, to: toLang });
 

@@ -27,6 +27,8 @@ import { QrModule } from './modules/qr/qr.module';
 import { MerchantSubscriptionsModule } from './modules/merchant-subscriptions/merchant-subscriptions.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { PlanMetadataModule } from './modules/plan-metadata/plan-metadata.module';
+import { FilesModule } from './modules/files/files.module';
+import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -59,12 +61,16 @@ import { PlanMetadataModule } from './modules/plan-metadata/plan-metadata.module
     QrModule,
     MerchantSubscriptionsModule,
     SubscriptionsModule,
+    PlanMetadataModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     // Áp dụng ThrottlerGuard cho toàn bộ app
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Áp dụng RolesGuard toàn cục (sẽ kiểm tra nếu có decorator @Roles)
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}

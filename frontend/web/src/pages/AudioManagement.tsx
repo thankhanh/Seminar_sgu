@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    CloudUpload, Headphones, Clock, Search, 
-    Trash2, Store, Globe, Loader2, Play, Plus, 
+    CloudUpload, Headphones, Search, 
+    Trash2, Globe, Loader2, Play, Plus, 
     MoreVertical, CheckCircle2
 } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -82,30 +82,43 @@ const AudioManagement: React.FC = () => {
     }, [user]);
 
     const handleUpload = async () => {
-        if (!formData.storeId || !formData.languageId) {
-            alert('Vui lòng chọn cửa hàng và ngôn ngữ');
+        let selectedLangId = formData.languageId;
+        
+        // Nếu không có languageId (do giao diện đã ẩn), tự động lấy ID của tiếng Việt
+        if (!selectedLangId) {
+            const viLang = languages.find(l => l.code === 'vi');
+            if (viLang) {
+                selectedLangId = viLang.id;
+            } else {
+                alert('Hệ thống chưa cấu hình ngôn ngữ Tiếng Việt. Vui lòng liên hệ Admin.');
+                return;
+            }
+        }
+
+        if (!formData.storeId || !formData.textContent) {
+            alert('Vui lòng chọn cửa hàng và nhập nội dung thuyết minh');
             return;
         }
 
-        // Kiểm tra trùng lặp
-        const isDuplicate = narrations.some(n => n.storeId === formData.storeId && n.languageId === formData.languageId);
+        // Kiểm tra trùng lặp (chỉ check bản VI gốc)
+        const isDuplicate = narrations.some(n => n.storeId === formData.storeId && n.languageId === selectedLangId);
         if (isDuplicate) {
-            alert('Địa điểm này đã có bản thuyết minh cho ngôn ngữ đã chọn.');
+            alert('Cửa hàng này đã có bản thuyết minh gốc.');
             return;
         }
 
         try {
             await storesApi.createNarration(formData.storeId, {
-                languageId: formData.languageId,
+                languageId: selectedLangId,
                 textContent: formData.textContent,
-                audioUrl: formData.audioUrl || undefined,
-                duration: formData.duration ? parseInt(formData.duration) : undefined,
+                audioUrl: undefined,
+                duration: undefined,
             });
             setIsUploadOpen(false);
             setFormData({ storeId: '', languageId: '', textContent: '', audioUrl: '', duration: '' });
             fetchData();
         } catch (err: any) {
-            alert(err.message || 'Lỗi khi tải lên audio');
+            alert(err.message || 'Lỗi khi lưu thuyết minh');
         }
     };
 
@@ -212,30 +225,24 @@ const AudioManagement: React.FC = () => {
                             </div>
                             
                             <h3 className="font-bold text-slate-900 text-lg mb-2 line-clamp-1">
-                                Thuyết minh {file.language?.name}
+                                {file.store?.name || myStores.find(s => s.id === file.storeId)?.name || 'N/A'}
                             </h3>
-                            <p className="text-sm text-slate-500 line-clamp-3 mb-4 flex-1 italic">
+                            <p className="text-sm text-slate-500 line-clamp-4 mb-4 flex-1 italic">
                                 "{file.textContent || 'Không có nội dung văn bản'}"
                             </p>
 
                             <div className="space-y-3 pt-4 border-t border-slate-100">
                                 <div className="flex items-center justify-between text-xs">
                                     <span className="text-slate-400 font-medium uppercase tracking-tighter flex items-center gap-1">
-                                        <Store size={12} /> Cửa hàng
-                                    </span>
-                                    <span className="font-bold text-slate-700">{file.store?.name || myStores.find(s => s.id === file.storeId)?.name || 'N/A'}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="text-slate-400 font-medium uppercase tracking-tighter flex items-center gap-1">
-                                        <Globe size={12} /> Ngôn ngữ
+                                        <Globe size={12} /> Ngôn ngữ gốc
                                     </span>
                                     <span className="font-bold text-primary-600">{file.language?.name} ({file.language?.code})</span>
                                 </div>
                                 <div className="flex items-center justify-between text-xs">
                                     <span className="text-slate-400 font-medium uppercase tracking-tighter flex items-center gap-1">
-                                        <Clock size={12} /> Thời lượng
+                                        <CheckCircle2 size={12} /> Trạng thái
                                     </span>
-                                    <span className="font-bold text-slate-700">{file.duration ? `${Math.floor(file.duration/60)}:${(file.duration%60).toString().padStart(2,'0')}` : 'Auto-gen'}</span>
+                                    <span className={`font-bold ${file.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>{file.isActive ? 'Sẵn sàng' : 'Chưa kích hoạt'}</span>
                                 </div>
                             </div>
                         </div>
@@ -282,7 +289,7 @@ const AudioManagement: React.FC = () => {
                 maxWidth="max-w-2xl"
             >
                 <div className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-1.5">Địa điểm dừng chân</label>
                             <select 
@@ -294,54 +301,20 @@ const AudioManagement: React.FC = () => {
                                 {myStores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Ngôn ngữ thuyết minh</label>
-                            <select 
-                                value={formData.languageId} 
-                                onChange={e => setFormData({...formData, languageId: e.target.value})}
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
-                            >
-                                <option value="">Chọn ngôn ngữ...</option>
-                                {languages.map(l => <option key={l.id} value={l.id}>{l.name} ({l.code})</option>)}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Audio URL (Tùy chọn ghi đè)</label>
-                            <input 
-                                type="text" 
-                                value={formData.audioUrl} 
-                                onChange={e => setFormData({...formData, audioUrl: e.target.value})}
-                                placeholder="https://...audio.mp3"
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Thời lượng (Giây)</label>
-                            <input 
-                                type="number" 
-                                value={formData.duration} 
-                                onChange={e => setFormData({...formData, duration: e.target.value})}
-                                placeholder="120"
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
-                            />
-                        </div>
                     </div>
                     
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Nội dung thuyết minh (Hệ thống sẽ tự động chuyển thành Audio)</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Nội dung thuyết minh (Tiếng Việt)</label>
                         <textarea 
-                            rows={6} 
+                            rows={8} 
                             value={formData.textContent} 
                             onChange={e => setFormData({...formData, textContent: e.target.value})}
-                            placeholder="Nhập nội dung câu chuyện hoặc thông tin giới thiệu về địa điểm này..." 
+                            placeholder="Nhập nội dung câu chuyện hoặc thông tin giới thiệu về địa điểm này bằng Tiếng Việt..." 
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all resize-none"
                         ></textarea>
                         <p className="text-[10px] text-slate-400 mt-2 flex items-center gap-1 uppercase font-bold tracking-tight">
                             <CheckCircle2 size={12} className="text-emerald-500" />
-                            Đã tích hợp công nghệ AI Storytelling chuyển văn bản thành giọng nói tự nhiên.
+                            Hệ thống sẽ tự động dịch sang ngôn ngữ của khách tham quan và chuyển thành giọng nói.
                         </p>
                     </div>
                     
@@ -357,7 +330,7 @@ const AudioManagement: React.FC = () => {
                             className="bg-primary-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/30 flex items-center gap-2"
                         >
                             <CloudUpload size={20} />
-                            Tạo và Xuất bản ngay
+                            Lưu thuyết minh
                         </button>
                     </div>
                 </div>

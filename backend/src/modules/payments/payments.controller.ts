@@ -17,7 +17,7 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Tạo yêu cầu thanh toán (VNPay hoặc MoMo)',
+    summary: 'Tạo yêu cầu thanh toán (MoMo)',
     description: 'Trả về `paymentUrl` để redirect người dùng đến trang thanh toán.',
   })
   async create(
@@ -25,36 +25,7 @@ export class PaymentsController {
     @Body() dto: CreatePaymentDto,
     @Req() req: Request,
   ) {
-    const ipAddr =
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-      req.socket.remoteAddress ||
-      '127.0.0.1';
-
-    if (dto.method === PaymentMethodEnum.VNPAY) {
-      return this.paymentsService.createVnpayPayment(user.id, dto, ipAddr);
-    }
     return this.paymentsService.createMomoPayment(user.id, dto);
-  }
-
-  // ─── VNPay ───────────────────────────────────────────────────
-
-  @Get('vnpay/return')
-  @ApiOperation({
-    summary: 'VNPay Return URL — xử lý kết quả sau thanh toán',
-    description: 'VNPay redirect người dùng về đây sau khi hoàn tất.',
-  })
-  vnpayReturn(@Query() query: Record<string, string>) {
-    return this.paymentsService.handleVnpayReturn(query);
-  }
-
-  @Post('vnpay/ipn')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'VNPay IPN — nhận thông báo bất đồng bộ từ VNPay',
-    description: 'VNPay server gọi endpoint này để xác nhận kết quả giao dịch.',
-  })
-  vnpayIpn(@Query() query: Record<string, string>) {
-    return this.paymentsService.handleVnpayIpn(query);
   }
 
   // ─── MoMo ────────────────────────────────────────────────────

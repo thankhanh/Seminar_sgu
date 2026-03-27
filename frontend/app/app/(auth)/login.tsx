@@ -1,36 +1,41 @@
 import React, { useState } from 'react';
 import {
-    StyleSheet,
-    Text,
-    View,
-    TextInput,
-    TouchableOpacity,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Image,
-    ImageBackground,
+    StyleSheet, Text, View, TextInput, TouchableOpacity,
+    KeyboardAvoidingView, Platform, ScrollView, Image, ImageBackground, Alert, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { authHelpers } from '../../constants/api';
 
 export default function LoginScreen() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isPasswordVisible, setPasswordVisible] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleLogin = async () => {
+        if (!email.trim() || !password.trim()) {
+            Alert.alert('Thiếu thông tin', 'Vui lòng nhập email và mật khẩu.');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            await authHelpers.login(email.trim(), password);
+            router.replace('/(tabs)/home');
+        } catch (error: any) {
+            const msg = error?.response?.data?.error?.message ?? 'Đăng nhập thất bại. Kiểm tra lại email/mật khẩu.';
+            Alert.alert('Lỗi đăng nhập', msg);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <KeyboardAvoidingView
-                style={styles.container}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            >
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
-                    keyboardShouldPersistTaps="handled"
-                >
+            <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
                     {/* Header */}
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
@@ -42,12 +47,10 @@ export default function LoginScreen() {
                         <Ionicons name="globe-outline" size={24} color="#888" />
                     </View>
 
-                    {/* Map / Welcome Card */}
+                    {/* Welcome Card */}
                     <View style={styles.mapCardContainer}>
                         <ImageBackground
-                            source={{
-                                uri: 'https://img.freepik.com/free-vector/light-blue-city-map-with-red-pins_23-2148325332.jpg',
-                            }}
+                            source={{ uri: 'https://img.freepik.com/free-vector/light-blue-city-map-with-red-pins_23-2148325332.jpg' }}
                             style={styles.mapBackground}
                             imageStyle={styles.mapBackgroundImage}
                         >
@@ -57,22 +60,19 @@ export default function LoginScreen() {
                                     <Text style={styles.locationText}>STREET FOOD HUB</Text>
                                 </View>
                                 <Text style={styles.welcomeText}>Welcome Back</Text>
-                                <Text style={styles.welcomeSubtext}>
-                                    Discover flavors through our GPS audio guides
-                                </Text>
+                                <Text style={styles.welcomeSubtext}>Discover flavors through our GPS audio guides</Text>
                             </View>
                         </ImageBackground>
                     </View>
 
                     {/* Form */}
                     <View style={styles.formContainer}>
-                        {/* Email Field */}
-                        <Text style={styles.label}>Email or Phone</Text>
+                        <Text style={styles.label}>Email</Text>
                         <View style={styles.inputContainer}>
                             <Ionicons name="mail-outline" size={20} color="#888" style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Enter your email or phone"
+                                placeholder="Nhập email của bạn"
                                 placeholderTextColor="#A0A0A0"
                                 value={email}
                                 onChangeText={setEmail}
@@ -81,296 +81,69 @@ export default function LoginScreen() {
                             />
                         </View>
 
-                        {/* Password Field */}
                         <View style={styles.passwordHeader}>
-                            <Text style={styles.label}>Password</Text>
-                            <TouchableOpacity>
-                                <Text style={styles.forgotText}>Forgot?</Text>
-                            </TouchableOpacity>
+                            <Text style={styles.label}>Mật khẩu</Text>
                         </View>
                         <View style={styles.inputContainer}>
-                            <Ionicons
-                                name="lock-closed-outline"
-                                size={20}
-                                color="#888"
-                                style={styles.inputIcon}
-                            />
+                            <Ionicons name="lock-closed-outline" size={20} color="#888" style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Enter your password"
+                                placeholder="Nhập mật khẩu"
                                 placeholderTextColor="#A0A0A0"
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry={!isPasswordVisible}
                             />
-                            <TouchableOpacity
-                                onPress={() => setPasswordVisible(!isPasswordVisible)}
-                                style={styles.eyeIcon}
-                            >
-                                <Ionicons
-                                    name={isPasswordVisible ? 'eye-outline' : 'eye-off-outline'}
-                                    size={20}
-                                    color="#888"
-                                />
+                            <TouchableOpacity onPress={() => setPasswordVisible(!isPasswordVisible)} style={styles.eyeIcon}>
+                                <Ionicons name={isPasswordVisible ? 'eye-outline' : 'eye-off-outline'} size={20} color="#888" />
                             </TouchableOpacity>
                         </View>
 
-                        {/* Login Button */}
-                        <TouchableOpacity style={styles.loginButton} onPress={() => router.replace('/(tabs)/home')}>
-                            <Text style={styles.loginButtonText}>Log In</Text>
-                            <Ionicons name="arrow-forward-outline" size={20} color="#FFF" style={{ marginLeft: 6 }} />
+                        <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
+                            {isLoading ? (
+                                <ActivityIndicator color="#FFF" />
+                            ) : (
+                                <>
+                                    <Text style={styles.loginButtonText}>Đăng nhập</Text>
+                                    <Ionicons name="arrow-forward-outline" size={20} color="#FFF" style={{ marginLeft: 6 }} />
+                                </>
+                            )}
                         </TouchableOpacity>
 
-                        {/* Divider */}
-                        <View style={styles.dividerContainer}>
-                            <View style={styles.dividerLine} />
-                            <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
-                            <View style={styles.dividerLine} />
-                        </View>
-
-                        {/* Social Logins */}
-                        <View style={styles.socialContainer}>
-                            <TouchableOpacity style={styles.socialButton}>
-                                <Image
-                                    source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png' }}
-                                    style={styles.socialIconImage}
-                                />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.socialButton}>
-                                <Image
-                                    source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png' }}
-                                    style={styles.socialIconImage}
-                                />
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Sign Up */}
-                        <View style={styles.signUpContainer}>
-                            <Text style={styles.signUpText}>Don't have an account? </Text>
-                            <TouchableOpacity>
-                                <Text style={styles.signUpLink}>Sign Up</Text>
-                            </TouchableOpacity>
-                        </View>
+                        {/* Guest mode */}
+                        <TouchableOpacity style={{ alignItems: 'center', marginTop: 16 }} onPress={() => router.replace('/(tabs)/home')}>
+                            <Text style={{ color: '#9CA3AF', fontSize: 13, fontWeight: '500' }}>Tiếp tục không đăng nhập →</Text>
+                        </TouchableOpacity>
                     </View>
                 </ScrollView>
-
-                {/* Footer Brand */}
-                <View style={styles.footerBrand}>
-                    <Ionicons name="restaurant-outline" size={14} color="#C0C0C0" style={{ marginRight: 4 }} />
-                    <Text style={styles.footerBrandText}>TASTE THE STREET</Text>
-                </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#F4FBFC',
-    },
-    container: {
-        flex: 1,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        paddingHorizontal: 24,
-        paddingTop: 10,
-        paddingBottom: 40,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 24,
-    },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    iconCircle: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#F4FBFC',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 10,
-    },
-    headerBrand: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    mapCardContainer: {
-        width: '100%',
-        height: 180,
-        borderRadius: 16,
-        overflow: 'hidden',
-        marginBottom: 32,
-        backgroundColor: '#E5F1F1',
-    },
-    mapBackground: {
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-    },
-    mapBackgroundImage: {
-        opacity: 0.6,
-    },
-    mapOverlay: {
-        flex: 1,
-        padding: 20,
-        justifyContent: 'center',
-    },
-    locationTag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    locationText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#6B7280',
-        marginLeft: 4,
-        letterSpacing: 0.5,
-    },
-    welcomeText: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: '#111827',
-        marginBottom: 6,
-    },
-    welcomeSubtext: {
-        fontSize: 14,
-        color: '#4B5563',
-        lineHeight: 20,
-    },
-    formContainer: {
-        width: '100%',
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 12,
-        height: 54,
-        paddingHorizontal: 16,
-        marginBottom: 20,
-    },
-    inputIcon: {
-        marginRight: 12,
-    },
-    input: {
-        flex: 1,
-        fontSize: 16,
-        color: '#111827',
-    },
-    eyeIcon: {
-        padding: 4,
-    },
-    passwordHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    forgotText: {
-        fontSize: 14,
-        color: '#009FB7',
-        fontWeight: '500',
-        marginBottom: 8,
-    },
-    loginButton: {
-        backgroundColor: '#009FB7',
-        height: 56,
-        borderRadius: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 8,
-        shadowColor: '#009FB7',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    loginButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    dividerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 32,
-        marginBottom: 24,
-    },
-    dividerLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: '#E5E7EB',
-    },
-    dividerText: {
-        marginHorizontal: 16,
-        fontSize: 12,
-        color: '#9CA3AF',
-        fontWeight: '600',
-        letterSpacing: 0.5,
-    },
-    socialContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 32,
-    },
-    socialButton: {
-        flex: 1,
-        height: 54,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginHorizontal: 6,
-    },
-    socialIconImage: {
-        width: 24,
-        height: 24,
-        resizeMode: 'contain',
-    },
-    signUpContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-    },
-    signUpText: {
-        fontSize: 14,
-        color: '#6B7280',
-    },
-    signUpLink: {
-        fontSize: 14,
-        color: '#009FB7',
-        fontWeight: '600',
-    },
-    footerBrand: {
-        position: 'absolute',
-        bottom: 20,
-        width: '100%',
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    footerBrandText: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#C0C0C0',
-        letterSpacing: 1,
-    },
+    safeArea: { flex: 1, backgroundColor: '#F4FBFC' },
+    container: { flex: 1 },
+    scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 10, paddingBottom: 40 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+    headerLeft: { flexDirection: 'row', alignItems: 'center' },
+    iconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F4FBFC', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+    headerBrand: { fontSize: 18, fontWeight: '700', color: '#111827' },
+    mapCardContainer: { width: '100%', height: 180, borderRadius: 16, overflow: 'hidden', marginBottom: 32, backgroundColor: '#E5F1F1' },
+    mapBackground: { width: '100%', height: '100%', justifyContent: 'center' },
+    mapBackgroundImage: { opacity: 0.6 },
+    mapOverlay: { flex: 1, padding: 20, justifyContent: 'center' },
+    locationTag: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    locationText: { fontSize: 12, fontWeight: '600', color: '#6B7280', marginLeft: 4, letterSpacing: 0.5 },
+    welcomeText: { fontSize: 28, fontWeight: '800', color: '#111827', marginBottom: 6 },
+    welcomeSubtext: { fontSize: 14, color: '#4B5563', lineHeight: 20 },
+    formContainer: { width: '100%' },
+    label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
+    inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, height: 54, paddingHorizontal: 16, marginBottom: 20 },
+    inputIcon: { marginRight: 12 },
+    input: { flex: 1, fontSize: 16, color: '#111827' },
+    eyeIcon: { padding: 4 },
+    passwordHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    loginButton: { backgroundColor: '#009FB7', height: 56, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8, shadowColor: '#009FB7', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+    loginButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

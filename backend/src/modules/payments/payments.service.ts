@@ -54,10 +54,8 @@ export class PaymentsService {
   // ─────────────────────────────────────────────────────────────
 
   async createVnpayPayment(userId: string, dto: CreatePaymentDto, ipAddr: string) {
-    const amount = dto.amount || (dto.type ? PLAN_PRICES[dto.type] : 0);
-    const label = dto.orderInfo || (dto.type ? PLAN_LABELS[dto.type] : 'Thanh toan don hang');
-
-    if (!amount) throw new BadRequestException('Bắt buộc phải có amount hoặc type hợp lệ');
+    const amount = PLAN_PRICES[dto.type];
+    const label = PLAN_LABELS[dto.type];
 
     // Tạo transaction trong DB
     const tx = await this.prisma.transaction.create({
@@ -65,12 +63,11 @@ export class PaymentsService {
         userId,
         amount,
         currency: 'VND',
-        type: (dto.amount ? 'food_order' : (dto.type?.startsWith('user') ? 'user_subscription' : 'merchant_subscription')) as TransactionType,
+        type: dto.type.startsWith('user') ? 'user_subscription' : 'merchant_subscription',
         paymentMethod: 'vnpay',
         status: 'pending',
         description: label,
-        planKey: dto.type, // Lưu lại key gói để xử lý sau
-      } as any,
+      },
     });
 
     const tmnCode = this.config.get<string>('VNPAY_TMN_CODE');
@@ -225,14 +222,6 @@ export class PaymentsService {
     }
   }
 
-  async handleVnpayIpn(query: Record<string, string>) {
-    // Giống return nhưng trả về theo đặc tả IPN của VNPay
-    const result = await this.handleVnpayReturn(query);
-    return { RspCode: '00', Message: 'Confirm Success' };
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // MOMO
   // ─────────────────────────────────────────────────────────────
 
   async createMomoPayment(userId: string, dto: CreatePaymentDto) {
@@ -397,7 +386,7 @@ export class PaymentsService {
   async getTransactionHistory(userId: string) {
     return this.prisma.transaction.findMany({
       where: { userId },
-      include: { vnpayDetail: true, momoDetail: true },
+      include: { momoDetail: true },
       orderBy: { createdAt: 'desc' },
     });
   }

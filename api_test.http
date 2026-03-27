@@ -1,0 +1,45 @@
+### ============================================================================
+### TỆP TEST API VỚI VSCODE REST CLIENT
+### ============================================================================
+### Hướng dẫn: 
+### 1. Cài đặt extension "REST Client" trong VSCode (tên định danh: humao.rest-client)
+### 2. Sửa lại port (nếu server bạn chạy không phải là 3000)
+### 3. Nhấn "Send Request" phía trên mỗi API để gọi thử
+### ============================================================================
+
+@baseUrl = http://localhost:3000/api/v1
+
+---
+### 1. ĐĂNG KÝ TÀI KHOẢN (REGISTER)
+# Role có thể là "user" hoặc "merchant"
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Nguyễn Văn Test",
+  "email": "test@vinhkhanh.vn",
+  "password": "StrongPassword123!",
+  "phone": "0987654321",
+  "role": "merchant"
+}
+
+---
+### 2. ĐĂNG NHẬP (LOGIN)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@vinhkhanh.vn",
+  "password": "StrongPassword123!"
+}
+
+---
+### 3. LẤY THÔNG TIN USER ĐANG ĐĂNG NHẬP (ME)
+# Lưu ý: Yêu cầu cookie hoặc access_token. Vì NestJS đã set-cookie khi đăng nhập thành công
+# nên request này sẽ tự động gắn cookie kèm theo (nếu test trong Swagger hoặc REST Client có lưu session).
+GET {{baseUrl}}/auth/me
+
+---
+### 4. TÌM THUYẾT MINH GẦN NHẤT (GPS)
+# Thử vị trí quán ăn trong phạm vi 100m
+GET {{baseUrl}}/nearby?lat=10.1234&lng=106.5678&lang=en

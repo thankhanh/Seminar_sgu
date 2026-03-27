@@ -1,16 +1,22 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { TranslationService } from '../../common/services/translation.service';
 import { CreateNarrationDto } from './dto/create-narration.dto';
 import { UpdateNarrationDto } from './dto/update-narration.dto';
-import { TranslateNarrationDto } from './dto/translate-narration.dto';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 @Injectable()
 export class NarrationsService {
-  constructor(
-    private prisma: PrismaService,
-    private translationService: TranslationService,
-  ) {}
+  private genAI: GoogleGenerativeAI;
+  private model: any;
+
+  constructor(private prisma: PrismaService) {
+    // Khởi tạo Gemini AI (API Key được lấy từ .env)
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      this.genAI = new GoogleGenerativeAI(apiKey);
+      this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    }
+  }
 
   private async verifyStoreOwner(storeId: string, user: { id: string; role: string }) {
     const store = await this.prisma.store.findUnique({
@@ -58,6 +64,132 @@ export class NarrationsService {
     });
   }
 
+  // Haversine formula to calculate distance in meters
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // in meters
+  }
+
+  /**
+   * Dịch thuật nội dung sử dụng Google Gemini AI
+   */
+  private async translateText(text: string, sourceLang: string, targetLang: string): Promise<string> {
+    if (!this.model) {
+      console.warn('[Gemini] API Key chưa được cấu hình. Trả về text gốc.');
+      return text;
+    }
+
+    try {
+      // Prompt được tối ưu cho du lịch và ẩm thực
+      const prompt = `Bạn là một biên dịch viên chuyên nghiệp về du lịch và ẩm thực. 
+      Hãy dịch đoạn giới thiệu quán ăn sau từ ${sourceLang} sang mã ngôn ngữ ${targetLang}. 
+      Yêu cầu: Dịch tự nhiên, cuốn hút, giữ đúng ý nghĩa văn hóa và sự thân thiện. 
+      Chỉ trả về đoạn văn bản đã dịch, không thêm lời dẫn giải hay dấu ngoặc kép.
+      Nội dung cần dịch: "${text}"`;
+
+      const result = await this.model.generateContent(prompt);
+      const response = await result.response;
+      let translatedText = response.text();
+
+      // Dọn dẹp dấu ngoặc kép nếu AI tự thêm vào
+      translatedText = translatedText.replace(/^"|"$/g, '').trim();
+      
+      console.log(`[Gemini AI] Đã dịch xong sang ${targetLang}: "${translatedText.substring(0, 30)}..."`);
+      return translatedText;
+    } catch (error) {
+      console.error('Lỗi khi gọi Gemini API:', error);
+      return text; // Fallback: trả về text gốc nếu lỗi
+    }
+  }
+
+  /**
+   * Tìm thuyết minh gần vị trí hiện tại của app (Có tích hợp Tự động dịch thuật và Caching)
+   */
+  async findNearby(lat: number, lng: number, targetLangCode: string) {
+    // 1. Tìm cửa hàng gần nhất (bán kính 100m)
+    const stores = await this.prisma.store.findMany({
+      where: { status: 'active' },
+    });
+
+    const radius = 100;
+    const nearbyStore = stores.find(store => {
+      const distance = this.calculateDistance(lat, lng, store.lat, store.lng);
+      return distance <= radius;
+    });
+
+    if (!nearbyStore) {
+      return { found: false, message: 'Không tìm thấy địa điểm thuyết minh nào trong phạm vi 100m' };
+    }
+
+    // 2. Tìm ngôn ngữ đích trong DB
+    const targetLanguage = await this.prisma.language.findUnique({
+      where: { code: targetLangCode }
+    });
+    if (!targetLanguage) {
+      return { found: false, message: `Hệ thống chưa hỗ trợ ngôn ngữ ${targetLangCode}` };
+    }
+
+    // 3. Kiểm tra xem đã CÓ BẢN DỊCH sẵn trong DB chưa (Để tránh dịch lại tốn tiền API)
+    let narration = await this.prisma.narration.findUnique({
+      where: { 
+        storeId_languageId: { 
+          storeId: nearbyStore.id, 
+          languageId: targetLanguage.id 
+        } 
+      }
+    });
+
+    // 4. Nếu CHƯA CÓ bản dịch, thực hiện tự động dịch từ bản VI gốc
+    if (!narration) {
+      // 4.1. Lấy bản gốc (VI)
+      const viLanguage = await this.prisma.language.findUnique({ where: { code: 'vi' } });
+      const originalNarration = await this.prisma.narration.findUnique({
+        where: { 
+          storeId_languageId: { 
+            storeId: nearbyStore.id, 
+            languageId: viLanguage.id 
+          } 
+        }
+      });
+
+      if (!originalNarration) {
+        return { found: false, message: 'Địa điểm này chưa có nội dung thuyết minh gốc (Tiếng Việt)' };
+      }
+
+      // 4.2. Gọi hàm dịch thuật
+      const translatedText = await this.translateText(originalNarration.textContent, 'vi', targetLangCode);
+
+      // 4.3. LƯU BẢN DỊCH VÀO DB (Caching) để các user sau dùng luôn
+      narration = await this.prisma.narration.create({
+        data: {
+          storeId: nearbyStore.id,
+          languageId: targetLanguage.id,
+          textContent: translatedText,
+          isActive: true
+        }
+      });
+      console.log(`[Cache] Đã lưu bản dịch mới cho store ${nearbyStore.name} (${targetLangCode})`);
+    }
+
+    return {
+      found: true,
+      storeName: nearbyStore.name,
+      textContent: narration.textContent,
+      language: targetLangCode,
+      distance: Math.round(this.calculateDistance(lat, lng, nearbyStore.lat, nearbyStore.lng))
+    };
+  }
+
   async findAll(page = 1, limit = 20, merchantId?: string) {
     const skip = (page - 1) * limit;
     const where: any = {};
@@ -76,7 +208,7 @@ export class NarrationsService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.narration.count({ where }),
+      this.prisma.narration.count(),
     ]);
     return { data, total, page, limit };
   }
@@ -94,161 +226,5 @@ export class NarrationsService {
     await this.verifyStoreOwner(narration.storeId, user);
     await this.prisma.narration.delete({ where: { id } });
     return { success: true, message: 'Đã xóa narration' };
-  }
-
-  // Hàm tính khoảng cách Haversine giữa hai điểm (đơn vị: km)
-  private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const R = 6371; // Bán kính Trái Đất (km)
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  async findNearbyNarrations(lat: number, lng: number, languageCode = 'vi', radiusKm = 1, limit = 10) {
-    // Tìm stores gần nhất
-    const stores = await this.prisma.store.findMany({
-      where: { status: 'active' },
-      select: { id: true, name: true, lat: true, lng: true },
-    });
-
-    const nearbyStores = stores
-      .map(store => ({
-        ...store,
-        distance: this.calculateDistance(lat, lng, store.lat, store.lng),
-      }))
-      .filter(store => store.distance <= radiusKm)
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, limit);
-
-    // Lấy narrations cho các stores này
-    const storeIds = nearbyStores.map(s => s.id);
-    const narrations = await this.prisma.narration.findMany({
-      where: {
-        storeId: { in: storeIds },
-        isActive: true,
-        language: { code: languageCode },
-      },
-      include: {
-        store: { select: { name: true, address: true } },
-        language: true,
-      },
-    });
-
-    // Kết hợp với khoảng cách
-    const result = narrations.map(narration => {
-      const store = nearbyStores.find(s => s.id === narration.storeId);
-      return {
-        ...narration,
-        distance: store?.distance || 0,
-      };
-    }).sort((a, b) => a.distance - b.distance);
-
-    return { data: result, userLat: lat, userLng: lng, languageCode, radiusKm };
-  }
-
-  async recordListen(userId: string, narrationId: string, source: 'gps' | 'qr' = 'gps') {
-    const narration = await this.prisma.narration.findUnique({
-      where: { id: narrationId },
-      include: { store: true },
-    });
-    if (!narration) throw new NotFoundException('Narration không tồn tại');
-
-    return this.prisma.listenHistory.create({
-      data: {
-        userId,
-        storeId: narration.storeId,
-        narrationId,
-        source,
-      },
-    });
-  }
-
-  /**
-   * Dịch nội dung thuyết minh từ ngôn ngữ gốc sang ngôn ngữ đích.
-   * Hỗ trợ tùy chọn lưu bản dịch thành narration mới.
-   */
-  async translateNarration(narrationId: string, dto: TranslateNarrationDto) {
-    // 1. Tìm narration gốc
-    const narration = await this.prisma.narration.findUnique({
-      where: { id: narrationId },
-      include: { language: true },
-    });
-    if (!narration) throw new NotFoundException('Narration không tồn tại');
-
-    if (!narration.textContent || narration.textContent.trim().length === 0) {
-      throw new BadRequestException('Narration này không có nội dung text để dịch');
-    }
-
-    // 2. Tìm ngôn ngữ đích
-    const targetLanguage = await this.prisma.language.findFirst({
-      where: { code: dto.targetLanguageCode, isActive: true },
-    });
-    if (!targetLanguage) {
-      throw new NotFoundException(
-        `Ngôn ngữ "${dto.targetLanguageCode}" không tồn tại hoặc chưa được kích hoạt`,
-      );
-    }
-
-    // 3. Dịch text
-    const sourceLanguageCode = narration.language.code;
-    const result = await this.translationService.translate(
-      narration.textContent,
-      sourceLanguageCode,
-      dto.targetLanguageCode,
-    );
-
-    // 4. Nếu yêu cầu lưu thành narration mới
-    let savedNarration = null;
-    if (dto.saveAsNew) {
-      // Kiểm tra xem đã tồn tại narration cho ngôn ngữ đích chưa
-      const existing = await this.prisma.narration.findUnique({
-        where: {
-          storeId_languageId: {
-            storeId: narration.storeId,
-            languageId: targetLanguage.id,
-          },
-        },
-      });
-
-      if (existing) {
-        // Cập nhật narration hiện có
-        savedNarration = await this.prisma.narration.update({
-          where: { id: existing.id },
-          data: { textContent: result.translatedText },
-          include: { language: true },
-        });
-      } else {
-        // Tạo narration mới
-        savedNarration = await this.prisma.narration.create({
-          data: {
-            storeId: narration.storeId,
-            languageId: targetLanguage.id,
-            textContent: result.translatedText,
-            duration: narration.duration,
-            isActive: true,
-          },
-          include: { language: true },
-        });
-      }
-    }
-
-    return {
-      originalText: narration.textContent,
-      translatedText: result.translatedText,
-      sourceLanguage: {
-        code: sourceLanguageCode,
-        name: narration.language.name,
-      },
-      targetLanguage: {
-        code: dto.targetLanguageCode,
-        name: targetLanguage.name,
-      },
-      saved: dto.saveAsNew ?? false,
-      savedNarration,
-    };
   }
 }

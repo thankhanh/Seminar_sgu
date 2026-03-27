@@ -6,27 +6,27 @@ export declare class UsersController {
     getProfile(user: {
         id: string;
     }): Promise<{
-        id: string;
         name: string;
-        createdAt: Date;
-        updatedAt: Date;
-        isActive: boolean;
         email: string;
         phone: string;
         role: import(".prisma/client").$Enums.UserRole;
         preferredLanguage: string;
+        id: string;
         avatarUrl: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     updateProfile(user: {
         id: string;
     }, dto: UpdateProfileDto): Promise<{
-        id: string;
         name: string;
-        updatedAt: Date;
         email: string;
         phone: string;
         role: import(".prisma/client").$Enums.UserRole;
         preferredLanguage: string;
+        id: string;
         avatarUrl: string;
+        updatedAt: Date;
     }>;
 }

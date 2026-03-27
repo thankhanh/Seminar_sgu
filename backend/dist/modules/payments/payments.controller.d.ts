@@ -39,7 +39,6 @@ export declare class PaymentsController {
         vnpayDetail: {
             id: string;
             createdAt: Date;
-            transactionId: string;
             vnpTxnRef: string;
             vnpAmount: bigint;
             vnpOrderInfo: string | null;
@@ -49,33 +48,34 @@ export declare class PaymentsController {
             vnpResponseCode: string | null;
             vnpSecureHash: string | null;
             rawResponse: import("@prisma/client/runtime/library").JsonValue | null;
+            transactionId: string;
         };
         momoDetail: {
+            message: string | null;
             id: string;
-            amount: bigint;
             createdAt: Date;
-            transactionId: string;
+            amount: bigint;
+            orderInfo: string | null;
             rawResponse: import("@prisma/client/runtime/library").JsonValue | null;
+            transactionId: string;
             orderId: string;
             requestId: string | null;
-            orderInfo: string | null;
             momoTransId: string | null;
             resultCode: number | null;
-            message: string | null;
             payType: string | null;
             signature: string | null;
         };
     } & {
-        id: string;
-        amount: import("@prisma/client/runtime/library").Decimal;
-        currency: string;
-        type: import(".prisma/client").$Enums.TransactionType;
-        paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
-        paymentRefId: string | null;
         status: import(".prisma/client").$Enums.TransactionStatus;
         description: string | null;
+        type: import(".prisma/client").$Enums.TransactionType;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
+        amount: import("@prisma/client/runtime/library").Decimal;
+        currency: string;
+        paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
+        paymentRefId: string | null;
     })[]>;
 }

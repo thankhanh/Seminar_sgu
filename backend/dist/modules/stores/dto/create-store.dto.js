@@ -69,4 +69,22 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateStoreDto.prototype, "coverImage", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'merchant-uuid' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateStoreDto.prototype, "merchantId", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ enum: ['pending', 'active', 'hidden'], example: 'active' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateStoreDto.prototype, "status", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: ['https://image1.jpg', 'https://image2.jpg'] }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], CreateStoreDto.prototype, "images", void 0);
 //# sourceMappingURL=create-store.dto.js.map

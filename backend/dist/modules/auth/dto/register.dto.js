@@ -49,4 +49,18 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "preferredLanguage", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Vinh Khanh Coffee' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(200),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "businessName", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '0123456789' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(50),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "taxCode", void 0);
 //# sourceMappingURL=register.dto.js.map

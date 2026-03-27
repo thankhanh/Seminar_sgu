@@ -25,16 +25,16 @@ let MenusController = class MenusController {
         this.menusService = menusService;
     }
     create(storeId, user, dto) {
-        return this.menusService.create(storeId, user.id, dto);
+        return this.menusService.create(storeId, user, dto);
     }
     findByStore(storeId) {
         return this.menusService.findByStore(storeId);
     }
     update(id, user, dto) {
-        return this.menusService.update(id, user.id, dto);
+        return this.menusService.update(id, user, dto);
     }
     remove(id, user) {
-        return this.menusService.remove(id, user.id);
+        return this.menusService.remove(id, user);
     }
 };
 exports.MenusController = MenusController;

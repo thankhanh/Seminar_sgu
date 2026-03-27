@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  --color-primary-50: #f4fbfc;
+  --color-primary-100: #b3ebf2;
+  --color-primary-200: #80defa;
+  --color-primary-300: #4dd1f2;
+  --color-primary-400: #26c7ed;
+  --color-primary-500: #009fb7;
+  --color-primary-600: #008fa5;
+  --color-primary-700: #007688;
+  --color-primary-800: #005f6e;
+  --color-primary-900: #004d5a;
+  
+  --color-secondary: #b2ebf2;
+  --color-tertiary: #3a75d3;
+  --color-neutral: #4d7e91;
+}
+
+:root {
+  --primary: var(--color-primary-500);
+  --primary-foreground: white;
+
+  --background: var(--color-primary-50); /* Phông nền xanh nhạt dễ nhìn */
+  --foreground: #111827;
+
+  --card: white;
+  --card-foreground: #111827;
+
+  --sidebar: white;
+  --sidebar-foreground: #6b7280;
+  --sidebar-primary: var(--primary);
+  --sidebar-accent: #f3f4f6;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}

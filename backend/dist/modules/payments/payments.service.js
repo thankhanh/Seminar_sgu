@@ -8,15 +8,25 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentsService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../../database/prisma.service");
 const create_payment_dto_1 = require("./dto/create-payment.dto");
+const client_1 = require("@prisma/client");
+const merchant_subscriptions_service_1 = require("../merchant-subscriptions/merchant-subscriptions.service");
 const crypto = require("crypto");
 const https = require("https");
 const querystring = require("querystring");
+const TYPE_TO_PLAN = {
+    [create_payment_dto_1.SubscriptionTypeEnum.MERCHANT_STARTER]: client_1.MerchantPlan.starter,
+    [create_payment_dto_1.SubscriptionTypeEnum.MERCHANT_BUSINESS]: client_1.MerchantPlan.business,
+    [create_payment_dto_1.SubscriptionTypeEnum.MERCHANT_PREMIUM]: client_1.MerchantPlan.premium,
+};
 const PLAN_PRICES = {
     [create_payment_dto_1.SubscriptionTypeEnum.USER_MONTHLY]: 49000,
     [create_payment_dto_1.SubscriptionTypeEnum.USER_YEARLY]: 399000,
@@ -32,9 +42,10 @@ const PLAN_LABELS = {
     [create_payment_dto_1.SubscriptionTypeEnum.MERCHANT_PREMIUM]: 'Gói Merchant Premium',
 };
 let PaymentsService = class PaymentsService {
-    constructor(prisma, config) {
+    constructor(prisma, config, subscriptionService) {
         this.prisma = prisma;
         this.config = config;
+        this.subscriptionService = subscriptionService;
     }
     async createVnpayPayment(userId, dto, ipAddr) {
         const amount = dto.amount || (dto.type ? PLAN_PRICES[dto.type] : 0);
@@ -136,7 +147,29 @@ let PaymentsService = class PaymentsService {
             where: { id: vnpDetail.transactionId },
             data: { status: success ? 'success' : 'failed', paymentRefId: query.vnp_TransactionNo },
         });
+        if (success) {
+            await this.handlePostPayment(vnpDetail.transactionId);
+        }
         return { success, responseCode, transactionId: vnpDetail.transactionId };
+    }
+    async handlePostPayment(transactionId) {
+        const tx = await this.prisma.transaction.findUnique({
+            where: { id: transactionId },
+        });
+        if (!tx || tx.status !== 'success')
+            return;
+        if (tx.type === 'merchant_subscription') {
+            const merchant = await this.prisma.merchant.findUnique({ where: { userId: tx.userId } });
+            if (merchant) {
+                let plan = client_1.MerchantPlan.starter;
+                const amount = Number(tx.amount);
+                if (amount >= 900000)
+                    plan = client_1.MerchantPlan.premium;
+                else if (amount >= 400000)
+                    plan = client_1.MerchantPlan.business;
+                await this.subscriptionService.activatePlan(merchant.id, plan);
+            }
+        }
     }
     async handleVnpayIpn(query) {
         const result = await this.handleVnpayReturn(query);
@@ -272,6 +305,9 @@ let PaymentsService = class PaymentsService {
                 paymentRefId: String(body.transId),
             },
         });
+        if (success) {
+            await this.handlePostPayment(momoDetail.transactionId);
+        }
         return { message: 'IPN processed' };
     }
     async getTransactionHistory(userId) {
@@ -320,7 +356,9 @@ let PaymentsService = class PaymentsService {
 exports.PaymentsService = PaymentsService;
 exports.PaymentsService = PaymentsService = __decorate([
     (0, common_1.Injectable)(),
+    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => merchant_subscriptions_service_1.MerchantSubscriptionsService))),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        config_1.ConfigService])
+        config_1.ConfigService,
+        merchant_subscriptions_service_1.MerchantSubscriptionsService])
 ], PaymentsService);
 //# sourceMappingURL=payments.service.js.map

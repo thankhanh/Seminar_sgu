@@ -4,66 +4,75 @@ export declare class MerchantService {
     private prisma;
     constructor(prisma: PrismaService);
     register(userId: string, dto: RegisterMerchantDto): Promise<{
-        id: string;
         status: import(".prisma/client").$Enums.MerchantStatus;
-        createdAt: Date;
-        userId: string;
         businessName: string;
         taxCode: string | null;
+        id: string;
+        createdAt: Date;
         rejectReason: string | null;
+        userId: string;
     }>;
     getMyMerchant(userId: string): Promise<{
         stores: {
-            id: string;
-            name: string;
-            address: string;
             status: import(".prisma/client").$Enums.StoreStatus;
+            description: string | null;
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            address: string;
+            lat: number;
+            lng: number;
+            openTime: string | null;
+            closeTime: string | null;
+            coverImage: string | null;
+            merchantId: string;
         }[];
     } & {
-        id: string;
         status: import(".prisma/client").$Enums.MerchantStatus;
-        createdAt: Date;
-        userId: string;
         businessName: string;
         taxCode: string | null;
+        id: string;
+        createdAt: Date;
         rejectReason: string | null;
+        userId: string;
     }>;
     findAll(page?: number, limit?: number): Promise<{
         data: ({
             user: {
-                id: string;
                 name: string;
                 email: string;
+                id: string;
             };
         } & {
-            id: string;
             status: import(".prisma/client").$Enums.MerchantStatus;
-            createdAt: Date;
-            userId: string;
             businessName: string;
             taxCode: string | null;
+            id: string;
+            createdAt: Date;
             rejectReason: string | null;
+            userId: string;
         })[];
         total: number;
         page: number;
         limit: number;
     }>;
     approveMerchant(id: string): Promise<{
-        id: string;
         status: import(".prisma/client").$Enums.MerchantStatus;
-        createdAt: Date;
-        userId: string;
         businessName: string;
         taxCode: string | null;
+        id: string;
+        createdAt: Date;
         rejectReason: string | null;
+        userId: string;
     }>;
     rejectMerchant(id: string, reason?: string): Promise<{
-        id: string;
         status: import(".prisma/client").$Enums.MerchantStatus;
-        createdAt: Date;
-        userId: string;
         businessName: string;
         taxCode: string | null;
+        id: string;
+        createdAt: Date;
         rejectReason: string | null;
+        userId: string;
     }>;
 }

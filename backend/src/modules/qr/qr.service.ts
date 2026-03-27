@@ -56,7 +56,6 @@ export class QrService {
 
     return this.prisma.qrCode.findMany({ where: { storeId }, orderBy: { createdAt: 'desc' } });
   }
-
   async scanQr(code: string, userId: string) {
     const qr = await this.prisma.qrCode.findUnique({
       where: { code },

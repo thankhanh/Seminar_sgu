@@ -25,10 +25,10 @@ let StoresController = class StoresController {
         this.storesService = storesService;
     }
     create(user, dto) {
-        return this.storesService.create(user.id, dto);
+        return this.storesService.create(user, dto);
     }
-    findAll(page = 1, limit = 20) {
-        return this.storesService.findAll(+page, +limit);
+    findAll(page = 1, limit = 20, status, merchantId) {
+        return this.storesService.findAll(+page, +limit, status, merchantId);
     }
     findNearby(lat, lng, radius = 5, limit = 20) {
         return this.storesService.findNearby(+lat, +lng, +radius, +limit);
@@ -37,10 +37,10 @@ let StoresController = class StoresController {
         return this.storesService.findOne(id);
     }
     update(id, user, dto) {
-        return this.storesService.update(id, user.id, dto);
+        return this.storesService.update(id, user, dto);
     }
     remove(id, user) {
-        return this.storesService.remove(id, user.id);
+        return this.storesService.remove(id, user);
     }
 };
 exports.StoresController = StoresController;
@@ -60,19 +60,23 @@ __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Danh sách store (public)' }),
     (0, swagger_1.ApiQuery)({ name: 'page', required: false, type: Number, example: 1 }),
     (0, swagger_1.ApiQuery)({ name: 'limit', required: false, type: Number, example: 20 }),
+    (0, swagger_1.ApiQuery)({ name: 'status', required: false, type: String, example: 'active' }),
+    (0, swagger_1.ApiQuery)({ name: 'merchantId', required: false, type: String }),
     __param(0, (0, common_1.Query)('page')),
     __param(1, (0, common_1.Query)('limit')),
+    __param(2, (0, common_1.Query)('status')),
+    __param(3, (0, common_1.Query)('merchantId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, Object, String, String]),
     __metadata("design:returntype", void 0)
 ], StoresController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('nearby'),
-    (0, swagger_1.ApiOperation)({ summary: 'Tìm stores gần vị trí GPS (public)' }),
-    (0, swagger_1.ApiQuery)({ name: 'lat', required: true, type: Number, example: 10.7769, description: 'Vĩ độ hiện tại' }),
-    (0, swagger_1.ApiQuery)({ name: 'lng', required: true, type: Number, example: 106.7009, description: 'Kinh độ hiện tại' }),
-    (0, swagger_1.ApiQuery)({ name: 'radius', required: false, type: Number, example: 5, description: 'Bán kính tìm kiếm (km), mặc định 5' }),
-    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, type: Number, example: 20, description: 'Số kết quả tối đa' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Tìm stores gần nhất dựa trên vị trí (public)' }),
+    (0, swagger_1.ApiQuery)({ name: 'lat', required: true, type: Number, example: 10.7769 }),
+    (0, swagger_1.ApiQuery)({ name: 'lng', required: true, type: Number, example: 106.7009 }),
+    (0, swagger_1.ApiQuery)({ name: 'radius', required: false, type: Number, example: 5, description: 'Bán kính tìm kiếm (km)' }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, type: Number, example: 20 }),
     __param(0, (0, common_1.Query)('lat')),
     __param(1, (0, common_1.Query)('lng')),
     __param(2, (0, common_1.Query)('radius')),
@@ -93,7 +97,7 @@ __decorate([
     (0, common_1.Patch)(':id'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Cập nhật store (merchant owner)' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Cập nhật store (merchant owner/admin)' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __param(2, (0, common_1.Body)()),
@@ -105,7 +109,7 @@ __decorate([
     (0, common_1.Delete)(':id'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Xóa store (merchant owner)' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Xóa store (merchant owner/admin)' }),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),

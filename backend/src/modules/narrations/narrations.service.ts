@@ -12,19 +12,23 @@ export class NarrationsService {
     private translationService: TranslationService,
   ) {}
 
-  private async verifyStoreOwner(storeId: string, userId: string) {
+  private async verifyStoreOwner(storeId: string, user: { id: string; role: string }) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
       include: { merchant: true },
     });
     if (!store) throw new NotFoundException('Store không tồn tại');
-    if (store.merchant.userId !== userId)
+
+    // Admin có quyền quản lý mọi store. Merchant chỉ quản lý store của mình.
+    if (user.role !== 'admin' && store.merchant.userId !== user.id) {
       throw new ForbiddenException('Bạn không có quyền quản lý store này');
+    }
+
     return store;
   }
 
-  async create(storeId: string, userId: string, dto: CreateNarrationDto) {
-    await this.verifyStoreOwner(storeId, userId);
+  async create(storeId: string, user: { id: string; role: string }, dto: CreateNarrationDto) {
+    await this.verifyStoreOwner(storeId, user);
 
     const existing = await this.prisma.narration.findUnique({
       where: { storeId_languageId: { storeId, languageId: dto.languageId } },
@@ -54,22 +58,44 @@ export class NarrationsService {
     });
   }
 
-  async update(id: string, userId: string, dto: UpdateNarrationDto) {
+  async findAll(page = 1, limit = 20, merchantId?: string) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (merchantId) {
+      where.store = { merchantId };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.narration.findMany({
+        skip,
+        take: limit,
+        where,
+        include: { 
+          language: true,
+          store: { select: { name: true } }
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.narration.count({ where }),
+    ]);
+    return { data, total, page, limit };
+  }
+
+  async update(id: string, user: { id: string; role: string }, dto: UpdateNarrationDto) {
     const narration = await this.prisma.narration.findUnique({ where: { id } });
     if (!narration) throw new NotFoundException('Narration không tồn tại');
-    await this.verifyStoreOwner(narration.storeId, userId);
+    await this.verifyStoreOwner(narration.storeId, user);
     return this.prisma.narration.update({ where: { id }, data: dto });
   }
 
-  async remove(id: string, userId: string) {
+  async remove(id: string, user: { id: string; role: string }) {
     const narration = await this.prisma.narration.findUnique({ where: { id } });
     if (!narration) throw new NotFoundException('Narration không tồn tại');
-    await this.verifyStoreOwner(narration.storeId, userId);
+    await this.verifyStoreOwner(narration.storeId, user);
     await this.prisma.narration.delete({ where: { id } });
     return { success: true, message: 'Đã xóa narration' };
   }
 
-<<<<<<< Updated upstream
   // Hàm tính khoảng cách Haversine giữa hai điểm (đơn vị: km)
   private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 6371; // Bán kính Trái Đất (km)
@@ -140,7 +166,7 @@ export class NarrationsService {
       },
     });
   }
-=======
+
   /**
    * Dịch nội dung thuyết minh từ ngôn ngữ gốc sang ngôn ngữ đích.
    * Hỗ trợ tùy chọn lưu bản dịch thành narration mới.
@@ -226,4 +252,3 @@ export class NarrationsService {
     };
   }
 }
->>>>>>> Stashed changes

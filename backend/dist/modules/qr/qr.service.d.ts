@@ -4,9 +4,9 @@ export declare class QrService {
     constructor(prisma: PrismaService);
     generateQr(storeId: string, userId: string): Promise<{
         id: string;
+        isActive: boolean;
         createdAt: Date;
         storeId: string;
-        isActive: boolean;
         code: string;
         qrImageUrl: string | null;
     }>;
@@ -16,55 +16,105 @@ export declare class QrService {
                 businessName: string;
             };
             menus: {
-                id: string;
-                name: string;
                 description: string | null;
+                name: string;
+                id: string;
                 createdAt: Date;
-                storeId: string;
                 imageUrl: string | null;
+                storeId: string;
                 price: import("@prisma/client/runtime/library").Decimal;
                 isAvailable: boolean;
             }[];
             narrations: ({
                 language: {
-                    id: string;
                     name: string;
+                    id: string;
                     isActive: boolean;
                     code: string;
                     flagIcon: string | null;
                 };
             } & {
                 id: string;
+                isActive: boolean;
                 createdAt: Date;
                 storeId: string;
                 languageId: string;
                 audioUrl: string | null;
                 textContent: string | null;
                 duration: number | null;
-                isActive: boolean;
             })[];
         } & {
-            id: string;
-            name: string;
+            status: import(".prisma/client").$Enums.StoreStatus;
             description: string | null;
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
             address: string;
             lat: number;
             lng: number;
             openTime: string | null;
             closeTime: string | null;
             coverImage: string | null;
-            status: import(".prisma/client").$Enums.StoreStatus;
-            createdAt: Date;
-            updatedAt: Date;
             merchantId: string;
         };
     }>;
     getStoreQrCodes(storeId: string, userId: string): Promise<{
         id: string;
+        isActive: boolean;
         createdAt: Date;
         storeId: string;
-        isActive: boolean;
         code: string;
         qrImageUrl: string | null;
     }[]>;
+    scanQr(code: string, userId: string): Promise<{
+        store: {
+            merchant: {
+                businessName: string;
+            };
+            menus: {
+                description: string | null;
+                name: string;
+                id: string;
+                createdAt: Date;
+                imageUrl: string | null;
+                storeId: string;
+                price: import("@prisma/client/runtime/library").Decimal;
+                isAvailable: boolean;
+            }[];
+            narrations: ({
+                language: {
+                    name: string;
+                    id: string;
+                    isActive: boolean;
+                    code: string;
+                    flagIcon: string | null;
+                };
+            } & {
+                id: string;
+                isActive: boolean;
+                createdAt: Date;
+                storeId: string;
+                languageId: string;
+                audioUrl: string | null;
+                textContent: string | null;
+                duration: number | null;
+            })[];
+        } & {
+            status: import(".prisma/client").$Enums.StoreStatus;
+            description: string | null;
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            address: string;
+            lat: number;
+            lng: number;
+            openTime: string | null;
+            closeTime: string | null;
+            coverImage: string | null;
+            merchantId: string;
+        };
+        listened: boolean;
+    }>;
 }

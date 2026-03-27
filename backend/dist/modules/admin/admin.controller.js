@@ -17,12 +17,16 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const admin_service_1 = require("./admin.service");
 const reject_merchant_dto_1 = require("./dto/reject-merchant.dto");
+const create_user_dto_1 = require("./dto/create-user.dto");
 const jwt_auth_guard_1 = require("../../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../../common/guards/roles.guard");
 const roles_decorator_1 = require("../../common/decorators/roles.decorator");
 let AdminController = class AdminController {
     constructor(adminService) {
         this.adminService = adminService;
+    }
+    createUser(dto) {
+        return this.adminService.createUser(dto);
     }
     getAllUsers(page = 1, limit = 20) {
         return this.adminService.getAllUsers(+page, +limit);
@@ -39,8 +43,19 @@ let AdminController = class AdminController {
     toggleUserActive(id) {
         return this.adminService.toggleUserActive(id);
     }
+    getStats() {
+        return this.adminService.getStats();
+    }
 };
 exports.AdminController = AdminController;
+__decorate([
+    (0, common_1.Post)('users'),
+    (0, swagger_1.ApiOperation)({ summary: '[Admin] Khởi tạo tài khoản mới' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_user_dto_1.CreateUserDto]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "createUser", null);
 __decorate([
     (0, common_1.Get)('users'),
     (0, swagger_1.ApiOperation)({ summary: '[Admin] Danh sách tất cả người dùng' }),
@@ -88,6 +103,13 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "toggleUserActive", null);
+__decorate([
+    (0, common_1.Get)('stats'),
+    (0, swagger_1.ApiOperation)({ summary: '[Admin] Thống kê Dashboard' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getStats", null);
 exports.AdminController = AdminController = __decorate([
     (0, swagger_1.ApiTags)('Admin'),
     (0, common_1.Controller)('admin'),

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { CreateLanguageDto } from './dto/create-language.dto';
 
 @Injectable()
 export class LanguagesService {
@@ -38,5 +39,24 @@ export class LanguagesService {
     });
     if (!language) throw new NotFoundException(`Ngôn ngữ "${code}" không tồn tại`);
     return language;
+  }
+
+  create(dto: CreateLanguageDto) {
+    return this.prisma.language.create({
+      data: dto,
+    });
+  }
+
+  update(id: string, dto: Partial<CreateLanguageDto>) {
+    return this.prisma.language.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  remove(id: string) {
+    return this.prisma.language.delete({
+      where: { id },
+    });
   }
 }

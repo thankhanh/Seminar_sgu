@@ -2,14 +2,23 @@ import {
   Injectable,
   BadRequestException,
   InternalServerErrorException,
+  forwardRef,
+  Inject,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { CreatePaymentDto, PaymentMethodEnum, SubscriptionTypeEnum } from './dto/create-payment.dto';
-import { TransactionType } from '@prisma/client';
+import { TransactionType, MerchantPlan } from '@prisma/client';
+import { MerchantSubscriptionsService } from '../merchant-subscriptions/merchant-subscriptions.service';
 import * as crypto from 'crypto';
 import * as https from 'https';
 import * as querystring from 'querystring';
+
+const TYPE_TO_PLAN: Record<string, MerchantPlan> = {
+  [SubscriptionTypeEnum.MERCHANT_STARTER]: MerchantPlan.starter,
+  [SubscriptionTypeEnum.MERCHANT_BUSINESS]: MerchantPlan.business,
+  [SubscriptionTypeEnum.MERCHANT_PREMIUM]: MerchantPlan.premium,
+};
 
 // Giá gói đăng ký (VND)
 const PLAN_PRICES: Record<SubscriptionTypeEnum, number> = {
@@ -33,6 +42,8 @@ export class PaymentsService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    @Inject(forwardRef(() => MerchantSubscriptionsService))
+    private subscriptionService: MerchantSubscriptionsService,
   ) {}
 
   // ─────────────────────────────────────────────────────────────
@@ -160,7 +171,35 @@ export class PaymentsService {
       data: { status: success ? 'success' : 'failed', paymentRefId: query.vnp_TransactionNo },
     });
 
+    if (success) {
+      await this.handlePostPayment(vnpDetail.transactionId);
+    }
+
     return { success, responseCode, transactionId: vnpDetail.transactionId };
+  }
+
+  /**
+   * Xử lý các tác vụ sau khi thanh toán thành công (Kích hoạt gói...)
+   */
+  private async handlePostPayment(transactionId: string) {
+    const tx = await this.prisma.transaction.findUnique({
+      where: { id: transactionId },
+    });
+
+    if (!tx || tx.status !== 'success') return;
+
+    if (tx.type === 'merchant_subscription') {
+      const merchant = await this.prisma.merchant.findUnique({ where: { userId: tx.userId } });
+      if (merchant) {
+        // Xác định Plan dựa trên amount
+        let plan: MerchantPlan = MerchantPlan.starter;
+        const amount = Number(tx.amount);
+        if (amount >= 900000) plan = MerchantPlan.premium;
+        else if (amount >= 400000) plan = MerchantPlan.business;
+        
+        await this.subscriptionService.activatePlan(merchant.id, plan);
+      }
+    }
   }
 
   async handleVnpayIpn(query: Record<string, string>) {
@@ -323,6 +362,10 @@ export class PaymentsService {
         paymentRefId: String(body.transId),
       },
     });
+
+    if (success) {
+      await this.handlePostPayment(momoDetail.transactionId);
+    }
 
     return { message: 'IPN processed' };
   }

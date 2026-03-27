@@ -12,5 +12,7 @@ export declare enum SubscriptionTypeEnum {
 export declare class CreatePaymentDto {
     method: PaymentMethodEnum;
     type: SubscriptionTypeEnum;
+    amount?: number;
+    orderInfo?: string;
     ipAddr?: string;
 }

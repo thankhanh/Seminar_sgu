@@ -5,37 +5,46 @@ export declare class MenusService {
     private prisma;
     constructor(prisma: PrismaService);
     private verifyStoreOwner;
-    create(storeId: string, userId: string, dto: CreateMenuDto): Promise<{
+    create(storeId: string, user: {
         id: string;
-        name: string;
+        role: string;
+    }, dto: CreateMenuDto): Promise<{
         description: string | null;
+        name: string;
+        id: string;
         createdAt: Date;
-        storeId: string;
         imageUrl: string | null;
+        storeId: string;
         price: import("@prisma/client/runtime/library").Decimal;
         isAvailable: boolean;
     }>;
     findByStore(storeId: string): Promise<{
-        id: string;
-        name: string;
         description: string | null;
+        name: string;
+        id: string;
         createdAt: Date;
-        storeId: string;
         imageUrl: string | null;
+        storeId: string;
         price: import("@prisma/client/runtime/library").Decimal;
         isAvailable: boolean;
     }[]>;
-    update(id: string, userId: string, dto: UpdateMenuDto): Promise<{
+    update(id: string, user: {
         id: string;
-        name: string;
+        role: string;
+    }, dto: UpdateMenuDto): Promise<{
         description: string | null;
+        name: string;
+        id: string;
         createdAt: Date;
-        storeId: string;
         imageUrl: string | null;
+        storeId: string;
         price: import("@prisma/client/runtime/library").Decimal;
         isAvailable: boolean;
     }>;
-    remove(id: string, userId: string): Promise<{
+    remove(id: string, user: {
+        id: string;
+        role: string;
+    }): Promise<{
         success: boolean;
         message: string;
     }>;

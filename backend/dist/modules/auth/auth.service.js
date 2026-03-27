@@ -33,12 +33,27 @@ let AuthService = class AuthService {
                 passwordHash,
                 phone: dto.phone,
                 role: dto.role ?? 'user',
+                isActive: (dto.role === 'merchant') ? false : true,
                 preferredLanguage: dto.preferredLanguage ?? 'vi',
             },
             select: { id: true, name: true, email: true, role: true, createdAt: true },
         });
-        const tokens = await this.generateTokens(user.id, user.email, user.role);
-        return { user, ...tokens };
+        const tokens = user.role === 'merchant' ? null : await this.generateTokens(user.id, user.email, user.role);
+        if (user.role === 'merchant') {
+            await this.prisma.merchant.create({
+                data: {
+                    userId: user.id,
+                    businessName: dto.businessName || `${user.name}'s Business`,
+                    taxCode: dto.taxCode,
+                    status: 'pending',
+                },
+            });
+        }
+        return {
+            user,
+            ...tokens,
+            message: user.role === 'merchant' ? 'Tài khoản đang chờ duyệt. Vui lòng đăng nhập sau khi được phê duyệt.' : undefined
+        };
     }
     async login(dto) {
         const user = await this.prisma.user.findUnique({ where: { email: dto.email } });

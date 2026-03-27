@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { NarrationsService } from './narrations.service';
 import { CreateNarrationDto } from './dto/create-narration.dto';
 import { UpdateNarrationDto } from './dto/update-narration.dto';
@@ -15,13 +15,13 @@ export class NarrationsController {
   @Post('stores/:storeId/narrations')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Tạo narration cho store (merchant owner)' })
+  @ApiOperation({ summary: 'Tạo narration cho store (merchant owner/admin)' })
   create(
     @Param('storeId') storeId: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
     @Body() dto: CreateNarrationDto,
   ) {
-    return this.narrService.create(storeId, user.id, dto);
+    return this.narrService.create(storeId, user, dto);
   }
 
   @Get('stores/:storeId/narrations')
@@ -30,7 +30,18 @@ export class NarrationsController {
     return this.narrService.findByStore(storeId);
   }
 
-<<<<<<< Updated upstream
+  @Get('narrations')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Danh sách tất cả narration (Admin)' })
+  findAll(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('merchantId') merchantId?: string,
+  ) {
+    return this.narrService.findAll(Number(page) || 1, Number(limit) || 20, merchantId);
+  }
+
   @Get('nearby')
   @ApiOperation({ summary: 'Tìm narrations gần nhất dựa trên vị trí (public)' })
   @ApiQuery({ name: 'lat', required: true, type: Number, example: 10.7769 })
@@ -59,7 +70,8 @@ export class NarrationsController {
     @Query('source') source: 'gps' | 'qr' = 'gps',
   ) {
     return this.narrService.recordListen(user.id, narrationId, source);
-=======
+  }
+
   @Post('narrations/:id/translate')
   @ApiOperation({
     summary: 'Dịch nội dung thuyết minh sang ngôn ngữ khác',
@@ -72,29 +84,28 @@ export class NarrationsController {
     @Body() dto: TranslateNarrationDto,
   ) {
     return this.narrService.translateNarration(id, dto);
->>>>>>> Stashed changes
   }
 
   @Patch('narrations/:id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cập nhật narration (merchant owner)' })
+  @ApiOperation({ summary: 'Cập nhật narration (merchant owner/admin)' })
   update(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
     @Body() dto: UpdateNarrationDto,
   ) {
-    return this.narrService.update(id, user.id, dto);
+    return this.narrService.update(id, user, dto);
   }
 
   @Delete('narrations/:id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Xóa narration (merchant owner)' })
+  @ApiOperation({ summary: 'Xóa narration (merchant owner/admin)' })
   remove(
     @Param('id') id: string,
-    @CurrentUser() user: { id: string },
+    @CurrentUser() user: { id: string; role: string },
   ) {
-    return this.narrService.remove(id, user.id);
+    return this.narrService.remove(id, user);
   }
 }

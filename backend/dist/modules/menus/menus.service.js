@@ -16,19 +16,20 @@ let MenusService = class MenusService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async verifyStoreOwner(storeId, userId) {
+    async verifyStoreOwner(storeId, user) {
         const store = await this.prisma.store.findUnique({
             where: { id: storeId },
             include: { merchant: true },
         });
         if (!store)
             throw new common_1.NotFoundException('Store không tồn tại');
-        if (store.merchant.userId !== userId)
+        if (user.role !== 'admin' && store.merchant.userId !== user.id) {
             throw new common_1.ForbiddenException('Bạn không có quyền quản lý store này');
+        }
         return store;
     }
-    async create(storeId, userId, dto) {
-        await this.verifyStoreOwner(storeId, userId);
+    async create(storeId, user, dto) {
+        await this.verifyStoreOwner(storeId, user);
         return this.prisma.menu.create({
             data: {
                 storeId,
@@ -49,18 +50,18 @@ let MenusService = class MenusService {
             orderBy: { createdAt: 'desc' },
         });
     }
-    async update(id, userId, dto) {
+    async update(id, user, dto) {
         const menu = await this.prisma.menu.findUnique({ where: { id } });
         if (!menu)
             throw new common_1.NotFoundException('Menu item không tồn tại');
-        await this.verifyStoreOwner(menu.storeId, userId);
+        await this.verifyStoreOwner(menu.storeId, user);
         return this.prisma.menu.update({ where: { id }, data: dto });
     }
-    async remove(id, userId) {
+    async remove(id, user) {
         const menu = await this.prisma.menu.findUnique({ where: { id } });
         if (!menu)
             throw new common_1.NotFoundException('Menu item không tồn tại');
-        await this.verifyStoreOwner(menu.storeId, userId);
+        await this.verifyStoreOwner(menu.storeId, user);
         await this.prisma.menu.delete({ where: { id } });
         return { success: true, message: 'Đã xóa menu item' };
     }

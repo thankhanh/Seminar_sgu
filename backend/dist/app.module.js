@@ -27,6 +27,7 @@ const merchant_module_1 = require("./modules/merchant/merchant.module");
 const admin_module_1 = require("./modules/admin/admin.module");
 const languages_module_1 = require("./modules/languages/languages.module");
 const qr_module_1 = require("./modules/qr/qr.module");
+const merchant_subscriptions_module_1 = require("./modules/merchant-subscriptions/merchant-subscriptions.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -53,6 +54,7 @@ exports.AppModule = AppModule = __decorate([
             admin_module_1.AdminModule,
             languages_module_1.LanguagesModule,
             qr_module_1.QrModule,
+            merchant_subscriptions_module_1.MerchantSubscriptionsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

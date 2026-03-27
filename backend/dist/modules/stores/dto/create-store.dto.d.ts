@@ -7,4 +7,7 @@ export declare class CreateStoreDto {
     openTime?: string;
     closeTime?: string;
     coverImage?: string;
+    merchantId?: string;
+    status?: string;
+    images?: string[];
 }

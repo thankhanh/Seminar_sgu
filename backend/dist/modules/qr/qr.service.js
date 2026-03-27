@@ -65,6 +65,34 @@ let QrService = class QrService {
             throw new common_1.ForbiddenException('Bạn không có quyền xem QR của store này');
         return this.prisma.qrCode.findMany({ where: { storeId }, orderBy: { createdAt: 'desc' } });
     }
+    async scanQr(code, userId) {
+        const qr = await this.prisma.qrCode.findUnique({
+            where: { code },
+            include: {
+                store: {
+                    include: {
+                        merchant: { select: { businessName: true } },
+                        narrations: { include: { language: true } },
+                        menus: true,
+                    },
+                },
+            },
+        });
+        if (!qr || !qr.isActive)
+            throw new common_1.NotFoundException('QR code không hợp lệ hoặc đã hết hạn');
+        const defaultNarration = qr.store.narrations.find(n => n.language.code === 'vi' && n.isActive);
+        if (defaultNarration) {
+            await this.prisma.listenHistory.create({
+                data: {
+                    userId,
+                    storeId: qr.store.id,
+                    narrationId: defaultNarration.id,
+                    source: 'qr',
+                },
+            });
+        }
+        return { store: qr.store, listened: !!defaultNarration };
+    }
 };
 exports.QrService = QrService;
 exports.QrService = QrService = __decorate([

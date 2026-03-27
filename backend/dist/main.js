@@ -12,7 +12,10 @@ async function bootstrap() {
     app.setGlobalPrefix('api/v1');
     app.use(cookieParser());
     app.enableCors({
-        origin: true,
+        origin: [
+            'http://localhost:5173',
+            'http://localhost:3001',
+        ],
         methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
         credentials: true,
     });

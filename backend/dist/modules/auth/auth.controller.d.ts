@@ -9,30 +9,31 @@ export declare class AuthController {
     private setCookies;
     private clearCookies;
     register(dto: RegisterDto, res: Response): Promise<{
+        message: string;
         accessToken: string;
         refreshToken: string;
         user: {
-            id: string;
             name: string;
-            createdAt: Date;
             email: string;
             role: import(".prisma/client").$Enums.UserRole;
+            id: string;
+            createdAt: Date;
         };
     }>;
     login(dto: LoginDto, res: Response): Promise<{
         accessToken: string;
         refreshToken: string;
         user: {
-            id: string;
             name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            isActive: boolean;
             email: string;
             phone: string | null;
             role: import(".prisma/client").$Enums.UserRole;
             preferredLanguage: string;
+            id: string;
             avatarUrl: string | null;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
         };
     }>;
     refresh(dto: RefreshTokenDto, req: Request, res: Response): Promise<{

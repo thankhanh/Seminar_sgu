@@ -5,4 +5,6 @@ export declare class RegisterDto {
     phone?: string;
     role?: 'user' | 'merchant';
     preferredLanguage?: string;
+    businessName?: string;
+    taxCode?: string;
 }

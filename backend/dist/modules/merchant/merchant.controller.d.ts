@@ -6,30 +6,39 @@ export declare class MerchantController {
     register(user: {
         id: string;
     }, dto: RegisterMerchantDto): Promise<{
-        id: string;
         status: import(".prisma/client").$Enums.MerchantStatus;
-        createdAt: Date;
-        userId: string;
         businessName: string;
         taxCode: string | null;
+        id: string;
+        createdAt: Date;
         rejectReason: string | null;
+        userId: string;
     }>;
     getMyMerchant(user: {
         id: string;
     }): Promise<{
         stores: {
-            id: string;
-            name: string;
-            address: string;
             status: import(".prisma/client").$Enums.StoreStatus;
+            description: string | null;
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            address: string;
+            lat: number;
+            lng: number;
+            openTime: string | null;
+            closeTime: string | null;
+            coverImage: string | null;
+            merchantId: string;
         }[];
     } & {
-        id: string;
         status: import(".prisma/client").$Enums.MerchantStatus;
-        createdAt: Date;
-        userId: string;
         businessName: string;
         taxCode: string | null;
+        id: string;
+        createdAt: Date;
         rejectReason: string | null;
+        userId: string;
     }>;
 }

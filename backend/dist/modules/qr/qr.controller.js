@@ -22,11 +22,8 @@ let QrController = class QrController {
     constructor(qrService) {
         this.qrService = qrService;
     }
-    generateQr(storeId, user) {
-        return this.qrService.generateQr(storeId, user.id);
-    }
-    resolveQr(code) {
-        return this.qrService.resolveQr(code);
+    scanQr(code, user) {
+        return this.qrService.scanQr(code, user.id);
     }
     getStoreQrCodes(storeId, user) {
         return this.qrService.getStoreQrCodes(storeId, user.id);
@@ -34,24 +31,16 @@ let QrController = class QrController {
 };
 exports.QrController = QrController;
 __decorate([
-    (0, common_1.Post)('generate/:storeId'),
+    (0, common_1.Post)('scan/:code'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Tạo QR code cho store (merchant owner)' }),
-    __param(0, (0, common_1.Param)('storeId')),
+    (0, swagger_1.ApiOperation)({ summary: 'Quét mã QR để nghe thuyết minh (User)' }),
+    __param(0, (0, common_1.Param)('code')),
     __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
-], QrController.prototype, "generateQr", null);
-__decorate([
-    (0, common_1.Get)(':code'),
-    (0, swagger_1.ApiOperation)({ summary: 'Resolve QR code → thông tin store (public)' }),
-    __param(0, (0, common_1.Param)('code')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
-], QrController.prototype, "resolveQr", null);
+], QrController.prototype, "scanQr", null);
 __decorate([
     (0, common_1.Get)('store/:storeId'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
@@ -64,7 +53,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], QrController.prototype, "getStoreQrCodes", null);
 exports.QrController = QrController = __decorate([
-    (0, swagger_1.ApiTags)('QR'),
+    (0, swagger_1.ApiTags)('QR Codes'),
     (0, common_1.Controller)('qr'),
     __metadata("design:paramtypes", [qr_service_1.QrService])
 ], QrController);

@@ -17,13 +17,33 @@ let StoresService = class StoresService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async create(userId, dto) {
-        const merchant = await this.prisma.merchant.findUnique({ where: { userId } });
-        if (!merchant)
-            throw new common_1.ForbiddenException('Bạn chưa đăng ký làm merchant');
+    async create(user, dto) {
+        let merchantId;
+        if (user.role === 'admin') {
+            if (!dto.merchantId) {
+                throw new common_1.ForbiddenException('Admin phải cung cấp merchantId để tạo store');
+            }
+            merchantId = dto.merchantId;
+        }
+        else {
+            const merchant = await this.prisma.merchant.findUnique({ where: { userId: user.id } });
+            if (!merchant)
+                throw new common_1.ForbiddenException('Bạn chưa đăng ký làm merchant');
+            merchantId = merchant.id;
+        }
+        const [currentCount, activeSub] = await Promise.all([
+            this.prisma.store.count({ where: { merchantId } }),
+            this.prisma.merchantSubscription.findFirst({
+                where: { merchantId, status: 'active' },
+            }),
+        ]);
+        const maxStore = activeSub ? activeSub.maxStore : 1;
+        if (currentCount >= maxStore) {
+            throw new common_1.ForbiddenException(`Bạn đã đạt giới hạn tối đa ${maxStore} cửa hàng cho gói hiện tại. Vui lòng nâng cấp gói dịch vụ để thêm mới.`);
+        }
         return this.prisma.store.create({
             data: {
-                merchantId: merchant.id,
+                merchantId,
                 name: dto.name,
                 description: dto.description,
                 address: dto.address,
@@ -32,24 +52,55 @@ let StoresService = class StoresService {
                 openTime: dto.openTime,
                 closeTime: dto.closeTime,
                 coverImage: dto.coverImage,
+                status: (user.role === 'admin' ? dto.status : 'pending'),
+                images: dto.images ? {
+                    createMany: {
+                        data: dto.images.map((url, index) => ({
+                            imageUrl: url,
+                            sortOrder: index,
+                        })),
+                    },
+                } : undefined,
             },
         });
     }
-    async findAll(page = 1, limit = 20) {
+    async findAll(page = 1, limit = 20, status, merchantId) {
         const skip = (page - 1) * limit;
+        const where = {};
+        if (status === 'all') {
+        }
+        else if (status) {
+            where.status = status;
+        }
+        else {
+            where.status = 'active';
+        }
+        if (merchantId) {
+            where.merchantId = merchantId;
+        }
         const [data, total] = await Promise.all([
             this.prisma.store.findMany({
                 skip,
                 take: limit,
-                where: { status: 'active' },
+                where,
                 select: {
-                    id: true, name: true, address: true, lat: true, lng: true,
-                    openTime: true, closeTime: true, coverImage: true, status: true,
+                    id: true,
+                    name: true,
+                    address: true,
+                    lat: true,
+                    lng: true,
+                    openTime: true,
+                    closeTime: true,
+                    coverImage: true,
+                    status: true,
                     merchant: { select: { businessName: true } },
+                    _count: {
+                        select: { menus: true, narrations: true }
+                    }
                 },
                 orderBy: { createdAt: 'desc' },
             }),
-            this.prisma.store.count({ where: { status: 'active' } }),
+            this.prisma.store.count({ where }),
         ]);
         return { data, total, page, limit };
     }
@@ -69,21 +120,15 @@ let StoresService = class StoresService {
                 merchant: { select: { businessName: true } },
             },
         });
-        const storesWithDistance = stores
-            .map((store) => ({
+        const nearbyStores = stores
+            .map(store => ({
             ...store,
             distance: (0, haversine_util_1.haversineDistance)(lat, lng, store.lat, store.lng),
         }))
-            .filter((store) => store.distance <= radiusKm)
+            .filter(store => store.distance <= radiusKm)
             .sort((a, b) => a.distance - b.distance)
             .slice(0, limit);
-        return {
-            data: storesWithDistance,
-            total: storesWithDistance.length,
-            centerLat: lat,
-            centerLng: lng,
-            radiusKm,
-        };
+        return { data: nearbyStores, userLat: lat, userLng: lng, radiusKm, total: nearbyStores.length };
     }
     async findOne(id) {
         const store = await this.prisma.store.findUnique({
@@ -99,26 +144,48 @@ let StoresService = class StoresService {
             throw new common_1.NotFoundException('Store không tồn tại');
         return store;
     }
-    async update(id, userId, dto) {
+    async update(id, user, dto) {
         const store = await this.prisma.store.findUnique({
             where: { id },
             include: { merchant: true },
         });
         if (!store)
             throw new common_1.NotFoundException('Store không tồn tại');
-        if (store.merchant.userId !== userId)
+        if (user.role !== 'admin' && store.merchant.userId !== user.id) {
             throw new common_1.ForbiddenException('Bạn không có quyền chỉnh sửa store này');
-        return this.prisma.store.update({ where: { id }, data: dto });
+        }
+        const { merchantId, images, ...updateData } = dto;
+        if (user.role !== 'admin') {
+            delete updateData.status;
+        }
+        const updatedStore = await this.prisma.store.update({
+            where: { id },
+            data: {
+                ...updateData,
+                status: updateData.status ? updateData.status : undefined,
+                images: images ? {
+                    deleteMany: {},
+                    createMany: {
+                        data: images.map((url, index) => ({
+                            imageUrl: url,
+                            sortOrder: index,
+                        })),
+                    },
+                } : undefined,
+            }
+        });
+        return updatedStore;
     }
-    async remove(id, userId) {
+    async remove(id, user) {
         const store = await this.prisma.store.findUnique({
             where: { id },
             include: { merchant: true },
         });
         if (!store)
             throw new common_1.NotFoundException('Store không tồn tại');
-        if (store.merchant.userId !== userId)
+        if (user.role !== 'admin' && store.merchant.userId !== user.id) {
             throw new common_1.ForbiddenException('Bạn không có quyền xóa store này');
+        }
         await this.prisma.store.delete({ where: { id } });
         return { success: true, message: 'Đã xóa store' };
     }

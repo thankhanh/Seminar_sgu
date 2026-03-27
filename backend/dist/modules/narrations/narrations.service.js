@@ -18,19 +18,20 @@ let NarrationsService = class NarrationsService {
         this.prisma = prisma;
         this.translationService = translationService;
     }
-    async verifyStoreOwner(storeId, userId) {
+    async verifyStoreOwner(storeId, user) {
         const store = await this.prisma.store.findUnique({
             where: { id: storeId },
             include: { merchant: true },
         });
         if (!store)
             throw new common_1.NotFoundException('Store không tồn tại');
-        if (store.merchant.userId !== userId)
+        if (user.role !== 'admin' && store.merchant.userId !== user.id) {
             throw new common_1.ForbiddenException('Bạn không có quyền quản lý store này');
+        }
         return store;
     }
-    async create(storeId, userId, dto) {
-        await this.verifyStoreOwner(storeId, userId);
+    async create(storeId, user, dto) {
+        await this.verifyStoreOwner(storeId, user);
         const existing = await this.prisma.narration.findUnique({
             where: { storeId_languageId: { storeId, languageId: dto.languageId } },
         });
@@ -58,20 +59,101 @@ let NarrationsService = class NarrationsService {
             orderBy: { createdAt: 'desc' },
         });
     }
-    async update(id, userId, dto) {
+    async findAll(page = 1, limit = 20, merchantId) {
+        const skip = (page - 1) * limit;
+        const where = {};
+        if (merchantId) {
+            where.store = { merchantId };
+        }
+        const [data, total] = await Promise.all([
+            this.prisma.narration.findMany({
+                skip,
+                take: limit,
+                where,
+                include: {
+                    language: true,
+                    store: { select: { name: true } }
+                },
+                orderBy: { createdAt: 'desc' },
+            }),
+            this.prisma.narration.count({ where }),
+        ]);
+        return { data, total, page, limit };
+    }
+    async update(id, user, dto) {
         const narration = await this.prisma.narration.findUnique({ where: { id } });
         if (!narration)
             throw new common_1.NotFoundException('Narration không tồn tại');
-        await this.verifyStoreOwner(narration.storeId, userId);
+        await this.verifyStoreOwner(narration.storeId, user);
         return this.prisma.narration.update({ where: { id }, data: dto });
     }
-    async remove(id, userId) {
+    async remove(id, user) {
         const narration = await this.prisma.narration.findUnique({ where: { id } });
         if (!narration)
             throw new common_1.NotFoundException('Narration không tồn tại');
-        await this.verifyStoreOwner(narration.storeId, userId);
+        await this.verifyStoreOwner(narration.storeId, user);
         await this.prisma.narration.delete({ where: { id } });
         return { success: true, message: 'Đã xóa narration' };
+    }
+    calculateDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+    async findNearbyNarrations(lat, lng, languageCode = 'vi', radiusKm = 1, limit = 10) {
+        const stores = await this.prisma.store.findMany({
+            where: { status: 'active' },
+            select: { id: true, name: true, lat: true, lng: true },
+        });
+        const nearbyStores = stores
+            .map(store => ({
+            ...store,
+            distance: this.calculateDistance(lat, lng, store.lat, store.lng),
+        }))
+            .filter(store => store.distance <= radiusKm)
+            .sort((a, b) => a.distance - b.distance)
+            .slice(0, limit);
+        const storeIds = nearbyStores.map(s => s.id);
+        const narrations = await this.prisma.narration.findMany({
+            where: {
+                storeId: { in: storeIds },
+                isActive: true,
+                language: { code: languageCode },
+            },
+            include: {
+                store: { select: { name: true, address: true } },
+                language: true,
+            },
+        });
+        const result = narrations.map(narration => {
+            const store = nearbyStores.find(s => s.id === narration.storeId);
+            return {
+                ...narration,
+                distance: store?.distance || 0,
+            };
+        }).sort((a, b) => a.distance - b.distance);
+        return { data: result, userLat: lat, userLng: lng, languageCode, radiusKm };
+    }
+    async recordListen(userId, narrationId, source = 'gps') {
+        const narration = await this.prisma.narration.findUnique({
+            where: { id: narrationId },
+            include: { store: true },
+        });
+        if (!narration)
+            throw new common_1.NotFoundException('Narration không tồn tại');
+        return this.prisma.listenHistory.create({
+            data: {
+                userId,
+                storeId: narration.storeId,
+                narrationId,
+                source,
+            },
+        });
     }
     async translateNarration(narrationId, dto) {
         const narration = await this.prisma.narration.findUnique({

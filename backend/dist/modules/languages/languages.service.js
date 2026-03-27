@@ -41,6 +41,22 @@ let LanguagesService = class LanguagesService {
             throw new common_1.NotFoundException(`Ngôn ngữ "${code}" không tồn tại`);
         return language;
     }
+    create(dto) {
+        return this.prisma.language.create({
+            data: dto,
+        });
+    }
+    update(id, dto) {
+        return this.prisma.language.update({
+            where: { id },
+            data: dto,
+        });
+    }
+    remove(id) {
+        return this.prisma.language.delete({
+            where: { id },
+        });
+    }
 };
 exports.LanguagesService = LanguagesService;
 exports.LanguagesService = LanguagesService = __decorate([

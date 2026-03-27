@@ -6,40 +6,43 @@ export declare class MenusController {
     constructor(menusService: MenusService);
     create(storeId: string, user: {
         id: string;
+        role: string;
     }, dto: CreateMenuDto): Promise<{
-        id: string;
-        name: string;
         description: string | null;
+        name: string;
+        id: string;
         createdAt: Date;
-        storeId: string;
         imageUrl: string | null;
+        storeId: string;
         price: import("@prisma/client/runtime/library").Decimal;
         isAvailable: boolean;
     }>;
     findByStore(storeId: string): Promise<{
-        id: string;
-        name: string;
         description: string | null;
+        name: string;
+        id: string;
         createdAt: Date;
-        storeId: string;
         imageUrl: string | null;
+        storeId: string;
         price: import("@prisma/client/runtime/library").Decimal;
         isAvailable: boolean;
     }[]>;
     update(id: string, user: {
         id: string;
+        role: string;
     }, dto: UpdateMenuDto): Promise<{
-        id: string;
-        name: string;
         description: string | null;
+        name: string;
+        id: string;
         createdAt: Date;
-        storeId: string;
         imageUrl: string | null;
+        storeId: string;
         price: import("@prisma/client/runtime/library").Decimal;
         isAvailable: boolean;
     }>;
     remove(id: string, user: {
         id: string;
+        role: string;
     }): Promise<{
         success: boolean;
         message: string;

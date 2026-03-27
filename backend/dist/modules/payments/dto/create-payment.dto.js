@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreatePaymentDto = exports.SubscriptionTypeEnum = exports.PaymentMethodEnum = void 0;
 const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
+const class_transformer_1 = require("class-transformer");
 var PaymentMethodEnum;
 (function (PaymentMethodEnum) {
     PaymentMethodEnum["VNPAY"] = "vnpay";
@@ -38,6 +39,20 @@ __decorate([
     (0, class_validator_1.IsEnum)(SubscriptionTypeEnum),
     __metadata("design:type", String)
 ], CreatePaymentDto.prototype, "type", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 49000 }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], CreatePaymentDto.prototype, "amount", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Thanh toán đơn hàng #123' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreatePaymentDto.prototype, "orderInfo", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: '127.0.0.1', description: 'IP người dùng (dùng cho VNPay)' }),
     (0, class_validator_1.IsOptional)(),

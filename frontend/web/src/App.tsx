@@ -14,6 +14,7 @@ import MerchantApproval from './pages/MerchantApproval';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import SubscriptionManagement from './pages/SubscriptionManagement';
+import UserSubscriptionManagement from './pages/UserSubscriptionManagement';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
               <Route path="store-info" element={<StoreInfo />} />
               <Route path="menu-management" element={<MenuManagement />} />
               <Route path="subscriptions" element={<SubscriptionManagement />} />
+              <Route path="user-subscriptions" element={<UserSubscriptionManagement />} />
             </Route>
           </Route>
         </Routes>

@@ -73,6 +73,7 @@ const SidebarLayout: React.FC = () => {
                                     <NavItem icon={<UserIcon size={20} />} label="Người dùng" path="/users" />
                                     <NavItem icon={<ShieldCheck size={20} />} label="Duyệt Merchant" path="/merchants" />
                                     <NavItem icon={<CreditCard size={20} />} label="Quản lý Gói Merchant" path="/subscriptions" />
+                                    <NavItem icon={<CreditCard size={20} />} label="Quản lý gói người dùng" path="/user-subscriptions" />
                                 </ul>
                             </div>
                             <div className="mb-6">

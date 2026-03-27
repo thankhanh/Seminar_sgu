@@ -13,7 +13,13 @@ const SubscriptionManagement: React.FC = () => {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
-    const plans = [
+    const [showAddPlanModal, setShowAddPlanModal] = useState(false);
+    const [newPlanName, setNewPlanName] = useState('');
+    const [newPlanPrice, setNewPlanPrice] = useState('');
+    const [newPlanDescription, setNewPlanDescription] = useState('');
+    const [newPlanBenefits, setNewPlanBenefits] = useState('');
+
+    const [plans, setPlans] = useState([
         {
             id: 'starter',
             type: 'merchant_starter',
@@ -62,7 +68,7 @@ const SubscriptionManagement: React.FC = () => {
             color: 'bg-indigo-50',
             borderColor: 'border-indigo-200'
         }
-    ];
+    ]);
 
     useEffect(() => {
         fetchSubscription();
@@ -123,6 +129,46 @@ const SubscriptionManagement: React.FC = () => {
         }
     };
 
+    const resetNewPlanFields = () => {
+        setNewPlanName('');
+        setNewPlanPrice('');
+        setNewPlanDescription('');
+        setNewPlanBenefits('');
+    };
+
+    const handleAddPlan = () => {
+        if (!newPlanName.trim()) {
+            alert('Vui lòng nhập tên gói');
+            return;
+        }
+
+        const newBenefitsList = newPlanBenefits
+            .split('\n')
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+        const rawPrice = Number(newPlanPrice.toString().replace(/[^0-9]/g, '')) || 0;
+        const formattedPrice = rawPrice > 0 ? `${rawPrice.toLocaleString('vi-VN')}đ` : '0đ';
+
+        const newPlan = {
+            id: `custom_${Date.now()}`,
+            type: `merchant_custom_${Date.now()}`,
+            name: newPlanName.trim(),
+            price: formattedPrice,
+            rawPrice,
+            description: newPlanDescription.trim(),
+            features: newBenefitsList.length ? newBenefitsList : ['Không có quyền lợi cụ thể'],
+            icon: <Shield className="text-primary-500" size={24} />,
+            color: 'bg-emerald-50',
+            borderColor: 'border-emerald-200'
+        };
+
+        setPlans((prevPlans) => [...prevPlans, newPlan]);
+        setShowAddPlanModal(false);
+        resetNewPlanFields();
+        alert('Tạo gói mới thành công');
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -133,12 +179,20 @@ const SubscriptionManagement: React.FC = () => {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div>
-                <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-                    <CreditCard className="text-primary-600" size={32} />
-                    Gói dịch vụ Merchant
-                </h1>
-                <p className="text-slate-500 mt-1 font-medium">Nâng cấp tài khoản để quản lý nhiều địa điểm hơn.</p>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+                        <CreditCard className="text-primary-600" size={32} />
+                        Gói dịch vụ Merchant
+                    </h1>
+                    <p className="text-slate-500 mt-1 font-medium">Nâng cấp tài khoản để quản lý nhiều địa điểm hơn.</p>
+                </div>
+                <button
+                    onClick={() => setShowAddPlanModal(true)}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition"
+                >
+                    Thêm
+                </button>
             </div>
 
             {currentSub ? (
@@ -217,6 +271,69 @@ const SubscriptionManagement: React.FC = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Add Plan Modal */}
+            {showAddPlanModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in-95 duration-300">
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">Thêm gói mới</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Tên gói</label>
+                                <input
+                                    value={newPlanName}
+                                    onChange={(e) => setNewPlanName(e.target.value)}
+                                    className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Phí</label>
+                                <input
+                                    value={newPlanPrice}
+                                    onChange={(e) => setNewPlanPrice(e.target.value)}
+                                    placeholder="Nhập số (VD: 499000)"
+                                    className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Mô tả</label>
+                                <textarea
+                                    value={newPlanDescription}
+                                    onChange={(e) => setNewPlanDescription(e.target.value)}
+                                    className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Quyền lợi (mỗi dòng 1 quyền lợi)</label>
+                                <textarea
+                                    value={newPlanBenefits}
+                                    onChange={(e) => setNewPlanBenefits(e.target.value)}
+                                    placeholder="Tối đa 2 địa điểm (POI)\nThuyết minh đa ngôn ngữ\nQuản lý thực đơn nâng cao"
+                                    className="w-full mt-1 h-24 px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowAddPlanModal(false);
+                                        resetNewPlanFields();
+                                    }}
+                                    className="px-4 py-2 text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-100 transition"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    onClick={handleAddPlan}
+                                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                                >
+                                    Lưu
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Payment Modal */}
             {showPaymentModal && selectedPlan && (

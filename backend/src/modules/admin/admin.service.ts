@@ -134,7 +134,7 @@ export class AdminService {
       lastMonthTransactionCount,
       lastMonthRevenue,
     ] = await Promise.all([
-      this.prisma.user.count(),
+      this.prisma.user.count({ where: { role: 'user' } }),
       this.prisma.merchant.count(),
       this.prisma.merchant.count({ where: { status: 'pending' } }),
       this.prisma.store.count(),
@@ -145,7 +145,7 @@ export class AdminService {
         _sum: { amount: true },
       }),
       // Cumulative count before this month started
-      this.prisma.user.count({ where: { createdAt: { lt: firstDayCurrentMonth } } }),
+      this.prisma.user.count({ where: { role: 'user', createdAt: { lt: firstDayCurrentMonth } } }),
       this.prisma.store.count({ where: { createdAt: { lt: firstDayCurrentMonth } } }),
       this.prisma.transaction.count({
         where: { status: 'success', createdAt: { lt: firstDayCurrentMonth } },

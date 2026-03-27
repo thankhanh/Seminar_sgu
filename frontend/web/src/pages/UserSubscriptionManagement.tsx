@@ -22,59 +22,101 @@ const UserSubscriptionManagement: React.FC = () => {
     const [editPlanDescription, setEditPlanDescription] = useState('');
     const [editPlanBenefits, setEditPlanBenefits] = useState('');
 
-    const [plans, setPlans] = useState([
-        {
-            id: 'user_basic',
-            type: 'user_basic',
-            name: 'Gói Cơ Bản',
-            price: '50,000đ / tháng',
-            rawPrice: 50000,
-            description: 'Gói cơ bản cho người dùng cá nhân.',
-            features: [
-                'Truy cập cơ bản',
-                'Hỗ trợ email',
-                'Lưu trữ 1GB'
-            ],
-            icon: <Zap className="text-slate-400" size={24} />,
-            color: 'bg-slate-50',
-            borderColor: 'border-slate-200'
-        },
-        {
-            id: 'user_premium',
-            type: 'user_premium',
-            name: 'Gói Premium',
-            price: '150,000đ / tháng',
-            rawPrice: 150000,
-            description: 'Gói nâng cao cho người dùng chuyên nghiệp.',
-            features: [
-                'Truy cập đầy đủ',
-                'Hỗ trợ ưu tiên',
-                'Lưu trữ 10GB',
-                'API riêng'
-            ],
-            icon: <Shield className="text-primary-500" size={24} />,
-            color: 'bg-primary-50',
-            borderColor: 'border-primary-200'
-        },
-        {
-            id: 'user_enterprise',
-            type: 'user_enterprise',
-            name: 'Gói Enterprise',
-            price: '500,000đ / tháng',
-            rawPrice: 500000,
-            description: 'Giải pháp toàn diện cho doanh nghiệp.',
-            features: [
-                'Tất cả tính năng',
-                'Hỗ trợ 24/7',
-                'Lưu trữ không giới hạn',
-                'Tích hợp tùy chỉnh',
-                'Báo cáo chi tiết'
-            ],
-            icon: <Crown className="text-indigo-500" size={24} />,
-            color: 'bg-indigo-50',
-            borderColor: 'border-indigo-200'
+    const getIconForPlan = (plan: any) => {
+        if (plan.color === 'bg-slate-50') return <Zap className="text-slate-400" size={24} />;
+        if (plan.color === 'bg-primary-50') return <Shield className="text-primary-500" size={24} />;
+        if (plan.color === 'bg-indigo-50') return <Crown className="text-indigo-500" size={24} />;
+        return <Shield className="text-primary-500" size={24} />;
+    };
+
+    const [plans, setPlans] = useState<any[]>(() => {
+        try {
+            const saved = localStorage.getItem('user_plans');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                return parsed.map((plan: any) => ({
+                    ...plan,
+                    icon: getIconForPlan(plan)
+                }));
+            }
+            return [
+                {
+                    id: 'user_basic',
+                    type: 'user_basic',
+                    name: 'Gói Cơ Bản',
+                    price: '50,000đ / tháng',
+                    rawPrice: 50000,
+                    description: 'Gói cơ bản cho người dùng cá nhân.',
+                    features: [
+                        'Truy cập cơ bản',
+                        'Hỗ trợ email',
+                        'Lưu trữ 1GB'
+                    ],
+                    icon: <Zap className="text-slate-400" size={24} />,
+                    color: 'bg-slate-50',
+                    borderColor: 'border-slate-200'
+                },
+                {
+                    id: 'user_premium',
+                    type: 'user_premium',
+                    name: 'Gói Premium',
+                    price: '150,000đ / tháng',
+                    rawPrice: 150000,
+                    description: 'Gói nâng cao cho người dùng chuyên nghiệp.',
+                    features: [
+                        'Truy cập đầy đủ',
+                        'Hỗ trợ ưu tiên',
+                        'Lưu trữ 10GB',
+                        'API riêng'
+                    ],
+                    icon: <Shield className="text-primary-500" size={24} />,
+                    color: 'bg-primary-50',
+                    borderColor: 'border-primary-200'
+                },
+                {
+                    id: 'user_enterprise',
+                    type: 'user_enterprise',
+                    name: 'Gói Enterprise',
+                    price: '500,000đ / tháng',
+                    rawPrice: 500000,
+                    description: 'Giải pháp toàn diện cho doanh nghiệp.',
+                    features: [
+                        'Tất cả tính năng',
+                        'Hỗ trợ 24/7',
+                        'Lưu trữ không giới hạn',
+                        'Tích hợp tùy chỉnh',
+                        'Báo cáo chi tiết'
+                    ],
+                    icon: <Crown className="text-indigo-500" size={24} />,
+                    color: 'bg-indigo-50',
+                    borderColor: 'border-indigo-200'
+                }
+            ];
+        } catch (error) {
+            console.error('Error loading plans from localStorage:', error);
+            return [];
         }
-    ]);
+    });
+
+    // Save plans to localStorage whenever they change
+    useEffect(() => {
+        try {
+            const plansToSave = plans.map(plan => ({
+                id: plan.id,
+                type: plan.type,
+                name: plan.name,
+                price: plan.price,
+                rawPrice: plan.rawPrice,
+                description: plan.description,
+                features: plan.features,
+                color: plan.color,
+                borderColor: plan.borderColor
+            }));
+            localStorage.setItem('user_plans', JSON.stringify(plansToSave));
+        } catch (error) {
+            console.error('Error saving plans to localStorage:', error);
+        }
+    }, [plans]);
 
     useEffect(() => {
         fetchSubscription();
@@ -270,7 +312,7 @@ const UserSubscriptionManagement: React.FC = () => {
                         <p className="text-slate-500 text-sm mb-6 leading-relaxed">{plan.description}</p>
 
                         <div className="space-y-4 mb-8 flex-1">
-                            {plan.features.map((feature, i) => (
+                            {plan.features.map((feature: string, i: number) => (
                                 <div key={i} className="flex items-start gap-3 text-sm font-medium text-slate-600">
                                     <Check className="text-emerald-500 shrink-0 mt-0.5" size={16} />
                                     {feature}

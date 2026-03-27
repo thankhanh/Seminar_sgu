@@ -22,56 +22,98 @@ const SubscriptionManagement: React.FC = () => {
     const [editPlanDescription, setEditPlanDescription] = useState('');
     const [editPlanBenefits, setEditPlanBenefits] = useState('');
 
-    const [plans, setPlans] = useState([
-        {
-            id: 'starter',
-            type: 'merchant_starter',
-            name: 'Miễn phí (Starter)',
-            price: '0đ',
-            rawPrice: 0,
-            description: 'Mặc định cho mọi cửa hàng.',
-            features: [
-                'Tối đa 1 địa điểm (POI)',
-                'Thuyết minh đa ngôn ngữ',
-                'Quản lý thực đơn cơ bản'
-            ],
-            icon: <Zap className="text-slate-400" size={24} />,
-            color: 'bg-slate-50',
-            borderColor: 'border-slate-200'
-        },
-        {
-            id: 'business',
-            type: 'merchant_business',
-            name: 'Nâng cấp 1 (Business)',
-            price: '499,000đ / tháng',
-            rawPrice: 499000,
-            description: 'Dành cho chuỗi cửa hàng nhỏ.',
-            features: [
-                'Tối đa 5 địa điểm (POI)',
-                'Ưu tiên hiển thị trên bản đồ',
-                'Phân tích lượt nghe chi tiết'
-            ],
-            icon: <Shield className="text-primary-500" size={24} />,
-            color: 'bg-primary-50',
-            borderColor: 'border-primary-200'
-        },
-        {
-            id: 'premium',
-            type: 'merchant_premium',
-            name: 'Nâng cấp 2 (Premium)',
-            price: '999,000đ / tháng',
-            rawPrice: 999000,
-            description: 'Giải pháp toàn diện cho doanh nghiệp.',
-            features: [
-                'Tối đa 10 địa điểm (POI)',
-                'API tích hợp riêng',
-                'Tư vấn nội dung thuyết minh'
-            ],
-            icon: <Crown className="text-indigo-500" size={24} />,
-            color: 'bg-indigo-50',
-            borderColor: 'border-indigo-200'
+    const getIconForPlan = (plan: any) => {
+        if (plan.color === 'bg-slate-50') return <Zap className="text-slate-400" size={24} />;
+        if (plan.color === 'bg-primary-50') return <Shield className="text-primary-500" size={24} />;
+        if (plan.color === 'bg-indigo-50') return <Crown className="text-indigo-500" size={24} />;
+        return <Shield className="text-primary-500" size={24} />;
+    };
+
+    const [plans, setPlans] = useState<any[]>(() => {
+        try {
+            const saved = localStorage.getItem('merchant_plans');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                return parsed.map((plan: any) => ({
+                    ...plan,
+                    icon: getIconForPlan(plan)
+                }));
+            }
+            return [
+                {
+                    id: 'starter',
+                    type: 'merchant_starter',
+                    name: 'Miễn phí (Starter)',
+                    price: '0đ',
+                    rawPrice: 0,
+                    description: 'Mặc định cho mọi cửa hàng.',
+                    features: [
+                        'Tối đa 1 địa điểm (POI)',
+                        'Thuyết minh đa ngôn ngữ',
+                        'Quản lý thực đơn cơ bản'
+                    ],
+                    icon: <Zap className="text-slate-400" size={24} />,
+                    color: 'bg-slate-50',
+                    borderColor: 'border-slate-200'
+                },
+                {
+                    id: 'business',
+                    type: 'merchant_business',
+                    name: 'Nâng cấp 1 (Business)',
+                    price: '499,000đ / tháng',
+                    rawPrice: 499000,
+                    description: 'Dành cho chuỗi cửa hàng nhỏ.',
+                    features: [
+                        'Tối đa 5 địa điểm (POI)',
+                        'Ưu tiên hiển thị trên bản đồ',
+                        'Phân tích lượt nghe chi tiết'
+                    ],
+                    icon: <Shield className="text-primary-500" size={24} />,
+                    color: 'bg-primary-50',
+                    borderColor: 'border-primary-200'
+                },
+                {
+                    id: 'premium',
+                    type: 'merchant_premium',
+                    name: 'Nâng cấp 2 (Premium)',
+                    price: '999,000đ / tháng',
+                    rawPrice: 999000,
+                    description: 'Giải pháp toàn diện cho doanh nghiệp.',
+                    features: [
+                        'Tối đa 10 địa điểm (POI)',
+                        'API tích hợp riêng',
+                        'Tư vấn nội dung thuyết minh'
+                    ],
+                    icon: <Crown className="text-indigo-500" size={24} />,
+                    color: 'bg-indigo-50',
+                    borderColor: 'border-indigo-200'
+                }
+            ];
+        } catch (error) {
+            console.error('Error loading plans from localStorage:', error);
+            return [];
         }
-    ]);
+    });
+
+    // Save plans to localStorage whenever they change
+    useEffect(() => {
+        try {
+            const plansToSave = plans.map(plan => ({
+                id: plan.id,
+                type: plan.type,
+                name: plan.name,
+                price: plan.price,
+                rawPrice: plan.rawPrice,
+                description: plan.description,
+                features: plan.features,
+                color: plan.color,
+                borderColor: plan.borderColor
+            }));
+            localStorage.setItem('merchant_plans', JSON.stringify(plansToSave));
+        } catch (error) {
+            console.error('Error saving plans to localStorage:', error);
+        }
+    }, [plans]);
 
     useEffect(() => {
         fetchSubscription();
@@ -267,7 +309,7 @@ const SubscriptionManagement: React.FC = () => {
                         <p className="text-slate-500 text-sm mb-6 leading-relaxed">{plan.description}</p>
 
                         <div className="space-y-4 mb-8 flex-1">
-                            {plan.features.map((feature, i) => (
+                            {plan.features.map((feature: string, i: number) => (
                                 <div key={i} className="flex items-start gap-3 text-sm font-medium text-slate-600">
                                     <Check className="text-emerald-500 shrink-0 mt-0.5" size={16} />
                                     {feature}

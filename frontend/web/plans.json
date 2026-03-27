@@ -1,0 +1,109 @@
+{
+  "success": true,
+  "data": [
+    {
+      "planKey": "customer_free",
+      "name": "Gói Miễn phí",
+      "description": "Gói mặc định cho người dùng khám phá tính năng cơ bản.",
+      "price": "0",
+      "maxStore": 0,
+      "maxPOI": 0,
+      "features": [
+        "Nghe nội dung cơ bản",
+        "Lưu lịch sử nghe"
+      ],
+      "createdAt": "2026-03-27T17:47:30.674Z",
+      "updatedAt": "2026-03-27T18:13:49.058Z"
+    },
+    {
+      "planKey": "customer_monthly",
+      "name": "Gói Cơ Bản (Tháng)",
+      "description": "Trải nghiệm đầy đủ tính năng trong 1 tháng.",
+      "price": "49000",
+      "maxStore": 0,
+      "maxPOI": 0,
+      "features": [
+        "Truy cập cơ bản",
+        "Hỗ trợ email",
+        "Lưu trữ 1GB"
+      ],
+      "createdAt": "2026-03-27T17:47:31.514Z",
+      "updatedAt": "2026-03-27T18:13:49.695Z"
+    },
+    {
+      "planKey": "customer_yearly",
+      "name": "Gói Năm (Yearly)",
+      "description": "Gói nâng cao cho khách hàng chuyên nghiệp.",
+      "price": "399000",
+      "maxStore": 0,
+      "maxPOI": 0,
+      "features": [
+        "Truy cập đầy đủ",
+        "Hỗ trợ ưu tiên",
+        "Lưu trữ 10GB"
+      ],
+      "createdAt": "2026-03-27T17:47:31.724Z",
+      "updatedAt": "2026-03-27T18:13:49.904Z"
+    },
+    {
+      "planKey": "merchant_business",
+      "name": "Nâng cấp 1 (Business)",
+      "description": "Dành cho chuỗi cửa hàng nhỏ.",
+      "price": "499000",
+      "maxStore": 1,
+      "maxPOI": 5,
+      "features": [
+        "Tối đa 5 địa điểm (POI)",
+        "Ưu tiên hiển thị trên bản đồ",
+        "Phân tích lượt nghe chi tiết"
+      ],
+      "createdAt": "2026-03-27T17:47:30.264Z",
+      "updatedAt": "2026-03-27T18:13:48.636Z"
+    },
+    {
+      "planKey": "merchant_premium",
+      "name": "Nâng cấp 2 (Premium)",
+      "description": "Giải pháp toàn diện cho doanh nghiệp.",
+      "price": "999000",
+      "maxStore": 1,
+      "maxPOI": 10,
+      "features": [
+        "Tối đa 10 địa điểm (POI)",
+        "API tích hợp riêng",
+        "Tư vấn nội dung thuyết minh"
+      ],
+      "createdAt": "2026-03-27T17:47:30.468Z",
+      "updatedAt": "2026-03-27T18:13:48.850Z"
+    },
+    {
+      "planKey": "merchant_starter",
+      "name": "Miễn phí (Starter)",
+      "description": "Mặc định cho mọi cửa hàng.",
+      "price": "0",
+      "maxStore": 1,
+      "maxPOI": 1,
+      "features": [
+        "Tối đa 1 địa điểm (POI)",
+        "Thuyết minh đa ngôn ngữ",
+        "Quản lý thực đơn cơ bản"
+      ],
+      "createdAt": "2026-03-27T17:47:29.841Z",
+      "updatedAt": "2026-03-27T18:13:48.198Z"
+    },
+    {
+      "planKey": "test_plan",
+      "name": "Test",
+      "description": null,
+      "price": "0",
+      "maxStore": 1,
+      "maxPOI": 1,
+      "features": [
+        "feature1",
+        "feature2"
+      ],
+      "createdAt": "2026-03-27T17:46:54.612Z",
+      "updatedAt": "2026-03-27T17:46:54.612Z"
+    }
+  ],
+  "message": "OK"
+}

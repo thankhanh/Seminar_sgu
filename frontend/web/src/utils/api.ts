@@ -116,6 +116,15 @@ export const subscriptionsApi = {
     getMy: () => unwrapData(apiClient.get('/merchant-subscriptions/my')),
     getAll: (page = 1, limit = 10) => unwrapData(apiClient.get(`/merchant-subscriptions`, { params: { page, limit } })),
     cancel: (id: string) => unwrapData(apiClient.patch(`/merchant-subscriptions/${id}/cancel`)),
+    grantMerchantPlan: (dto: { email: string, plan: string }) => unwrapData(apiClient.post('/merchant-subscriptions/admin/grant', dto)),
+    grantUserPlan: (dto: { email: string, plan: string }) => unwrapData(apiClient.post('/subscriptions/admin/grant', dto)),
+};
+
+// --- Plan Metadata ---
+export const planMetadataApi = {
+    getAll: () => unwrapData(apiClient.get('/plan-metadata')),
+    getOne: (key: string) => unwrapData(apiClient.get(`/plan-metadata/${key}`)),
+    update: (key: string, dto: any) => unwrapData(apiClient.patch(`/plan-metadata/${key}`, dto)),
 };
 
 // --- Payments ---

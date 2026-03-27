@@ -16,6 +16,12 @@ export class SubscriptionsController {
     return this.subscriptionsService.create(dto);
   }
 
+  @Post('admin/grant')
+  @Roles('admin')
+  async grant(@Body() dto: CreateUserSubscriptionDto) {
+    return this.subscriptionsService.create(dto);
+  }
+
   @Get('my')
   @Roles('user', 'merchant', 'admin')
   async getMy(@Request() req) {

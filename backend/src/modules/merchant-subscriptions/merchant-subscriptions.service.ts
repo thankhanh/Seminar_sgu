@@ -123,7 +123,7 @@ export class MerchantSubscriptionsService {
     });
   }
 
-  async createByAdmin(dto: any) {
+  async grant(dto: any) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
       include: { merchant: true }

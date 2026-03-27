@@ -7,7 +7,84 @@ async function main() {
   console.log('🌱 Bắt đầu nạp dữ liệu mẫu toàn diện (Full Sample Data)...');
 
   try {
-    // 1. Ngôn ngữ
+    // 1. Cấu hình các Gói (Plan Metadata)
+    console.log('  -> Đang nạp Cấu hình Gói (Plan Metadata)...');
+    const plans = [
+      {
+        planKey: 'merchant_starter',
+        name: 'Miễn phí (Starter)',
+        price: 0,
+        description: 'Mặc định cho mọi cửa hàng.',
+        features: ['Tối đa 1 địa điểm (POI)', 'Thuyết minh đa ngôn ngữ', 'Quản lý thực đơn cơ bản'],
+        maxPOI: 1,
+        color: 'bg-slate-50',
+        icon: 'Zap',
+      },
+      {
+        planKey: 'merchant_business',
+        name: 'Nâng cấp 1 (Business)',
+        price: 499000,
+        description: 'Dành cho chuỗi cửa hàng nhỏ.',
+        features: ['Tối đa 5 địa điểm (POI)', 'Ưu tiên hiển thị trên bản đồ', 'Phân tích lượt nghe chi tiết'],
+        maxPOI: 5,
+        color: 'bg-primary-50',
+        icon: 'Shield',
+      },
+      {
+        planKey: 'merchant_premium',
+        name: 'Nâng cấp 2 (Premium)',
+        price: 999000,
+        description: 'Giải pháp toàn diện cho doanh nghiệp.',
+        features: ['Tối đa 10 địa điểm (POI)', 'API tích hợp riêng', 'Tư vấn nội dung thuyết minh'],
+        maxPOI: 10,
+        color: 'bg-indigo-50',
+        icon: 'Crown',
+      },
+      {
+        planKey: 'customer_free',
+        name: 'Gói Miễn phí',
+        price: 0,
+        description: 'Gói mặc định cho người dùng khám phá tính năng cơ bản.',
+        features: ['Nghe nội dung cơ bản', 'Lưu lịch sử nghe'],
+        maxPOI: 0,
+        maxStore: 0,
+        color: 'bg-slate-100',
+        icon: 'Zap',
+      },
+      {
+        planKey: 'customer_monthly',
+        name: 'Gói Cơ Bản (Tháng)',
+        price: 49000,
+        description: 'Trải nghiệm đầy đủ tính năng trong 1 tháng.',
+        features: ['Truy cập cơ bản', 'Hỗ trợ email', 'Lưu trữ 1GB'],
+        maxPOI: 0,
+        maxStore: 0,
+        color: 'bg-slate-50',
+        icon: 'Zap',
+      },
+      {
+        planKey: 'customer_yearly',
+        name: 'Gói Năm (Yearly)',
+        price: 399000,
+        description: 'Gói nâng cao cho khách hàng chuyên nghiệp.',
+        features: ['Truy cập đầy đủ', 'Hỗ trợ ưu tiên', 'Lưu trữ 10GB'],
+        maxPOI: 0,
+        maxStore: 0,
+        color: 'bg-primary-50',
+        icon: 'Shield',
+      },
+    ];
+
+    for (const plan of plans) {
+      await prisma.planMetadata.upsert({
+        where: { planKey: plan.planKey },
+        update: plan,
+        create: plan,
+      });
+    }
+    console.log('  ✅ Đã nạp Cấu hình Gói');
+
+    // 2. Ngôn ngữ
     console.log('  -> Đang nạp Ngôn ngữ...');
     const languagesData = [
       { code: 'vi', name: 'Tiếng Việt', flagIcon: '🇻🇳' },

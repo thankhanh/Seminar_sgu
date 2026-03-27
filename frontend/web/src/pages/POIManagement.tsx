@@ -46,7 +46,7 @@ const POIManagement: React.FC = () => {
                 // If merchant, get their ID from their profile then fetch their stores with pagination
                 const [merchantProfile, subRes] = (await Promise.all([
                     merchantApi.getMe(),
-                    subscriptionsApi.getMyMerchant()
+                    subscriptionsApi.getMy()
                 ])) as any[];
                 
                 setSubscription(subRes);

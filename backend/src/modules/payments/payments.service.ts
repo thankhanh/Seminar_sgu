@@ -15,28 +15,13 @@ import * as crypto from 'crypto';
 import * as https from 'https';
 import * as querystring from 'querystring';
 
+// Mapping DTO type to Prisma Enum
 const TYPE_TO_PLAN: Record<string, MerchantPlan> = {
   [SubscriptionTypeEnum.MERCHANT_STARTER]: MerchantPlan.starter,
   [SubscriptionTypeEnum.MERCHANT_BUSINESS]: MerchantPlan.business,
   [SubscriptionTypeEnum.MERCHANT_PREMIUM]: MerchantPlan.premium,
 };
 
-// Giá gói đăng ký (VND)
-const PLAN_PRICES: Record<SubscriptionTypeEnum, number> = {
-  [SubscriptionTypeEnum.USER_MONTHLY]: 49000,
-  [SubscriptionTypeEnum.USER_YEARLY]: 399000,
-  [SubscriptionTypeEnum.MERCHANT_STARTER]: 199000,
-  [SubscriptionTypeEnum.MERCHANT_BUSINESS]: 499000,
-  [SubscriptionTypeEnum.MERCHANT_PREMIUM]: 999000,
-};
-
-const PLAN_LABELS: Record<SubscriptionTypeEnum, string> = {
-  [SubscriptionTypeEnum.USER_MONTHLY]: 'Gói User Tháng',
-  [SubscriptionTypeEnum.USER_YEARLY]: 'Gói User Năm',
-  [SubscriptionTypeEnum.MERCHANT_STARTER]: 'Gói Merchant Starter',
-  [SubscriptionTypeEnum.MERCHANT_BUSINESS]: 'Gói Merchant Business',
-  [SubscriptionTypeEnum.MERCHANT_PREMIUM]: 'Gói Merchant Premium',
-};
 
 @Injectable()
 export class PaymentsService {
@@ -54,8 +39,19 @@ export class PaymentsService {
   // ─────────────────────────────────────────────────────────────
 
   async createVnpayPayment(userId: string, dto: CreatePaymentDto, ipAddr: string) {
-    const amount = PLAN_PRICES[dto.type];
-    const label = PLAN_LABELS[dto.type];
+    let amount = dto.amount || 0;
+    let label = dto.orderInfo || 'Thanh toán đơn hàng';
+
+    if (!dto.amount && dto.type) {
+      const metadata = await this.prisma.planMetadata.findUnique({
+        where: { planKey: dto.type },
+      });
+      if (!metadata) throw new BadRequestException('Gói dịch vụ không hợp lệ');
+      amount = Number(metadata.price);
+      label = `Thanh toán gói ${metadata.name}`;
+    }
+
+    if (!amount) throw new BadRequestException('Bắt buộc phải có amount hoặc type hợp lệ');
 
     // Tạo transaction trong DB
     const tx = await this.prisma.transaction.create({
@@ -225,8 +221,17 @@ export class PaymentsService {
   // ─────────────────────────────────────────────────────────────
 
   async createMomoPayment(userId: string, dto: CreatePaymentDto) {
-    const amount = dto.amount || (dto.type ? PLAN_PRICES[dto.type] : 0);
-    const label = dto.orderInfo || (dto.type ? PLAN_LABELS[dto.type] : 'Thanh toan don hang');
+    let amount = dto.amount || 0;
+    let label = dto.orderInfo || 'Thanh toán đơn hàng';
+
+    if (!dto.amount && dto.type) {
+      const metadata = await this.prisma.planMetadata.findUnique({
+        where: { planKey: dto.type },
+      });
+      if (!metadata) throw new BadRequestException('Gói dịch vụ không hợp lệ');
+      amount = Number(metadata.price);
+      label = `Thanh toán gói ${metadata.name}`;
+    }
 
     if (!amount) throw new BadRequestException('Bắt buộc phải có amount hoặc type hợp lệ');
 

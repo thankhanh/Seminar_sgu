@@ -39,7 +39,10 @@ export default function ProfileScreen() {
                             />
                         </View>
                         {/* Edit Badge */}
-                        <TouchableOpacity className="absolute bottom-1 right-1 w-7 h-7 bg-[#009FB7] rounded-full items-center justify-center border-2 border-white">
+                        <TouchableOpacity 
+                            onPress={() => router.push('/profile/edit')}
+                            className="absolute bottom-1 right-1 w-7 h-7 bg-[#009FB7] rounded-full items-center justify-center border-2 border-white"
+                        >
                             <Feather name="edit-2" size={12} color="white" />
                         </TouchableOpacity>
                     </View>

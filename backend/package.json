@@ -19,6 +19,7 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "db:seed": "ts-node -r tsconfig-paths/register --project tsconfig.seed.json prisma/seeds/seed.ts",
+    "db:seed:mock": "ts-node -r tsconfig-paths/register --project tsconfig.seed.json prisma/seeds/seed-mock.ts",
     "db:reset": "prisma migrate reset --force && npm run db:seed"
   },
   "dependencies": {

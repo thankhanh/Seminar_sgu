@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     CreditCard, Check, Zap, Shield, Crown,
     Calendar, AlertCircle, Loader2, ArrowRight,
-    Smartphone, Globe
+    Smartphone
 } from 'lucide-react';
 import { subscriptionsApi, paymentsApi } from '../utils/api';
 
@@ -234,16 +234,6 @@ const SubscriptionManagement: React.FC = () => {
                                     <Smartphone size={24} />
                                 </div>
                                 <div className="text-left font-bold text-slate-900">Thanh toán qua Ví MoMo</div>
-                            </button>
-
-                            <button
-                                onClick={() => handlePayment('vnpay')}
-                                className="w-full p-4 rounded-2xl border-2 border-slate-100 hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-4 group"
-                            >
-                                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                                    <Globe size={24} />
-                                </div>
-                                <div className="text-left font-bold text-slate-900">Thanh toán qua VNPay</div>
                             </button>
                         </div>
 

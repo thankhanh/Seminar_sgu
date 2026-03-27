@@ -3,14 +3,6 @@ import { registerAs } from '@nestjs/config';
 export default registerAs('app', () => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
   env: process.env.NODE_ENV ?? 'development',
-  // Payment - VNPAY
-  vnpay: {
-    tmnCode: process.env.VNPAY_TMN_CODE,
-    hashSecret: process.env.VNPAY_HASH_SECRET,
-    url: process.env.VNPAY_URL,
-    returnUrl: process.env.VNPAY_RETURN_URL,
-    ipnUrl: process.env.VNPAY_IPN_URL,
-  },
   // Payment - MoMo
   momo: {
     partnerCode: process.env.MOMO_PARTNER_CODE,

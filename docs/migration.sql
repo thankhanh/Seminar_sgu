@@ -27,7 +27,7 @@ CREATE TYPE subscription_status AS ENUM ('active', 'expired', 'cancelled');
 
 CREATE TYPE transaction_type AS ENUM ('user_subscription', 'merchant_subscription');
 
-CREATE TYPE payment_method AS ENUM ('vnpay', 'momo', 'cash');
+CREATE TYPE payment_method AS ENUM ('momo', 'cash');
 
 CREATE TYPE transaction_status AS ENUM ('pending', 'success', 'failed', 'refunded');
 
@@ -257,33 +257,8 @@ CREATE INDEX idx_transactions_status  ON transactions (status);
 CREATE INDEX idx_transactions_method  ON transactions (payment_method);
 
 COMMENT ON TABLE  transactions IS 'Bảng trung tâm ghi nhận mọi giao dịch thanh toán';
-COMMENT ON COLUMN transactions.payment_ref_id IS 'FK tới payment_vnpay.id hoặc payment_momo.id';
+COMMENT ON COLUMN transactions.payment_ref_id IS 'FK tới payment_momo.id';
 
--- ============================================================
--- TABLE: payment_vnpay
--- ============================================================
-CREATE TABLE payment_vnpay (
-    id                  UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
-    transaction_id      UUID        NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
-    vnp_txn_ref         VARCHAR(100) NOT NULL UNIQUE,
-    vnp_amount          BIGINT      NOT NULL,
-    vnp_order_info      TEXT,
-    vnp_transaction_no  VARCHAR(100),
-    vnp_bank_code       VARCHAR(50),
-    vnp_pay_date        VARCHAR(20),
-    vnp_response_code   VARCHAR(10),
-    vnp_secure_hash     TEXT,
-    raw_response        JSONB,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_payment_vnpay_transaction_id ON payment_vnpay (transaction_id);
-CREATE INDEX idx_payment_vnpay_txn_ref        ON payment_vnpay (vnp_txn_ref);
-
-COMMENT ON TABLE  payment_vnpay IS 'Chi tiết callback / response từ VNPAY';
-COMMENT ON COLUMN payment_vnpay.vnp_amount IS 'Số tiền × 100 theo chuẩn VNPAY';
-COMMENT ON COLUMN payment_vnpay.vnp_response_code IS '00 = thành công';
-COMMENT ON COLUMN payment_vnpay.raw_response IS 'Toàn bộ payload JSON từ VNPAY để audit/debug';
 
 -- ============================================================
 -- TABLE: payment_momo

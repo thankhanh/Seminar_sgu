@@ -3,7 +3,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export enum PaymentMethodEnum {
-  VNPAY = 'vnpay',
   MOMO = 'momo',
 }
 
@@ -16,7 +15,7 @@ export enum SubscriptionTypeEnum {
 }
 
 export class CreatePaymentDto {
-  @ApiProperty({ enum: PaymentMethodEnum, example: PaymentMethodEnum.VNPAY })
+  @ApiProperty({ enum: PaymentMethodEnum, example: PaymentMethodEnum.MOMO })
   @IsEnum(PaymentMethodEnum)
   method: PaymentMethodEnum;
 
@@ -24,8 +23,4 @@ export class CreatePaymentDto {
   @IsEnum(SubscriptionTypeEnum)
   type: SubscriptionTypeEnum;
 
-  @ApiPropertyOptional({ example: '127.0.0.1', description: 'IP người dùng (dùng cho VNPay)' })
-  @IsOptional()
-  @IsString()
-  ipAddr?: string;
 }

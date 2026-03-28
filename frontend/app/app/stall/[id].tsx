@@ -31,6 +31,14 @@ interface Narration {
     language: { code: string; name: string; flagIcon: string };
 }
 
+interface ListenHistoryEntry {
+    id: string;
+    listenedAt: string;
+    narration: {
+        language: { name: string; flagIcon: string }
+    };
+}
+
 const SPEECH_LANG_MAP: Record<string, string> = {
     vi: 'vi-VN', en: 'en-US', zh: 'zh-CN', ko: 'ko-KR', ja: 'ja-JP', fr: 'fr-FR',
 };
@@ -46,6 +54,8 @@ export default function StallDetailScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [isPlaying, setIsPlaying] = useState(false);
     const [activeNarration, setActiveNarration] = useState<Narration | null>(null);
+    const [history, setHistory] = useState<ListenHistoryEntry[]>([]);
+    const [isSavingHistory, setIsSavingHistory] = useState(false);
 
     useEffect(() => {
         if (!storeId) return;
@@ -69,8 +79,40 @@ export default function StallDetailScreen() {
                 setIsLoading(false);
             }
         };
+
+        const loadHistory = async () => {
+            try {
+                const res = await api.get(`/listen-history/store/${storeId}`);
+                if (res.data.success) {
+                    setHistory(res.data.data);
+                }
+            } catch (error) {
+                console.warn('Lỗi tải lịch sử nghe:', error);
+            }
+        };
+
         loadAll();
+        loadHistory();
     }, [storeId]);
+
+    const saveHistory = async (narrationId: string) => {
+        if (isSavingHistory) return;
+        setIsSavingHistory(true);
+        try {
+            await api.post('/listen-history', {
+                storeId,
+                narrationId,
+                source: 'gps'
+            });
+            // Refresh history list
+            const res = await api.get(`/listen-history/store/${storeId}`);
+            if (res.data.success) setHistory(res.data.data);
+        } catch (error) {
+            console.warn('Lỗi lưu lịch sử nghe:', error);
+        } finally {
+            setIsSavingHistory(false);
+        }
+    };
 
     const playNarration = () => {
         if (!activeNarration?.textContent) return;
@@ -83,7 +125,10 @@ export default function StallDetailScreen() {
         Speech.speak(activeNarration.textContent, {
             language: SPEECH_LANG_MAP[activeNarration.language?.code] ?? 'vi-VN',
             rate: 0.9,
-            onDone: () => setIsPlaying(false),
+            onDone: () => {
+                setIsPlaying(false);
+                saveHistory(activeNarration.id);
+            },
             onError: () => setIsPlaying(false),
         });
     };
@@ -237,6 +282,48 @@ export default function StallDetailScreen() {
                             ))}
                         </View>
                     )}
+
+                    {/* === LISTEN HISTORY === */}
+                    <View className="rounded-xl bg-[#F3F4F6] p-5 mb-10">
+                        <View className="flex-row items-center justify-center mb-4">
+                            <Ionicons name="time-outline" size={24} color="#009FB7" />
+                            <Text className="text-[#009FB7] text-2xl font-bold ml-2">Lịch sử nghe</Text>
+                        </View>
+                        
+                        {history.length > 0 ? (
+                            <View className="gap-3">
+                                {history.map((item) => {
+                                    const date = new Date(item.listenedAt);
+                                    const dateStr = date.toLocaleDateString('vi-VN');
+                                    const timeStr = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                                    
+                                    return (
+                                        <View key={item.id} className="flex-row items-center bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
+                                            <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center">
+                                                <Text className="text-lg">{item.narration.language.flagIcon}</Text>
+                                            </View>
+                                            <View className="ml-3 flex-1">
+                                                <Text className="text-[#1F2937] font-bold text-[14px]">
+                                                    {item.narration.language.name}
+                                                </Text>
+                                                <Text className="text-[#6B7280] text-[11px]">
+                                                    {dateStr} - {timeStr}
+                                                </Text>
+                                            </View>
+                                            <Ionicons name="checkmark-done" size={16} color="#10B981" />
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        ) : (
+                            <View className="items-center py-6">
+                                <Ionicons name="document-text-outline" size={40} color="#D1D5DB" />
+                                <Text className="text-[#9CA3AF] text-sm mt-2 text-center">
+                                    Chưa có lịch sử nghe tại địa điểm này.
+                                </Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
             </ScrollView>
         </SafeAreaView>

@@ -54,6 +54,7 @@ export default function MapScreen() {
     const [languages, setLanguages] = useState<Language[]>([]);
     const [isLoadingLangs, setIsLoadingLangs] = useState(true);
     const [showLangPicker, setShowLangPicker] = useState(false);
+    const [isZoomedIn, setIsZoomedIn] = useState(true);
     const isNarratingRef = useRef(false);
     const lastNarratedRef = useRef<string | null>(null);
 
@@ -100,10 +101,10 @@ export default function MapScreen() {
         fetchStores();
     }, []);
     const initialRegion = {
-        latitude: 10.4967,
-        longitude: 105.1167,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
+        latitude: 10.2825,
+        longitude: 105.5180,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
     };
 
     // Theo dõi GPS
@@ -165,7 +166,7 @@ export default function MapScreen() {
 
     const userLocation = location
         ? { latitude: location.coords.latitude, longitude: location.coords.longitude }
-        : { latitude: 10.4967, longitude: 105.1167 };
+        : { latitude: 10.2825, longitude: 105.5180 };
 
     return (
         <SafeAreaView className="flex-1 bg-[#F9FAFB] relative">
@@ -266,6 +267,9 @@ export default function MapScreen() {
                         initialRegion={initialRegion}
                         provider={PROVIDER_DEFAULT}
                         showsUserLocation={false}
+                        onRegionChangeComplete={(region) => {
+                            setIsZoomedIn(region.latitudeDelta < 0.008);
+                        }}
                     >
                         {/* User Location Marker */}
                         <Marker coordinate={userLocation} zIndex={100} anchor={{ x: 0.5, y: 0.5 }}>
@@ -288,19 +292,22 @@ export default function MapScreen() {
                                 zIndex={selectedStall?.id === store.id ? 99 : 90}
                                 onPress={() => setSelectedStall(store)}
                             >
-                                <View className="items-center mt-4">
-                                    <View className={`px-4 py-2 rounded-2xl shadow-xl mb-1 items-center border-2 ${selectedStall?.id === store.id
-                                        ? 'bg-[#009FB7] border-[#009FB7]'
-                                        : 'bg-[#111827] border-[#111827]'
-                                        }`}>
-                                        <Text className="text-[11px] font-extrabold text-white tracking-wider uppercase">
-                                            {store.name.length > 15 ? store.name.slice(0, 15) + '...' : store.name}
-                                        </Text>
-                                    </View>
-                                    <View className="w-6 h-6 rounded-full bg-white items-center justify-center shadow-lg border border-gray-100">
-                                        <View className={`w-3 h-3 rounded-full ${selectedStall?.id === store.id ? 'bg-[#009FB7]' : 'bg-[#111827]'
-                                            }`} />
-                                    </View>
+                                <View className="items-center justify-center">
+                                    {isZoomedIn ? (
+                                        <View className="items-center">
+                                            <View className={`px-3 py-1.5 rounded-xl shadow-lg mb-1 items-center border ${selectedStall?.id === store.id
+                                                ? 'bg-[#009FB7] border-[#009FB7]'
+                                                : 'bg-[#111827] border-[#111827]'
+                                                }`}>
+                                                <Text className="text-[10px] font-bold text-white uppercase text-center">
+                                                    {store.name}
+                                                </Text>
+                                            </View>
+                                            <View className={`w-2 h-2 rounded-full ${selectedStall?.id === store.id ? 'bg-[#009FB7]' : 'bg-[#111827]'}`} />
+                                        </View>
+                                    ) : (
+                                        <View className={`w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm ${selectedStall?.id === store.id ? 'bg-[#009FB7]' : 'bg-red-500'}`} />
+                                    )}
                                 </View>
                             </Marker>
                         ))}

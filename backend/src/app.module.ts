@@ -28,6 +28,7 @@ import { MerchantSubscriptionsModule } from './modules/merchant-subscriptions/me
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { PlanMetadataModule } from './modules/plan-metadata/plan-metadata.module';
 import { FilesModule } from './modules/files/files.module';
+import { ListenHistoryModule } from './modules/listen-history/listen-history.module';
 import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
@@ -63,6 +64,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     SubscriptionsModule,
     PlanMetadataModule,
     FilesModule,
+    ListenHistoryModule,
   ],
   controllers: [AppController],
   providers: [

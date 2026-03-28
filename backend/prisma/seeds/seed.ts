@@ -170,11 +170,17 @@ async function main() {
     const allMerchants = await prisma.merchant.findMany();
     const stores = [];
     
+    let storeIndex = 0;
     for (const m of allMerchants) {
+        // Tọa độ phố Vĩnh Khánh (giả lập)
+        const baseLat = 10.2825;
+        const baseLng = 105.5180;
+        
         const storesData = [
-            { name: `${m.businessName} Flagship`, lat: 10.4967 + (Math.random() - 0.5) * 0.01, lng: 105.1167 + (Math.random() - 0.5) * 0.01 },
-            { name: `${m.businessName} Express`, lat: 10.4967 + (Math.random() - 0.5) * 0.01, lng: 105.1167 + (Math.random() - 0.5) * 0.01 },
+            { name: `${m.businessName} Flagship`, lat: baseLat + storeIndex * 0.0005, lng: baseLng + storeIndex * 0.0008 },
+            { name: `${m.businessName} Express`, lat: baseLat + (storeIndex + 1) * 0.0005, lng: baseLng + (storeIndex + 1) * 0.0008 },
         ];
+        storeIndex += 2;
 
         for (const sData of storesData) {
             // Check if store already exists to avoid duplicates

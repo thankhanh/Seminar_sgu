@@ -53,8 +53,8 @@ export default function StallDetailScreen() {
             try {
                 const [storeRes, menuRes, narrRes] = await Promise.all([
                     api.get(`/stores/${storeId}`),
-                    api.get(`/menus`, { params: { storeId } }),
-                    api.get(`/narrations/store/${storeId}`).catch(() => ({ data: { success: false } })),
+                    api.get(`/stores/${storeId}/menus`),
+                    api.get(`/stores/${storeId}/narrations`).catch(() => ({ data: { success: false } })),
                 ]);
                 if (storeRes.data.success) setStore(storeRes.data.data);
                 if (menuRes.data.success) setMenus(menuRes.data.data?.data ?? menuRes.data.data ?? []);
@@ -232,9 +232,7 @@ export default function StallDetailScreen() {
                                             {Number(item.price).toLocaleString('vi-VN')}đ
                                         </Text>
                                     </View>
-                                    <TouchableOpacity className="w-8 h-8 rounded-full bg-[#F4FBFC] items-center justify-center">
-                                        <Ionicons name="add" size={20} color="#009FB7" />
-                                    </TouchableOpacity>
+
                                 </View>
                             ))}
                         </View>

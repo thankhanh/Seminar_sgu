@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons';
+import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
@@ -39,7 +39,10 @@ export default function ProfileScreen() {
                             />
                         </View>
                         {/* Edit Badge */}
-                        <TouchableOpacity className="absolute bottom-1 right-1 w-7 h-7 bg-[#009FB7] rounded-full items-center justify-center border-2 border-white">
+                        <TouchableOpacity 
+                            onPress={() => router.push('/profile/edit')}
+                            className="absolute bottom-1 right-1 w-7 h-7 bg-[#009FB7] rounded-full items-center justify-center border-2 border-white"
+                        >
                             <Feather name="edit-2" size={12} color="white" />
                         </TouchableOpacity>
                     </View>
@@ -58,6 +61,21 @@ export default function ProfileScreen() {
                     <Text className="text-[#9CA3AF] text-[13px]">
                         Member since March 2023
                     </Text>
+
+                    {/* --- UPGRADE BANNER --- */}
+                    <TouchableOpacity 
+                        onPress={() => router.push('/plans' as any)}
+                        className="w-[90%] bg-[#009FB7] rounded-2xl flex-row items-center p-4 mt-6 shadow-lg shadow-[#009FB7]/30"
+                    >
+                        <View className="w-10 h-10 rounded-xl bg-white/20 items-center justify-center">
+                            <MaterialCommunityIcons name="crown" size={20} color="white" />
+                        </View>
+                        <View className="ml-3 flex-1">
+                            <Text className="text-white font-extrabold text-sm">Nâng cấp Hội viên</Text>
+                            <Text className="text-white/80 text-[11px]">Mở khóa tính năng đặc quyền</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color="white" />
+                    </TouchableOpacity>
                 </View>
 
                 <View className="px-5 pt-6">

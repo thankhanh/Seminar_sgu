@@ -55,7 +55,7 @@ const StoreManagement: React.FC = () => {
             } else {
                 const [response, subRes] = (await Promise.all([
                     merchantApi.getMe(),
-                    subscriptionsApi.getMyMerchant()
+                    subscriptionsApi.getMy()
                 ])) as any[];
                 
                 setSubscription(subRes);

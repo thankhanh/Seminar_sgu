@@ -24,10 +24,7 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: [
-      'http://localhost:5173', // Web Dashboard
-      'http://localhost:3001', // Dev alt port
-    ],
+    origin: true, // Phản hồi lại origin được gửi tới (hữu ích cho Mobile dev)
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
   });

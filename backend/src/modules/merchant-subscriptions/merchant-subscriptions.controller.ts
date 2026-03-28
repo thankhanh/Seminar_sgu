@@ -34,9 +34,9 @@ export class MerchantSubscriptionsController {
     return this.subscriptionsService.cancel(id);
   }
 
-  @Post('admin')
+  @Post('admin/grant')
   @Roles('admin')
-  async createByAdmin(@Body() dto: any) {
-    return this.subscriptionsService.createByAdmin(dto);
+  async grant(@Body() dto: any) {
+    return this.subscriptionsService.grant(dto);
   }
 }

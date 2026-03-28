@@ -99,7 +99,6 @@ export default function MapScreen() {
         };
         fetchStores();
     }, []);
-
     const initialRegion = {
         latitude: 10.4967,
         longitude: 105.1167,
@@ -291,8 +290,8 @@ export default function MapScreen() {
                             >
                                 <View className="items-center mt-4">
                                     <View className={`px-4 py-2 rounded-2xl shadow-xl mb-1 items-center border-2 ${selectedStall?.id === store.id
-                                            ? 'bg-[#009FB7] border-[#009FB7]'
-                                            : 'bg-[#111827] border-[#111827]'
+                                        ? 'bg-[#009FB7] border-[#009FB7]'
+                                        : 'bg-[#111827] border-[#111827]'
                                         }`}>
                                         <Text className="text-[11px] font-extrabold text-white tracking-wider uppercase">
                                             {store.name.length > 15 ? store.name.slice(0, 15) + '...' : store.name}
@@ -390,8 +389,8 @@ export default function MapScreen() {
                                             checkNearbyNarration(selectedStall.lat, selectedStall.lng);
                                         }}
                                         className={`w-12 h-12 rounded-xl items-center justify-center border ${isNarrating
-                                                ? 'bg-[#009FB7] border-[#009FB7]'
-                                                : 'bg-[#F3F4F6] border-gray-200'
+                                            ? 'bg-[#009FB7] border-[#009FB7]'
+                                            : 'bg-[#F3F4F6] border-gray-200'
                                             }`}
                                     >
                                         <Ionicons

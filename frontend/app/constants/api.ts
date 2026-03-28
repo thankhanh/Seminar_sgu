@@ -7,7 +7,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_URL = 'http://10.0.2.2:3000/api/v1';
+export const API_URL = 'http://192.168.1.11:3000/api/v1';
 export const TOKEN_KEY = 'auth_access_token';
 export const REFRESH_KEY = 'auth_refresh_token';
 export const USER_KEY = 'auth_user';
@@ -39,7 +39,34 @@ api.interceptors.response.use(
 // ─── Auth Helpers ─────────────────────────────────────────────────
 export const authHelpers = {
     async login(email: string, password: string) {
-        const { data } = await api.post('/auth/login', { email, password });
+        const response = await api.post('/auth/login', { email, password });
+        // Backend wraps response in { success: true, data: { accessToken, refreshToken, user } }
+        const { success, data, message } = response.data;
+
+        if (!success) {
+            throw new Error(message || 'Đăng nhập thất bại');
+        }
+
+        if (data.accessToken) {
+            await AsyncStorage.setItem(TOKEN_KEY, data.accessToken);
+        }
+        if (data.refreshToken) {
+            await AsyncStorage.setItem(REFRESH_KEY, data.refreshToken);
+        }
+        if (data.user) {
+            await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        }
+        return data;
+    },
+
+    async register(name: string, email: string, password: string) {
+        const response = await api.post('/auth/register', { name, email, password });
+        const { success, data, message } = response.data;
+
+        if (!success) {
+            throw new Error(message || 'Đăng ký thất bại');
+        }
+
         if (data.accessToken) {
             await AsyncStorage.setItem(TOKEN_KEY, data.accessToken);
         }

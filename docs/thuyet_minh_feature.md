@@ -1,99 +1,79 @@
 # HƯỚNG DẪN THIẾT KẾ & TRIỂN KHAI CHỨC NĂNG THUYẾT MINH (NARRATION)
 
-Tài liệu này trình bày giải pháp toàn diện cho chức năng thuyết minh tự động khi người tham quan di chuyển gần các quán ăn (POI).
+Tài liệu này trình bày giải pháp toàn diện cho chức năng thuyết minh tự động khi người tham quan di ## 1. TỔNG QUAN QUY TRÌNH (WORKFLOW)
 
----
-
-## 1. TỔNG QUAN QUY TRÌNH (WORKFLOW)
-
-Tính năng hoạt động dựa trên sự phối hợp giữa ba phân hệ: **Web Quản trị**, **Backend Xử lý**, và **Mobile App**.
+Tính năng hoạt động dựa trên sự phối hợp giữa **Vị trí GPS**, **Logic 10m Geofencing (Client-side)**, và **Hệ thống Ghi nhận Lịch sử**.
 
 ```mermaid
 sequenceDiagram
-    participant Web as 💻 Web (Admin/Merchant)
+    participant User as 🏃 User (GPS)
+    participant App as 📱 Mobile App
     participant BE as ⚙️ Backend (NestJS)
-    participant DB as 🗄️ Database (PostgreSQL)
-    participant AI as 🧠 Dịch thuật API (Google/Azure)
-    participant App as 📱 Mobile App (User)
+    participant DB as 🗄️ Database
 
-    Note over Web: Merchant nhập văn bản Tiếng Việt
-    Web->>BE: Lưu text thuyết minh gốc (VI)
-    BE->>DB: Lưu vào bảng Narration
-
-    Note over App: App gửi vị trí định kỳ
-    App->>BE: Gửi (Lat, Lng) & Ngôn ngữ (VD: English - EN)
-    BE->>DB: Truy vấn Store trong bán kính < 100m
-    DB-->>BE: Trả về Store & Text gốc (VI)
+    Note over User, App: Di chuyển vào vùng 10m của POI
+    App->>App: Tính khoảng cách Haversine (Local)
+    App->>User: Hiển thị Prompt: "Bạn có muốn nghe thuyết minh...?"
     
-    rect rgb(230, 245, 255)
-        Note over BE, AI: Xử lý chuyển ngữ tự động
-        BE->>AI: Gửi Text (VI) -> Dịch sang (EN)
-        AI-->>BE: Text đã dịch (EN)
-    end
-
-    BE-->>App: Trả về Text đã dịch
-    Note over App: Sử dụng thư viện TTS (expo-speech) để đọc lên
-    App->>App: Phát âm bằng giọng nói trên thiết bị
+    User-->>App: Đồng ý (Chọn "Có")
+    App->>App: Chuyển hướng vào trang Chi tiết Gian hàng
+    
+    Note over User, App: User nhấn nút "Play" nghe thuyết minh
+    App->>BE: POST /api/v1/listen/:narrationId?source=gps
+    BE->>DB: Lưu vào bảng listen_history
+    App->>App: Phát âm thanh (Expo Speech)
 ```
 
 ---
 
-## 2. GIAO DIỆN WEB (QUẢN LÝ NỘI DUNG)
+## 2. CHẾ ĐỘ NHẬN DIỆN KHÔNG GIAN (GEOFENCING)
 
-Để tối giản hóa cho người dùng (Chủ quán), giao diện đã được thiết kế lại như sau:
+Thay vì tự động phát âm thanh khi ở xa (100m) có thể gây phiền nhiễu, hệ thống hiện nay áp dụng các quy tắc sau:
 
-### A. Cho Chủ quán (Merchant UI)
-*   **Chỉ giữ lại 2 trường thông tin chính**:
-    1.  **Chọn quán ăn**: Dropdown danh sách các quán thuộc quyền sở hữu.
-    2.  **Đoạn nội dung thuyết minh**: Textarea để nhập câu chuyện hoặc thông tin (Yêu cầu nhập bằng **Tiếng Việt**).
-*   **Tự động hóa**: Hệ thống sẽ tự gán mã ngôn ngữ là `vi`, ẩn hoàn toàn các trường Audio URL và Thời lượng.
+### A. Độ chính xác 10 mét
+*   **Haversine Algorithm**: App tính toán khoảng cách trực tiếp trên thiết bị (Client-side) giữa tọa độ GPS của người dùng và tọa độ của tất cả gian hàng đã tải về.
+*   **Bán kính**: Chỉ kích hoạt khi khoảng cách $\le 10m$.
+*   **Ưu tiên**: Nếu có nhiều POI trong cùng 10m, hệ thống luôn chọn POI có khoảng cách **ngắn nhất**.
 
-### B. Cho Quản trị viên (Admin UI)
-*   **Hiển thị danh sách**:
-    *   **Tên quán ăn**: Để Admin biết nội dung thuộc về cơ sở nào.
-    *   **Nội dung văn bản (VI)**: Hiển thị đoạn văn bản thuyết minh gốc.
-    *   **Trạng thái**: Cho phép Admin duyệt (Active) hoặc ẩn (Hidden).
+### B. Cơ chế Chống Spam (Anti-Spam)
+*   Mỗi gian hàng chỉ hiển thị thông báo hỏi (Prompt) **một lần duy nhất** trong suốt phiên bản bản đồ đó.
+*   Thông tin được lưu vết qua `promptedStoresRef` để đảm bảo người dùng không bị hỏi đi hỏi lại khi đứng cạnh một quán ăn lâu.
 
 ---
 
-## 3. LOGIC BACKEND (XỬ LÝ TRUNG TÂM)
+## 3. LỊCH SỬ NGHE VÀ TRUY XUẤT (LISTEN HISTORY)
 
-### A. Xác định vị trí (Geofencing)
-Backend cung cấp 1 API endpoint: `GET /api/narrations/nearby?lat=...&lng=...&lang=...`
-1.  **Thuật toán**: Tính khoảng cách giữa (Lat, Lng) của User và (Lat, Lng) của tất cả Stores.
-2.  **Bộ lọc**: Lấy Store có khoảng cách $\le 100m$ và có `isActive: true`.
+### A. Ghi nhận thời điểm nghe
+*   Hệ thống không ghi nhận khi chỉ vừa mới "đi ngang qua".
+*   Lịch sử chỉ được tạo khi người dùng thực sự nhấn nút **Phát (Play)** đoạn thuyết minh trong trang chi tiết.
+*   Endpoint: `POST /api/v1/listen/:narrationId?source=gps`
 
-### B. Dịch thuật tự động (Translation)
-Sau khi tìm thấy Store, Backend kiểm tra:
-*   Nếu ngôn ngữ App yêu cầu là tiếng Việt (`vi`): Trả về text gốc.
-*   Nếu là ngôn ngữ khác (`en`, `ja`, `zh`...):
-    1.  Gọi API dịch thuật (ví dụ: Google Cloud Translation).
-    2.  Trả về kết quả dịch cho App.
-    3.  *(Mở rộng)*: Có thể cache lại bản dịch vào DB để dùng cho các User sau, tiết kiệm chi phí gọi API.
+### B. Hiển thị Lịch sử (Visited Stalls History)
+*   Người dùng có thể xem lại danh sách các quán đã từng nghe thuyết minh tại mục **Profile > Visited Stalls History**.
+*   Dữ liệu bao gồm: Hình ảnh quán, Tên quán, Địa chỉ, Thời gian nghe, và Ngôn ngữ đã sử dụng.
 
 ---
 
 ## 4. GIỌNG ĐỌC PHÍA FRONTEND (MOBILE APP)
 
-Giọng đọc được hiện thực hóa bằng công nghệ **TTS (Text-to-Speech)** trên thiết bị di động.
+Giọng đọc sử dụng công nghệ **TTS (Text-to-Speech)** nội bộ của thiết bị.
 
-### A. Công nghệ sử dụng
-*   **Thư viện**: `expo-speech` (Sử dụng API giọng đọc hệ điều hành của iOS/Android).
-*   **Ưu điểm**: Giọng đọc tự nhiên, hỗ trợ hàng chục ngôn ngữ mà không cần tải file âm thanh nặng.
+### A. Công nghệ & Bản đồ ngôn ngữ
+*   **Thư viện**: `expo-speech`.
+*   **Ánh xạ ngôn ngữ**: Hệ thống tự động map mã code ngôn ngữ (vi, en, ko...) sang locale tương ứng của thiết bị (vi-VN, en-US, ko-KR...) để gọi giọng đọc chuẩn nhất.
 
-### B. Mã ví dụ (React Native/Expo)
-Cài đặt: `npx expo install expo-speech`
-
+### B. Mã ví dụ ghi nhận lịch sử (Frontend)
 ```javascript
-import * as Speech from 'expo-speech';
-
-/**
- * Hàm đọc văn bản nhận được từ Backend
- * @param {string} text - Nội dung backend trả về
- * @param {string} lang - Mã ngôn ngữ (VD: 'en-US', 'vi-VN')
- */
-const playNarration = (text, lang) => {
-    // Kiểm tra và dừng giọng nói cũ nếu đang phát
+// Khi nhấn nút Play
+const handlePlay = async (narrationId) => {
+    // 1. Ghi nhận vào DB
+    await api.post(`/listen/${narrationId}?source=gps`);
+    
+    // 2. Phát âm thanh
+    Speech.speak(textContent, { language: 'vi-VN' });
+};
+```
+� dừng giọng nói cũ nếu đang phát
     Speech.stop(); 
     
     // Phát giọng nói mới

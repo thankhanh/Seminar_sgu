@@ -11,7 +11,7 @@
 | **Tên dự án** | Restaurant Audio Guide |
 | **Nhóm** | Seminar SGU |
 | **Phiên bản** | v1.0.0 |
-| **Cập nhật** | 2026-03-16 |
+| **Cập nhật** | 2026-04-03 |
 
 ### Vấn đề giải quyết
 Khách du lịch nước ngoài thường gặp khó khăn khi tìm hiểu về quán ăn địa phương do rào cản ngôn ngữ. Ứng dụng này tự động phát thuyết minh bằng tiếng mẹ đẻ của khách khi họ đến gần quán.
@@ -139,12 +139,12 @@ Seminar_sgu/
 ## ⚡ Tính năng chính
 
 ### 📱 Mobile App (User)
-- 🗺️ **Bản đồ GPS** — hiển thị quán gần đó trong bán kính 500m
-- 🔔 **Auto-detect** — popup khi user đến gần quán (< 20m)
-- 🎵 **Audio player** — phát thuyết minh với seek bar
-- 🌐 **Đa ngôn ngữ** — VI, EN, KO, JA, ZH + fallback tự động
+- 🗺️ **Bản đồ GPS** — hiển thị các gian hàng POI trực quan
+- 🔔 **Auto-detect (10m)** — popup yêu cầu xác nhận khi đến gần quán (< 10m)
+- 🎙️ **TTS Audio** — phát thuyết minh giọng đọc tự nhiên (Expo Speech)
+- 🌐 **Đa ngôn ngữ** — VI, EN, KO, JA, ZH... hỗ trợ localize theo thiết bị
 - 📷 **QR Scanner** — dự phòng khi GPS không chính xác
-- ⭐ **Yêu thích** — bookmark các quán hay
+- 📜 **Lịch sử nghe** — xem lại danh sách các quán đã từng ghé thăm
 - 💎 **Premium** — thanh toán VNPAY / MoMo
 
 ### 🖥️ Merchant Dashboard
@@ -281,4 +281,4 @@ AWS_REGION=ap-southeast-1
 ---
 
 *Tài liệu này được duy trì bởi nhóm phát triển dự án Seminar SGU.*
-*Cập nhật lần cuối: 2026-03-16*
+*Cập nhật lần cuối: 2026-04-03*

@@ -34,6 +34,14 @@ Trong trạng thái code hiện tại, chỉ có các endpoint sau được tri�
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/logout`
+- `GET /api/v1/users/me`
+- `PATCH /api/v1/users/me`
+- `GET /api/v1/users/listen-history` (Lấy lịch sử nghe của user)
+- `GET /api/v1/stores` (Danh sách quán)
+- `GET /api/v1/stores/:id` (Chi tiết quán)
+- `GET /api/v1/stores/:storeId/narrations` (Danh sách thuyết minh của quán)
+- `POST /api/v1/listen/:narrationId` (Ghi nhận lượt nghe)
+- `GET /api/v1/languages` (Danh sách ngôn ngữ)
 
 Các controller còn lại có tồn tại file, nhưng hiện chưa có các method route (`@Get/@Post/...`) nên **các endpoint tương ứng trong tài liệu** (Users, Stores, Narrations, Menus, Listen History, QR Codes, Subscriptions, Payments, Merchant, Admin, Languages và các auth endpoint khác như `forgot-password/reset-password`) **chưa được triển khai trong backend**.
 
@@ -231,8 +239,8 @@ avatar: <file>
 
 ---
 
-### `GET /users/me/listen-history`
-> Lịch sử nghe của bản thân. *(Xem thêm mục 6)*
+### `GET /users/listen-history`
+> Lấy danh sách lịch sử các gian hàng đã nghe thuyết minh của người dùng hiện tại.
 
 ---
 
@@ -374,22 +382,33 @@ avatar: <file>
 
 > 🔐 **Yêu cầu:** Bearer Token
 
-### `POST /listen-history`
-> Ghi nhận lượt nghe.
+### `POST /listen/:narrationId`
+> Ghi nhận lượt nghe một bản thuyết minh.
 
-**Body:**
+**Query Params:**
+| Param | Type | Mô tả |
+|-------|------|-------|
+| `source` | string | Nguồn nghe: `gps` (mặc định) hoặc `qr` |
+
+**Response `201`:**
 ```json
 {
-  "storeId": "uuid",
-  "narrationId": "uuid",
-  "source": "gps"
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "userId": "uuid",
+    "storeId": "uuid",
+    "narrationId": "uuid",
+    "source": "gps",
+    "listenedAt": "2026-03-16T05:00:00Z"
+  }
 }
 ```
 
 ---
 
-### `GET /users/me/listen-history`
-> Lịch sử nghe của user hiện tại.
+### `GET /users/listen-history`
+> Lấy danh sách lịch sử nghe của user hiện tại (Sắp xếp mới nhất lên đầu).
 
 **Response `200`:**
 ```json

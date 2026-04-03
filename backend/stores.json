@@ -1,0 +1,62 @@
+[
+  {
+    "id": "3453b4fd-4716-422c-9a9b-b3e50fc139ea",
+    "merchantId": "499bd851-d49a-42d5-b4d0-8a0d13779968",
+    "name": "Vinh Khanh Coffee Flagship",
+    "description": "Một địa điểm tuyệt vời thuộc hệ thống Vinh Khanh Coffee",
+    "address": "Phố đi bộ Vĩnh Khánh, Thoại Sơn, An Giang",
+    "lat": 10.284,
+    "lng": 105.5204,
+    "openTime": "07:00",
+    "closeTime": "21:00",
+    "coverImage": "http://localhost:3000/uploads/1774638894040-75570666.png",
+    "status": "active",
+    "createdAt": "2026-03-27T16:59:24.150Z",
+    "updatedAt": "2026-03-28T07:28:50.909Z"
+  },
+  {
+    "id": "428f3ffa-9e3e-4885-baef-cf99cd84829e",
+    "merchantId": "270c5e0a-2616-45df-b30a-3d80e9a49bf7",
+    "name": "Thanh Khanh Food Express",
+    "description": "Một địa điểm tuyệt vời thuộc hệ thống Thanh Khanh Food",
+    "address": "Phố đi bộ Vĩnh Khánh, Thoại Sơn, An Giang",
+    "lat": 10.283,
+    "lng": 105.5188,
+    "openTime": "07:00",
+    "closeTime": "21:00",
+    "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24",
+    "status": "active",
+    "createdAt": "2026-03-27T16:59:32.818Z",
+    "updatedAt": "2026-03-28T07:28:50.709Z"
+  },
+  {
+    "id": "8734b107-1de8-4e82-bb9b-5526703cb800",
+    "merchantId": "270c5e0a-2616-45df-b30a-3d80e9a49bf7",
+    "name": "Thanh Khanh Food Flagship",
+    "description": "Một địa điểm tuyệt vời thuộc hệ thống Thanh Khanh Food",
+    "address": "Phố đi bộ Vĩnh Khánh, Thoại Sơn, An Giang",
+    "lat": 10.2825,
+    "lng": 105.518,
+    "openTime": "07:00",
+    "closeTime": "21:00",
+    "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24",
+    "status": "active",
+    "createdAt": "2026-03-27T16:59:30.507Z",
+    "updatedAt": "2026-03-28T07:28:50.503Z"
+  },
+  {
+    "id": "d80eb6b6-9eed-4b47-afec-e51bc271dc24",
+    "merchantId": "499bd851-d49a-42d5-b4d0-8a0d13779968",
+    "name": "Vinh Khanh Coffee Express",
+    "description": "Một địa điểm tuyệt vời thuộc hệ thống Vinh Khanh Coffee",
+    "address": "Phố đi bộ Vĩnh Khánh, Thoại Sơn, An Giang",
+    "lat": 10.2835,
+    "lng": 105.5196,
+    "openTime": "07:00",
+    "closeTime": "21:00",
+    "coverImage": "http://localhost:3000/uploads/1774639390609-915252060.png",
+    "status": "active",
+    "createdAt": "2026-03-27T16:59:28.162Z",
+    "updatedAt": "2026-03-28T07:28:50.808Z"
+  }
+]

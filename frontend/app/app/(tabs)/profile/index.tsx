@@ -97,7 +97,10 @@ export default function ProfileScreen() {
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </TouchableOpacity>
 
-                    <TouchableOpacity className="bg-[#F8FAFC] rounded-2xl p-4 flex-row items-center justify-between mb-8">
+                    <TouchableOpacity 
+                        className="bg-[#F8FAFC] rounded-2xl p-4 flex-row items-center justify-between mb-8"
+                        onPress={() => router.push('/profile/visit-history')}
+                    >
                         <View className="flex-row items-center flex-1">
                             <View className="w-12 h-12 bg-[#E2E8F0] rounded-2xl items-center justify-center mr-4">
                                 <Feather name="clock" size={20} color="#4B5563" />

@@ -80,6 +80,11 @@ export default function StallDetailScreen() {
             return;
         }
         setIsPlaying(true);
+
+        api.post(`/listen/${activeNarration.id}?source=gps`).catch(err => {
+            console.warn('Không thể lưu lịch sử nghe:', err);
+        });
+
         Speech.speak(activeNarration.textContent, {
             language: SPEECH_LANG_MAP[activeNarration.language?.code] ?? 'vi-VN',
             rate: 0.9,

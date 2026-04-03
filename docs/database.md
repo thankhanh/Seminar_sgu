@@ -24,6 +24,7 @@
 | 1.12 | `payment_vnpay`            | Chi tiết thanh toán VNPAY      |
 | 1.13 | `payment_momo`             | Chi tiết thanh toán MoMo       |
 | 1.14 | `qr_codes`                 | Mã QR gắn tại quán            |
+| 1.15 | `plan_metadata`            | Cấu hình thông tin các gói bán |
 
 ---
 
@@ -318,4 +319,4 @@ transactions ───────── payment_momo (transaction_id)
 ---
 
 *Tài liệu này được duy trì bởi nhóm phát triển dự án Seminar SGU.*
-*Cập nhật lần cuối: 2026-03-16*
+*Cập nhật lần cuối: 2026-04-03*

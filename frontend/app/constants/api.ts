@@ -99,4 +99,16 @@ export const authHelpers = {
     },
 };
 
+// ─── Users Helpers ─────────────────────────────────────────────────
+export const usersHelpers = {
+    async getListenHistory() {
+        const response = await api.get('/users/listen-history');
+        const { success, data, message } = response.data;
+        if (!success) {
+            throw new Error(message || 'Failed to fetch history');
+        }
+        return data;
+    }
+};
+
 export default api;

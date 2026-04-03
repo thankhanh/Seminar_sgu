@@ -46,4 +46,19 @@ export class UsersService {
       },
     });
   }
+
+  async getListenHistory(userId: string) {
+    return this.prisma.listenHistory.findMany({
+      where: { userId },
+      orderBy: { listenedAt: 'desc' },
+      include: {
+        store: {
+          select: { id: true, name: true, address: true, coverImage: true, lat: true, lng: true },
+        },
+        narration: {
+          include: { language: true },
+        },
+      },
+    });
+  }
 }

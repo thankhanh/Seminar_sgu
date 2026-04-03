@@ -263,7 +263,7 @@ export class PaymentsService {
 
     const requestId = `${partnerCode}-${Date.now()}`;
     const orderId = `VK-${tx.id.replace(/-/g, '').substring(0, 8)}-${Date.now()}`;
-    const requestType = 'payWithMethod';
+    const requestType = 'captureWallet';
     const orderInfo = label;
     const extraData = '';
     const autoCapture = true;
@@ -392,6 +392,15 @@ export class PaymentsService {
     }
 
     return { message: 'IPN processed' };
+  }
+
+  async getTransactionStatus(transactionId: string, userId: string) {
+    const tx = await this.prisma.transaction.findFirst({
+      where: { id: transactionId, userId },
+      select: { id: true, status: true, amount: true, type: true, createdAt: true },
+    });
+    if (!tx) throw new BadRequestException('Không tìm thấy giao dịch');
+    return tx;
   }
 
   async getTransactionHistory(userId: string) {

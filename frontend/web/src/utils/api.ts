@@ -133,3 +133,10 @@ export const paymentsApi = {
     create: (dto: any) => unwrapData(apiClient.post('/payments/create', dto)),
     getHistory: () => unwrapData(apiClient.get('/payments/history')),
 };
+
+// --- QR Codes ---
+export const qrApi = {
+    getByStore: (storeId: string) => unwrapData(apiClient.get(`/qr/store/${storeId}`)),
+    create: (storeId: string) => unwrapData(apiClient.post(`/qr/store/${storeId}`)),
+};
+

@@ -51,19 +51,20 @@ export default function QRScannerScreen() {
         console.log(`[Scanner] Scanned QR Code: ${data}`);
         
         try {
-            // data can be a full URL or just a code. 
-            // In our system, we expect the code.
+            // data chính là mã QR code (vd: QR-abc12345 hoặc uuid)
             const { data: json } = await api.post(`/qr/scan/${data}`);
             
-            if (json.success && json.data?.storeId) {
-                // Navigate to stall detail
-                router.replace(`/stall/${json.data.storeId}` as any);
+            // Backend trả { success: true, data: { storeId, store, ... } }
+            const storeId = json.data?.storeId || json.data?.store?.id;
+            if (json.success && storeId) {
+                // Navigate đến stall detail với autoplay=1 để tự động phát TTS
+                router.replace(`/stall/${storeId}?autoplay=1` as any);
             } else {
                 alert('Mã QR không hợp lệ hoặc không tồn tại trong hệ thống.');
             }
         } catch (error: any) {
             console.warn('[Scanner] Error scanning QR:', error);
-            const errMsg = error.response?.data?.error?.message || 'Có lỗi xảy ra khi kết nối máy chủ.';
+            const errMsg = error.response?.data?.error?.message || 'Có lỗi xảy ra khi kết nối máy chủ. Vui lòng đăng nhập để quét mã QR.';
             alert(`Lỗi: ${errMsg}`);
         }
     };

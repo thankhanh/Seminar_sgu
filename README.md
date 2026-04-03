@@ -147,12 +147,13 @@ Seminar_sgu/                          ← Root project
 │       └── vite.config.ts
 │
 └── docs/                             # 📚 Tài liệu dự án
-    ├── yeucau.md                     # Yêu cầu & mục tiêu dự án (Master Doc)
-    ├── workflow.md                   # Luồng hoạt động 3 vai trò
-    ├── database.md                   # Schema 14 bảng PostgreSQL
-    ├── database_analysis.md          # ERD + phân tích VNPAY/MoMo + UI checklist
-    ├── api.md                        # REST API documentation đầy đủ
-    └── migration.sql                 # SQL tạo toàn bộ database
+    ├── PRD.md                        # Tài liệu yêu cầu sản phẩm (Master Doc)
+    ├── workflow.md                   # Luồng hoạt động chi tiết 3 vai trò
+    ├── database.md                   # Lược đồ 14 bảng PostgreSQL
+    ├── diagrams.md                   # Sơ đồ ERD, Sequence và Activity
+    ├── api.md                        # Tài liệu hướng dẫn REST API
+    ├── migration.sql                 # SQL thiết lập cơ sở dữ liệu
+    └── bao_cao_du_an.md              # Báo cáo tổng kết dự án
 ```
 
 ---
@@ -287,14 +288,13 @@ AWS_REGION=ap-southeast-1
 
 | File | Mô tả |
 |------|-------|
-| [docs/yeucau.md](./docs/yeucau.md) | 📋 Yêu cầu, mục tiêu và tech stack dự án (Master Document) |
+| [docs/PRD.md](./docs/PRD.md) | 📋 Product Requirements Document — Mục tiêu, phạm vi & Release plan |
 | [docs/workflow.md](./docs/workflow.md) | 🔄 Luồng hoạt động chi tiết 3 vai trò (User / Merchant / Admin) |
 | [docs/database.md](./docs/database.md) | 🗄️ Schema 14 bảng PostgreSQL — đầy đủ constraint, chú thích |
-| [docs/database_analysis.md](./docs/database_analysis.md) | 📊 ERD diagram + phân tích VNPAY/MoMo + Checklist UI |
+| [docs/diagrams.md](./docs/diagrams.md) | 📐 Sơ đồ ERD, Sequence Diagrams + Activity Diagrams (Mermaid.js) |
 | [docs/api.md](./docs/api.md) | 🔌 REST API documentation — ~40 endpoints đầy đủ |
-| [docs/PRD.md](./docs/PRD.md) | 📋 Product Requirements Document — scope, KPIs, release plan |
-| [docs/diagrams.md](./docs/diagrams.md) | 📐 8 Sequence Diagrams + 5 Activity Diagrams (Mermaid.js) |
 | [docs/migration.sql](./docs/migration.sql) | 🛠️ SQL tạo toàn bộ database (14 bảng, indexes, functions GPS) |
+| [docs/bao_cao_du_an.md](./docs/bao_cao_du_an.md) | 📄 Báo cáo tổng kết dự án Seminar SGU |
 
 ---
 

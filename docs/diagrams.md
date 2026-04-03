@@ -18,12 +18,203 @@
 7. [SD7 — Thanh toán VNPAY](#sd7--thanh-toán-vnpay)
 8. [SD8 — Thanh toán MoMo](#sd8--thanh-toán-momo)
 
+### ER Diagram
+1. [ERD — Entity Relationship Diagram](#erd--entity-relationship-diagram)
+
 ### Activity Diagrams
 1. [AD1 — Luồng User khám phá quán](#ad1--luồng-user-khám-phá-quán)
 2. [AD2 — Luồng Merchant đăng ký & tạo quán](#ad2--luồng-merchant-đăng-ký--tạo-quán)
 3. [AD3 — Luồng Admin duyệt](#ad3--luồng-admin-duyệt)
 4. [AD4 — Luồng thanh toán tổng quát](#ad4--luồng-thanh-toán-tổng-quát)
 5. [AD5 — Luồng Narration Fallback đa ngôn ngữ](#ad5--luồng-narration-fallback-đa-ngôn-ngữ)
+
+---
+
+## SEQUENCE DIAGRAMS
+
+---
+
+### ERD — Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    users {
+        uuid id PK
+        varchar name
+        varchar email
+        text password_hash
+        varchar phone
+        enum role
+        varchar preferred_language
+        text avatar_url
+        boolean is_active
+        timestamptz created_at
+    }
+
+    languages {
+        uuid id PK
+        varchar code
+        varchar name
+        text flag_icon
+        boolean is_active
+    }
+
+    merchants {
+        uuid id PK
+        uuid user_id FK
+        varchar business_name
+        varchar tax_code
+        enum status
+        text reject_reason
+        timestamptz created_at
+    }
+
+    stores {
+        uuid id PK
+        uuid merchant_id FK
+        varchar name
+        text description
+        text address
+        geography location
+        time open_time
+        time close_time
+        text cover_image
+        enum status
+        timestamptz created_at
+    }
+
+    store_images {
+        uuid id PK
+        uuid store_id FK
+        text image_url
+        int sort_order
+        timestamptz created_at
+    }
+
+    menus {
+        uuid id PK
+        uuid store_id FK
+        varchar name
+        text description
+        numeric price
+        text image_url
+        boolean is_available
+        timestamptz created_at
+    }
+
+    narrations {
+        uuid id PK
+        uuid store_id FK
+        uuid language_id FK
+        text audio_url
+        text text_content
+        int duration
+        boolean is_active
+        timestamptz created_at
+    }
+
+    listen_history {
+        uuid id PK
+        uuid user_id FK
+        uuid store_id FK
+        uuid narration_id FK
+        enum source
+        timestamptz listened_at
+    }
+
+    subscriptions {
+        uuid id PK
+        uuid user_id FK
+        enum plan
+        date start_date
+        date end_date
+        enum status
+        timestamptz created_at
+    }
+
+    merchant_subscriptions {
+        uuid id PK
+        uuid merchant_id FK
+        enum plan
+        int max_store
+        date start_date
+        date end_date
+        enum status
+        timestamptz created_at
+    }
+
+    transactions {
+        uuid id PK
+        uuid user_id FK
+        numeric amount
+        varchar currency
+        enum type
+        enum payment_method
+        uuid payment_ref_id
+        enum status
+        text description
+        timestamptz created_at
+    }
+
+    payment_vnpay {
+        uuid id PK
+        uuid transaction_id FK
+        varchar vnp_txn_ref
+        bigint vnp_amount
+        text vnp_order_info
+        varchar vnp_transaction_no
+        varchar vnp_bank_code
+        varchar vnp_response_code
+        text vnp_secure_hash
+        jsonb raw_response
+        timestamptz created_at
+    }
+
+    payment_momo {
+        uuid id PK
+        uuid transaction_id FK
+        varchar order_id
+        varchar request_id
+        bigint amount
+        varchar momo_trans_id
+        int result_code
+        text message
+        varchar pay_type
+        text signature
+        jsonb raw_response
+        timestamptz created_at
+    }
+
+    qr_codes {
+        uuid id PK
+        uuid store_id FK
+        varchar code
+        text qr_image_url
+        boolean is_active
+        timestamptz created_at
+    }
+
+    %% Relationships
+    users ||--o| merchants : "có thể là"
+    users ||--o{ subscriptions : "đăng ký"
+    users ||--o{ transactions : "thanh toán"
+    users ||--o{ listen_history : "nghe"
+
+    merchants ||--o{ stores : "sở hữu"
+    merchants ||--o{ merchant_subscriptions : "đăng ký gói"
+
+    stores ||--o{ store_images : "có ảnh"
+    stores ||--o{ menus : "có món"
+    stores ||--o{ narrations : "có thuyết minh"
+    stores ||--o{ qr_codes : "có mã QR"
+    stores ||--o{ listen_history : "được nghe"
+
+    languages ||--o{ narrations : "dùng cho"
+    narrations ||--o{ listen_history : "được phát"
+
+    transactions ||--o| payment_vnpay : "chi tiết VNPAY"
+    transactions ||--o| payment_momo : "chi tiết MoMo"
+```
 
 ---
 

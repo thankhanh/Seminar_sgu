@@ -23,12 +23,19 @@ export class QrService {
   async generateQr(storeId: string, user: { id: string; role: string }) {
     await this.verifyStoreAccess(storeId, user);
 
+    // Vô hiệu hóa tất cả QR cũ của store này trước khi tạo mới
+    await this.prisma.qrCode.updateMany({
+      where: { storeId, isActive: true },
+      data: { isActive: false },
+    });
+
     const code = uuidv4();
+    const deepLink = `smarttour://stall/${storeId}?autoplay=1`;
     const qr = await this.prisma.qrCode.create({
       data: {
         storeId,
         code,
-        qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(code)}`,
+        qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(deepLink)}`,
         isActive: true,
       },
     });
@@ -54,7 +61,11 @@ export class QrService {
 
   async getStoreQrCodes(storeId: string, user: { id: string; role: string }) {
     await this.verifyStoreAccess(storeId, user);
-    return this.prisma.qrCode.findMany({ where: { storeId }, orderBy: { createdAt: 'desc' } });
+    // Chỉ trả về QR đang active (QR cũ đã bị deactivate khi tạo mới)
+    return this.prisma.qrCode.findMany({
+      where: { storeId, isActive: true },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async scanQr(code: string, userId: string) {

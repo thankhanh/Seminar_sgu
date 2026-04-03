@@ -6,22 +6,36 @@ import { v4 as uuidv4 } from 'uuid';
 export class QrService {
   constructor(private prisma: PrismaService) {}
 
-  async generateQr(storeId: string, userId: string) {
-    // Kiểm tra store thuộc về merchant của user
+  /** Kiểm tra quyền sở hữu store (admin bypass) */
+  private async verifyStoreAccess(storeId: string, user: { id: string; role: string }) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
       include: { merchant: true },
     });
     if (!store) throw new NotFoundException('Store không tồn tại');
-    if (store.merchant.userId !== userId)
-      throw new ForbiddenException('Bạn không có quyền tạo QR cho store này');
+    // Admin có quyền truy cập mọi store
+    if (user.role !== 'admin' && store.merchant.userId !== user.id) {
+      throw new ForbiddenException('Bạn không có quyền thao tác QR cho store này');
+    }
+    return store;
+  }
+
+  async generateQr(storeId: string, user: { id: string; role: string }) {
+    await this.verifyStoreAccess(storeId, user);
+
+    // Vô hiệu hóa tất cả QR cũ của store này trước khi tạo mới
+    await this.prisma.qrCode.updateMany({
+      where: { storeId, isActive: true },
+      data: { isActive: false },
+    });
 
     const code = uuidv4();
+    const deepLink = `smarttour://stall/${storeId}?autoplay=1`;
     const qr = await this.prisma.qrCode.create({
       data: {
         storeId,
         code,
-        qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(code)}`,
+        qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(deepLink)}`,
         isActive: true,
       },
     });
@@ -42,20 +56,18 @@ export class QrService {
       },
     });
     if (!qr || !qr.isActive) throw new NotFoundException('QR code không hợp lệ hoặc đã hết hạn');
-    return { store: qr.store };
+    return { storeId: qr.store.id, store: qr.store };
   }
 
-  async getStoreQrCodes(storeId: string, userId: string) {
-    const store = await this.prisma.store.findUnique({
-      where: { id: storeId },
-      include: { merchant: true },
+  async getStoreQrCodes(storeId: string, user: { id: string; role: string }) {
+    await this.verifyStoreAccess(storeId, user);
+    // Chỉ trả về QR đang active (QR cũ đã bị deactivate khi tạo mới)
+    return this.prisma.qrCode.findMany({
+      where: { storeId, isActive: true },
+      orderBy: { createdAt: 'desc' },
     });
-    if (!store) throw new NotFoundException('Store không tồn tại');
-    if (store.merchant.userId !== userId)
-      throw new ForbiddenException('Bạn không có quyền xem QR của store này');
-
-    return this.prisma.qrCode.findMany({ where: { storeId }, orderBy: { createdAt: 'desc' } });
   }
+
   async scanQr(code: string, userId: string) {
     const qr = await this.prisma.qrCode.findUnique({
       where: { code },
@@ -71,10 +83,21 @@ export class QrService {
     });
     if (!qr || !qr.isActive) throw new NotFoundException('QR code không hợp lệ hoặc đã hết hạn');
 
-    // Tìm narration mặc định (tiếng Việt)
-    const defaultNarration = qr.store.narrations.find(n => n.language.code === 'vi' && n.isActive);
+    // Lấy ngôn ngữ ưa thích của user
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { preferredLanguage: true },
+    });
+    const preferredLang = user?.preferredLanguage || 'vi';
+
+    // Tìm narration theo ngôn ngữ ưa thích, fallback về 'vi'
+    let defaultNarration = qr.store.narrations.find(n => n.language.code === preferredLang && n.isActive);
+    if (!defaultNarration) {
+      defaultNarration = qr.store.narrations.find(n => n.language.code === 'vi' && n.isActive);
+    }
+
     if (defaultNarration) {
-      // Ghi nhận listen
+      // Ghi nhận listen history
       await this.prisma.listenHistory.create({
         data: {
           userId,
@@ -85,6 +108,12 @@ export class QrService {
       });
     }
 
-    return { store: qr.store, listened: !!defaultNarration };
+    return {
+      storeId: qr.store.id,
+      store: qr.store,
+      narrationId: defaultNarration?.id || null,
+      preferredLanguage: preferredLang,
+      listened: !!defaultNarration,
+    };
   }
 }

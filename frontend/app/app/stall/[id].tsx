@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import api from '../../constants/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface StoreDetail {
     id: string;
@@ -39,6 +40,7 @@ export default function StallDetailScreen() {
     const params = useLocalSearchParams();
     const router = useRouter();
     const storeId = params?.id as string;
+    const autoplay = params?.autoplay === '1';
 
     const [store, setStore] = useState<StoreDetail | null>(null);
     const [menus, setMenus] = useState<MenuItem[]>([]);
@@ -46,25 +48,64 @@ export default function StallDetailScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [isPlaying, setIsPlaying] = useState(false);
     const [activeNarration, setActiveNarration] = useState<Narration | null>(null);
-    const [isLimitReached, setIsLimitReached] = useState(false);
+    const [autoPlayed, setAutoPlayed] = useState(false);
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+
+    // Pulse animation khi đang auto-play
+    useEffect(() => {
+        if (isPlaying) {
+            const pulse = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+                ])
+            );
+            pulse.start();
+            return () => pulse.stop();
+        } else {
+            pulseAnim.setValue(1);
+        }
+    }, [isPlaying]);
 
     useEffect(() => {
         if (!storeId) return;
         const loadAll = async () => {
             try {
-                const [storeRes, menuRes, narrRes, profileRes] = await Promise.all([
+                // Lấy preferredLanguage của user
+                const userRaw = await AsyncStorage.getItem('auth_user');
+                const userPreferredLang = userRaw ? JSON.parse(userRaw).preferredLanguage || 'vi' : 'vi';
+
+                const [storeRes, menuRes, narrRes] = await Promise.all([
                     api.get(`/stores/${storeId}`),
                     api.get(`/stores/${storeId}/menus`),
                     api.get(`/stores/${storeId}/narrations`).catch(() => ({ data: { success: false } })),
-                    api.get('/users/me').catch(() => ({ data: { success: false } })),
                 ]);
                 if (storeRes.data.success) setStore(storeRes.data.data);
                 if (menuRes.data.success) setMenus(menuRes.data.data?.data ?? menuRes.data.data ?? []);
-                if (profileRes.data.success) setIsLimitReached(profileRes.data.data.isLimitReached);
                 if (narrRes.data.success) {
                     const narrs = narrRes.data.data ?? [];
                     setNarrations(narrs);
-                    setActiveNarration(narrs[0] ?? null);
+
+                    // Chọn narration theo ngôn ngữ ưa thích → vi → bản đầu tiên
+                    const preferred: Narration | null =
+                        narrs.find((n: Narration) => n.language?.code === userPreferredLang)
+                        || narrs.find((n: Narration) => n.language?.code === 'vi')
+                        || narrs[0] || null;
+                    setActiveNarration(preferred);
+
+                    // ✅ Auto-play ngay sau khi có data — dùng preferred trực tiếp, không qua closure
+                    if (autoplay && preferred?.textContent) {
+                        setAutoPlayed(true);
+                        setTimeout(() => {
+                            setIsPlaying(true);
+                            Speech.speak(preferred.textContent!, {
+                                language: SPEECH_LANG_MAP[preferred.language?.code] ?? 'vi-VN',
+                                rate: 0.9,
+                                onDone: () => setIsPlaying(false),
+                                onError: () => setIsPlaying(false),
+                            });
+                        }, 600);
+                    }
                 }
             } catch (error) {
                 console.warn('Lỗi tải dữ liệu quán:', error);
@@ -83,23 +124,6 @@ export default function StallDetailScreen() {
             return;
         }
         setIsPlaying(true);
-
-        api.post(`/listen/${activeNarration.id}?source=gps`).catch(err => {
-            if (err.response?.status === 403) {
-                setIsLimitReached(true);
-                const serverMsg = err.response?.data?.message;
-                Alert.alert(
-                    'Giới hạn lượt nghe',
-                    serverMsg || 'Bạn đã hết lượt nghe miễn phí trong ngày. Vui lòng nâng cấp gói hôi viên để tiếp tục trải nghiệm!',
-                    [
-                        { text: 'Để sau', style: 'cancel' },
-                        { text: 'Nâng cấp ngay', onPress: () => router.push('/plans' as any) }
-                    ]
-                );
-            }
-            console.warn('Không thể lưu lịch sử nghe:', err);
-        });
-
         Speech.speak(activeNarration.textContent, {
             language: SPEECH_LANG_MAP[activeNarration.language?.code] ?? 'vi-VN',
             rate: 0.9,
@@ -112,7 +136,9 @@ export default function StallDetailScreen() {
         return (
             <SafeAreaView className="flex-1 bg-white items-center justify-center">
                 <ActivityIndicator size="large" color="#009FB7" />
-                <Text className="text-[#9CA3AF] mt-4">Đang tải thông tin quán...</Text>
+                <Text className="text-[#9CA3AF] mt-4">
+                    {autoplay ? 'Đang chuẩn bị thuyết minh...' : 'Đang tải thông tin quán...'}
+                </Text>
             </SafeAreaView>
         );
     }
@@ -190,20 +216,25 @@ export default function StallDetailScreen() {
                                 </ScrollView>
                             )}
                             <View className="items-center">
-                                <View className="w-24 h-24 rounded-full bg-[#F4FBFC] items-center justify-center border-4 border-[#B3EBF2] mb-6">
-                                    <Ionicons name={isPlaying ? "headset" : "headset-outline"} size={40} color="#009FB7" />
-                                </View>
+                                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                                    <View className="w-24 h-24 rounded-full bg-[#F4FBFC] items-center justify-center border-4 border-[#B3EBF2] mb-6">
+                                        <Ionicons name={isPlaying ? "headset" : "headset-outline"} size={40} color="#009FB7" />
+                                    </View>
+                                </Animated.View>
                                 <Text className="text-[#1F2937] font-bold text-lg text-center mb-1">
                                     Thuyết minh: {activeNarration.language?.name}
                                 </Text>
-                                <Text className="text-[#6B7280] text-[13px]">Hướng dẫn âm thanh tự động</Text>
-                                <TouchableOpacity
-                                    onPress={playNarration}
-                                    disabled={isLimitReached && !isPlaying}
-                                    className={`mt-6 w-16 h-16 rounded-full items-center justify-center shadow-lg ${isPlaying ? 'bg-red-500' : isLimitReached ? 'bg-gray-300' : 'bg-[#009FB7]'}`}
-                                >
-                                    <Ionicons name={isPlaying ? "stop" : "play"} size={32} color="white" style={{ marginLeft: isPlaying ? 0 : 4 }} />
-                                </TouchableOpacity>
+                                <Text className="text-[#6B7280] text-[13px]">
+                                    {isPlaying ? '🔊 Đang phát thuyết minh...' : 'Hướng dẫn âm thanh tự động'}
+                                </Text>
+                                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                                    <TouchableOpacity
+                                        onPress={playNarration}
+                                        className={`mt-6 w-16 h-16 rounded-full items-center justify-center shadow-lg ${isPlaying ? 'bg-red-500' : 'bg-[#009FB7]'}`}
+                                    >
+                                        <Ionicons name={isPlaying ? "stop" : "play"} size={32} color="white" style={{ marginLeft: isPlaying ? 0 : 4 }} />
+                                    </TouchableOpacity>
+                                </Animated.View>
                                 {activeNarration.textContent && (
                                     <Text className="text-[#9CA3AF] text-xs text-center mt-4 px-2" numberOfLines={3}>
                                         {activeNarration.textContent}

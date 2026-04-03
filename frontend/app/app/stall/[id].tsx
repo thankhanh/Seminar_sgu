@@ -85,11 +85,27 @@ export default function StallDetailScreen() {
                 if (narrRes.data.success) {
                     const narrs = narrRes.data.data ?? [];
                     setNarrations(narrs);
-                    // Chọn narration theo ngôn ngữ ưa thích, fallback về vi, rồi fallback về bản đầu tiên
-                    const preferred = narrs.find((n: Narration) => n.language?.code === userPreferredLang)
+
+                    // Chọn narration theo ngôn ngữ ưa thích → vi → bản đầu tiên
+                    const preferred: Narration | null =
+                        narrs.find((n: Narration) => n.language?.code === userPreferredLang)
                         || narrs.find((n: Narration) => n.language?.code === 'vi')
                         || narrs[0] || null;
                     setActiveNarration(preferred);
+
+                    // ✅ Auto-play ngay sau khi có data — dùng preferred trực tiếp, không qua closure
+                    if (autoplay && preferred?.textContent) {
+                        setAutoPlayed(true);
+                        setTimeout(() => {
+                            setIsPlaying(true);
+                            Speech.speak(preferred.textContent!, {
+                                language: SPEECH_LANG_MAP[preferred.language?.code] ?? 'vi-VN',
+                                rate: 0.9,
+                                onDone: () => setIsPlaying(false),
+                                onError: () => setIsPlaying(false),
+                            });
+                        }, 600);
+                    }
                 }
             } catch (error) {
                 console.warn('Lỗi tải dữ liệu quán:', error);
@@ -99,18 +115,6 @@ export default function StallDetailScreen() {
         };
         loadAll();
     }, [storeId]);
-
-    // Auto-play TTS khi data đã load xong và có autoplay param
-    useEffect(() => {
-        if (autoplay && !autoPlayed && !isLoading && activeNarration?.textContent) {
-            setAutoPlayed(true);
-            // Delay nhỏ để UI render trước
-            const timer = setTimeout(() => {
-                playNarration();
-            }, 500);
-            return () => clearTimeout(timer);
-        }
-    }, [autoplay, autoPlayed, isLoading, activeNarration]);
 
     const playNarration = () => {
         if (!activeNarration?.textContent) return;

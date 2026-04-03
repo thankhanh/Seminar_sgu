@@ -34,7 +34,7 @@ Dựa theo trạng thái hiện tại (frontend đang dùng Mock UI và API back
 *Backend đang có cấu trúc tốt, nhưng cần cân chỉnh nhỏ để Frontend có thể giao tiếp dễ dàng.*
 
 ### Networking & Security
-- [x] **CORS & Network:** Cấu hình Cors trong `main.ts` và bind host `0.0.0.0` để Mobile App trong LAN có thể kết nối.
+- [ ] **CORS Error:** Cấu hình Cors trong `main.ts` (`app.enableCors()`) để cho phép origin `http://localhost:5173`.
 - [ ] **Static Assets:** Nếu backend lưu trữ file ảnh / map nội bộ cục bộ, hãy mở chặn folder serve tĩnh `app.useStaticAssets()`.
 
 ### Payment (VNPAY / MoMo)
@@ -47,16 +47,16 @@ Dựa theo trạng thái hiện tại (frontend đang dùng Mock UI và API back
 
 ### Core Khách Du Lịch (MVP)
 - [ ] **Dựng UI Cơ bản:** Splash screen, Login/Guest mode, Bottom Navigation (Bản đồ, Lịch sử, Cá nhân).
-- [x] **Tích hợp Bản Đồ (Expo-Location & RN-Maps):**
-    - Xin phép quyền truy cập Vị trí (`foreground`).
-    - Gọi API `/stores` để hiển thị các POI trên bản đồ.
-    - Render quán ăn thành điểm POI trên bản đồ.
-- [x] **Logic Geofencing (10m Proximity):**
-    - Tính toán khoảng cách Haversine trực tiếp trên App.
-    - Nếu khoảng cách `< 10m` -> Hiển thị thông báo (Prompt) hỏi người dùng có muốn nghe thuyết minh không.
-    - Điều hướng vào trang chi tiết khi xác nhận.
-- [x] **Audio Player (TTS):** Sử dụng `expo-speech` để đọc nội dung thuyết minh đa ngôn ngữ.
-- [x] **Visited Stalls History:** Trang liệt kê các gian hàng người dùng đã từng nhấn nghe thuyết minh.
+- [ ] **Tích hợp Bản Đồ (Expo-Location & RN-Maps):**
+    - Xin phép quyền truy cập Vị trí (`foreground` và `background`).
+    - Gọi API `/stores/nearby` với tham số là tọa độ GPS hiện tại.
+    - Render quán ăn thành điểm POI trên Google Map/Apple Map.
+- [ ] **Logic Geofencing (Tính năng ăn tiền):**
+    - Function kiểm tra khoảng cách liên tục: So sánh vị trí user so với vị trí quán.
+    - Nếu khoảng cách `< 20m` -> Kích hoạt Pop-up phát nhạc hoặc thông báo.
+- [ ] **QR Scanner (Phòng vệ):**
+    - Tích hợp `expo-barcode-scanner`. User quét QR -> Gọi thẳng vào `/stores/:id/narrations` để bỏ qua lỗi GPS lệch.
+- [ ] **Audio Player:** Cài module `expo-av` để play file mp3 thuyết minh từ URL có sẵn. Logic switch language theo ngữ cảnh.
 
 ---
 

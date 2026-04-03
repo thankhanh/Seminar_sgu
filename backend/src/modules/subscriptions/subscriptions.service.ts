@@ -18,26 +18,43 @@ export class SubscriptionsService {
 
     const userId = user.id;
 
-    // Cancel existing active subscriptions for this user
-    await this.prisma.subscription.updateMany({
+    // Kiểm tra xem có gói Monthly đang hoạt động không để xử lý "nối tiếp" (queueing)
+    const activeMonthly = await this.prisma.subscription.findFirst({
       where: {
         userId: userId,
+        plan: SubscriptionPlan.monthly,
         status: SubscriptionStatus.active,
+        endDate: { gte: new Date() },
       },
-      data: {
-        status: SubscriptionStatus.cancelled,
-      },
+      orderBy: { endDate: 'desc' },
     });
 
-    const startDate = new Date();
-    const endDate = new Date();
-    if (dto.plan === SubscriptionPlan.monthly) {
-        endDate.setMonth(endDate.getMonth() + 1);
-    } else if (dto.plan === SubscriptionPlan.yearly) {
-        endDate.setFullYear(endDate.getFullYear() + 1);
+    let startDate = new Date();
+
+    // Nếu mua Yearly và đang có Monthly, bắt đầu Yearly ngay sau khi Monthly kết thúc
+    if (dto.plan === SubscriptionPlan.yearly && activeMonthly) {
+      startDate = new Date(activeMonthly.endDate);
     } else {
-        // Free plan - effectively permanent
-        endDate.setFullYear(endDate.getFullYear() + 100);
+      // Các trường hợp khác: Hủy các gói cũ để thay thế ngay lập tức
+      await this.prisma.subscription.updateMany({
+        where: {
+          userId: userId,
+          status: SubscriptionStatus.active,
+        },
+        data: {
+          status: SubscriptionStatus.cancelled,
+        },
+      });
+    }
+
+    const endDate = new Date(startDate);
+    if (dto.plan === SubscriptionPlan.monthly) {
+      endDate.setMonth(endDate.getMonth() + 1);
+    } else if (dto.plan === SubscriptionPlan.yearly) {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    } else {
+      // Free plan - hiệu lực 100 năm
+      endDate.setFullYear(endDate.getFullYear() + 100);
     }
 
     return this.prisma.subscription.create({

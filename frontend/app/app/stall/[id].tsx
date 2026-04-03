@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
@@ -46,18 +46,21 @@ export default function StallDetailScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [isPlaying, setIsPlaying] = useState(false);
     const [activeNarration, setActiveNarration] = useState<Narration | null>(null);
+    const [isLimitReached, setIsLimitReached] = useState(false);
 
     useEffect(() => {
         if (!storeId) return;
         const loadAll = async () => {
             try {
-                const [storeRes, menuRes, narrRes] = await Promise.all([
+                const [storeRes, menuRes, narrRes, profileRes] = await Promise.all([
                     api.get(`/stores/${storeId}`),
                     api.get(`/stores/${storeId}/menus`),
                     api.get(`/stores/${storeId}/narrations`).catch(() => ({ data: { success: false } })),
+                    api.get('/users/me').catch(() => ({ data: { success: false } })),
                 ]);
                 if (storeRes.data.success) setStore(storeRes.data.data);
                 if (menuRes.data.success) setMenus(menuRes.data.data?.data ?? menuRes.data.data ?? []);
+                if (profileRes.data.success) setIsLimitReached(profileRes.data.data.isLimitReached);
                 if (narrRes.data.success) {
                     const narrs = narrRes.data.data ?? [];
                     setNarrations(narrs);
@@ -82,6 +85,18 @@ export default function StallDetailScreen() {
         setIsPlaying(true);
 
         api.post(`/listen/${activeNarration.id}?source=gps`).catch(err => {
+            if (err.response?.status === 403) {
+                setIsLimitReached(true);
+                const serverMsg = err.response?.data?.message;
+                Alert.alert(
+                    'Giới hạn lượt nghe',
+                    serverMsg || 'Bạn đã hết lượt nghe miễn phí trong ngày. Vui lòng nâng cấp gói hôi viên để tiếp tục trải nghiệm!',
+                    [
+                        { text: 'Để sau', style: 'cancel' },
+                        { text: 'Nâng cấp ngay', onPress: () => router.push('/plans' as any) }
+                    ]
+                );
+            }
             console.warn('Không thể lưu lịch sử nghe:', err);
         });
 
@@ -184,7 +199,8 @@ export default function StallDetailScreen() {
                                 <Text className="text-[#6B7280] text-[13px]">Hướng dẫn âm thanh tự động</Text>
                                 <TouchableOpacity
                                     onPress={playNarration}
-                                    className={`mt-6 w-16 h-16 rounded-full items-center justify-center shadow-lg ${isPlaying ? 'bg-red-500' : 'bg-[#009FB7]'}`}
+                                    disabled={isLimitReached && !isPlaying}
+                                    className={`mt-6 w-16 h-16 rounded-full items-center justify-center shadow-lg ${isPlaying ? 'bg-red-500' : isLimitReached ? 'bg-gray-300' : 'bg-[#009FB7]'}`}
                                 >
                                     <Ionicons name={isPlaying ? "stop" : "play"} size={32} color="white" style={{ marginLeft: isPlaying ? 0 : 4 }} />
                                 </TouchableOpacity>

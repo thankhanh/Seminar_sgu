@@ -39,7 +39,7 @@ export default function ProfileScreen() {
                             />
                         </View>
                         {/* Edit Badge */}
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => router.push('/profile/edit')}
                             className="absolute bottom-1 right-1 w-7 h-7 bg-[#009FB7] rounded-full items-center justify-center border-2 border-white"
                         >
@@ -63,7 +63,7 @@ export default function ProfileScreen() {
                     </Text>
 
                     {/* --- UPGRADE BANNER --- */}
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => router.push('/plans' as any)}
                         className="w-[90%] bg-[#009FB7] rounded-2xl flex-row items-center p-4 mt-6 shadow-lg shadow-[#009FB7]/30"
                     >
@@ -97,7 +97,7 @@ export default function ProfileScreen() {
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </TouchableOpacity>
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         className="bg-[#F8FAFC] rounded-2xl p-4 flex-row items-center justify-between mb-8"
                         onPress={() => router.push('/profile/visit-history')}
                     >
@@ -118,34 +118,9 @@ export default function ProfileScreen() {
                         PREFERENCES
                     </Text>
 
-                    <View className="bg-[#F8FAFC] rounded-2xl p-4 flex-row items-center justify-between mb-3">
-                        <View className="flex-row items-center flex-1">
-                            <View className="w-12 h-12 bg-[#E2E8F0] rounded-2xl items-center justify-center mr-4">
-                                <Ionicons name="language" size={20} color="#4B5563" />
-                            </View>
-                            <Text className="text-[16px] font-bold text-[#1F2937]">Audio Language</Text>
-                        </View>
 
-                        {/* EN/VN Toggle */}
-                        <View className="flex-row bg-[#E2E8F0] rounded-lg p-1">
-                            <TouchableOpacity className="bg-white px-3 py-1.5 rounded shadow-sm">
-                                <Text className="text-[12px] font-extrabold text-[#111827]">EN</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity className="px-3 py-1.5 rounded">
-                                <Text className="text-[12px] font-bold text-[#6B7280]">VN</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
 
-                    <TouchableOpacity className="bg-[#F8FAFC] rounded-2xl p-4 flex-row items-center justify-between mb-6">
-                        <View className="flex-row items-center flex-1">
-                            <View className="w-12 h-12 bg-[#E2E8F0] rounded-2xl items-center justify-center mr-4">
-                                <Feather name="sliders" size={20} color="#4B5563" />
-                            </View>
-                            <Text className="text-[16px] font-bold text-[#1F2937]">App Settings</Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                    </TouchableOpacity>
+
 
                     {/* LOG OUT */}
                     <TouchableOpacity

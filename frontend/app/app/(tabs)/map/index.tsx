@@ -79,6 +79,7 @@ export default function MapScreen() {
     const [languages, setLanguages] = useState<Language[]>([]);
     const [isLoadingLangs, setIsLoadingLangs] = useState(true);
     const [showLangPicker, setShowLangPicker] = useState(false);
+    const [isLimitReached, setIsLimitReached] = useState(false);
     const isNarratingRef = useRef(false);
     const lastNarratedRef = useRef<string | null>(null);
     const promptedStoresRef = useRef<Set<string>>(new Set());
@@ -90,10 +91,17 @@ export default function MapScreen() {
     useEffect(() => { lastNarratedRef.current = lastNarratedStoreId; }, [lastNarratedStoreId]);
     useEffect(() => { storesRef.current = stores; }, [stores]);
 
-    // Fetch danh sách ngôn ngữ từ Backend
+    // Fetch danh sách ngôn ngữ & Limit status từ Backend
     useEffect(() => {
-        const fetchLanguages = async () => {
+        const fetchInitialData = async () => {
             try {
+                // Fetch limit status
+                const { data: profile } = await api.get('/users/me');
+                if (profile.success) {
+                    setIsLimitReached(profile.data.isLimitReached);
+                }
+
+                // Fetch languages
                 const { data: json } = await api.get('/languages');
                 if (json.success && Array.isArray(json.data)) {
                     const active = json.data.filter((l: Language) => l.isActive);
@@ -102,12 +110,12 @@ export default function MapScreen() {
                     if (vi) setSelectedLanguage(vi);
                 }
             } catch (error) {
-                console.warn('Lỗi khi tải danh sách ngôn ngữ:', error);
+                console.warn('Lỗi khi tải dữ liệu ban đầu:', error);
             } finally {
                 setIsLoadingLangs(false);
             }
         };
-        fetchLanguages();
+        fetchInitialData();
     }, []);
 
     // Fetch danh sách quán từ Backend
@@ -154,12 +162,12 @@ export default function MapScreen() {
                     // BỎ COMMENT dòng dưới đây để ép ứng dụng kiểm tra 
                     // vị trí cách Vinh Khanh Coffee đúng 5 mét nhé:
                     //
-                    checkProximity(10.28405, 105.52044);
+                    // checkProximity(10.28405, 105.52044);
                     // 
                     // ==========================================
 
                     // Còn ban đầu ứng dụng sẽ lấy từ GPS thực/giả lập của máy:
-                    // checkProximity(loc.coords.latitude, loc.coords.longitude);
+                    checkProximity(loc.coords.latitude, loc.coords.longitude);
                 }
             );
             return () => locationWatcher.remove();
@@ -208,7 +216,7 @@ export default function MapScreen() {
     };
 
     const checkNearbyNarration = async (lat: number, lng: number) => {
-        if (!selectedLanguage) return;
+        if (!selectedLanguage || isLimitReached) return;
         try {
             const { data: json } = await api.get('/nearby', {
                 params: { lat, lng, lang: selectedLanguage.code },
@@ -467,17 +475,24 @@ export default function MapScreen() {
                                     <TouchableOpacity
                                         onPress={() => {
                                             if (isNarrating) { stopNarration(); return; }
+                                            if (isLimitReached) {
+                                                Alert.alert('Giới hạn lượt nghe', 'Bạn đã hết lượt nghe trong ngày. Vui lòng nâng cấp gói.');
+                                                return;
+                                            }
                                             checkNearbyNarration(selectedStall.lat, selectedStall.lng);
                                         }}
+                                        disabled={isLimitReached && !isNarrating}
                                         className={`w-12 h-12 rounded-xl items-center justify-center border ${isNarrating
                                             ? 'bg-[#009FB7] border-[#009FB7]'
-                                            : 'bg-[#F3F4F6] border-gray-200'
+                                            : isLimitReached 
+                                                ? 'bg-gray-200 border-gray-300'
+                                                : 'bg-[#F3F4F6] border-gray-200'
                                             }`}
                                     >
                                         <Ionicons
                                             name={isNarrating ? 'stop' : 'volume-high-outline'}
                                             size={22}
-                                            color={isNarrating ? 'white' : '#4B5563'}
+                                            color={isNarrating ? 'white' : isLimitReached ? '#9CA3AF' : '#4B5563'}
                                         />
                                     </TouchableOpacity>
                                 </View>

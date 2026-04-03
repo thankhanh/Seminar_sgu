@@ -32,21 +32,33 @@ export default function PlansScreen() {
         ]);
         
         const subJson = subRes.data;
+        let activeSub = null;
         if (subJson.success && subJson.data) {
-          setCurrentSub(subJson.data);
+          activeSub = subJson.data;
+          setCurrentSub(activeSub);
         }
 
         const json = plansRes.data;
         if (json.success) {
           const processedPlans = json.data
-            .filter((p: any) => p.planKey.startsWith('customer_'))
+            .filter((p: any) => {
+              const isCustomerPlan = p.planKey.startsWith('customer_');
+              if (!isCustomerPlan) return false;
+
+              // Nếu đang có gói Monthly, ẩn gói Monthly để ép lên Yearly
+              if (activeSub && activeSub.plan === 'monthly') {
+                const planType = p.planKey.replace('customer_', '');
+                if (planType === 'monthly') return false;
+              }
+              return true;
+            })
             .map((plan: any) => ({
               ...plan,
               features: typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || []),
               price: Number(plan.price)
             }))
             .sort((a: any, b: any) => a.price - b.price);
-          
+
           setPlans(processedPlans);
         }
       } catch (error) {

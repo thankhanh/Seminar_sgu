@@ -214,6 +214,41 @@ export class NarrationsService {
   }
 
   async recordListen(userId: string, narrationId: string, source: 'gps' | 'qr' = 'gps') {
+    // 1. Lấy gói hội viên đang kích hoạt
+    const subscription = await this.prisma.subscription.findFirst({
+      where: {
+        userId,
+        status: 'active',
+        startDate: { lte: new Date() },
+        endDate: { gte: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // 2. Xác định giới hạn dựa trên plan
+    let limit = 10; // Mặc định Free là 10
+    if (subscription) {
+      if (subscription.plan === 'yearly') limit = Infinity;
+      else if (subscription.plan === 'monthly') limit = 30;
+    }
+
+    // 3. Đếm số lượt đã nghe trong ngày hôm nay
+    if (limit !== Infinity) {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const count = await this.prisma.listenHistory.count({
+        where: {
+          userId,
+          listenedAt: { gte: todayStart },
+        },
+      });
+
+      if (count >= limit) {
+        throw new ForbiddenException(`Đã đạt giới hạn ${limit} lần nghe/ngày. Nâng cấp gói để nghe không giới hạn!`);
+      }
+    }
+
     const narration = await this.prisma.narration.findUnique({
       where: { id: narrationId },
       include: { store: true },

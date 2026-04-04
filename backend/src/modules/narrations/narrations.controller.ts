@@ -3,7 +3,6 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { NarrationsService } from './narrations.service';
 import { CreateNarrationDto } from './dto/create-narration.dto';
 import { UpdateNarrationDto } from './dto/update-narration.dto';
-import { TranslateNarrationDto } from './dto/translate-narration.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -30,8 +29,18 @@ export class NarrationsController {
     return this.narrService.findByStore(storeId);
   }
 
+  /**
+   * GET /nearby?lat=...&lng=...&lang=en
+   * Tìm thuyết minh gần vị trí → tự động dịch sang ngôn ngữ app yêu cầu
+   */
   @Get('nearby')
-  @ApiOperation({ summary: 'Tìm thuyết minh gần vị trí hiện tại của app' })
+  @ApiOperation({
+    summary: 'Tìm thuyết minh gần vị trí - tự động dịch sang ngôn ngữ yêu cầu',
+    description:
+      'Nhận tọa độ GPS và mã ngôn ngữ (vi/en/ja/ko/zh...). ' +
+      'Backend tìm quán trong 100m, dịch nội dung VI → ngôn ngữ yêu cầu, ' +
+      'lưu cache vào DB và trả về text để app đọc TTS.',
+  })
   findNearby(
     @Query('lat') lat: string,
     @Query('lng') lng: string,
@@ -52,7 +61,6 @@ export class NarrationsController {
     return this.narrService.findAll(Number(page) || 1, Number(limit) || 20, merchantId);
   }
 
-
   @Post('listen/:narrationId')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -64,20 +72,6 @@ export class NarrationsController {
     @Query('source') source: 'gps' | 'qr' = 'gps',
   ) {
     return this.narrService.recordListen(user.id, narrationId, source);
-  }
-
-  @Post('narrations/:id/translate')
-  @ApiOperation({
-    summary: 'Dịch nội dung thuyết minh sang ngôn ngữ khác',
-    description:
-      'Nhận narration ID, dịch textContent từ ngôn ngữ gốc sang ngôn ngữ đích. ' +
-      'Có thể tùy chọn lưu bản dịch thành narration mới.',
-  })
-  translateNarration(
-    @Param('id') id: string,
-    @Body() dto: TranslateNarrationDto,
-  ) {
-    return this.narrService.translateNarration(id, dto);
   }
 
   @Patch('narrations/:id')

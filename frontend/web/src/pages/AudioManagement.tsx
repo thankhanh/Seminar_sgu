@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-    CloudUpload, Headphones, Search, 
-    Trash2, Globe, Loader2, Play, Plus, 
+import {
+    CloudUpload, Headphones, Search,
+    Trash2, Globe, Loader2, Play, Plus,
     MoreVertical, CheckCircle2, Square, Volume2
 } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -59,7 +59,7 @@ const AudioManagement: React.FC = () => {
                 ])) as any[];
                 setNarrations(narrRes.data || []);
                 setTotalNarrations(narrRes.total || 0);
-                
+
                 const rawStores = (storeRes.data || []) as StoreType[];
                 const uniqueStores = Array.from(new Map(rawStores.map(s => [s.id, s])).values());
                 setMyStores(uniqueStores);
@@ -98,7 +98,7 @@ const AudioManagement: React.FC = () => {
 
     const handleUpload = async () => {
         let selectedLangId = formData.languageId;
-        
+
         // Nếu không có languageId (do giao diện đã ẩn), tự động lấy ID của tiếng Việt
         if (!selectedLangId) {
             const viLang = languages.find(l => l.code === 'vi');
@@ -147,10 +147,10 @@ const AudioManagement: React.FC = () => {
         }
     };
 
-    const filteredAudio = narrations.filter((audio: Narration) => 
+    const filteredAudio = narrations.filter((audio: Narration) =>
         (audio.textContent || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
-    
+
     /**
      * Phát audio bằng Web Speech API (SpeechSynthesis)
      * Giống cách mobile dùng expo-speech
@@ -202,7 +202,7 @@ const AudioManagement: React.FC = () => {
                     </h1>
                     <p className="text-slate-500">Hệ thống âm thanh thuyết minh và kể chuyện (Storytelling).</p>
                 </div>
-                <button 
+                <button
                     onClick={() => setIsUploadOpen(true)}
                     className="bg-primary-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-700 transition-all shadow-sm shadow-primary-500/20"
                 >
@@ -234,9 +234,9 @@ const AudioManagement: React.FC = () => {
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 mb-6">
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                    <input 
-                        type="text" 
-                        placeholder="Tìm kiếm nội dung audio, địa điểm..." 
+                    <input
+                        type="text"
+                        placeholder="Tìm kiếm nội dung audio, địa điểm..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -254,7 +254,7 @@ const AudioManagement: React.FC = () => {
                     <div key={file.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col">
                         <div className="p-5 flex-1">
                             <div className="flex justify-between items-start mb-4">
-                                <button 
+                                <button
                                     onClick={() => togglePlay(file)}
                                     className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${playingId === file.id ? 'bg-primary-600 text-white shadow-lg shadow-primary-200 animate-pulse' : 'bg-primary-50 text-primary-600 hover:bg-primary-100'}`}
                                 >
@@ -265,7 +265,7 @@ const AudioManagement: React.FC = () => {
                                     <button onClick={() => handleDelete(file.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><Trash2 size={16} /></button>
                                 </div>
                             </div>
-                            
+
                             <h3 className="font-bold text-slate-900 text-lg mb-2 line-clamp-1">
                                 {file.store?.name || myStores.find(s => s.id === file.storeId)?.name || 'N/A'}
                             </h3>
@@ -294,13 +294,13 @@ const AudioManagement: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
                             <span className={`flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded ${file.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
                                 {file.isActive ? <CheckCircle2 size={10} /> : null}
                                 {file.isActive ? 'Đang hoạt động' : 'Đã ẩn'}
                             </span>
-                            <button 
+                            <button
                                 onClick={() => togglePlay(file)}
                                 className="text-primary-600 text-xs font-bold hover:underline flex items-center gap-1"
                             >
@@ -325,17 +325,17 @@ const AudioManagement: React.FC = () => {
             </div>
 
             <div className="mt-8">
-                <Pagination 
-                    currentPage={page} 
-                    totalItems={totalNarrations} 
-                    itemsPerPage={limit} 
-                    onPageChange={handlePageChange} 
+                <Pagination
+                    currentPage={page}
+                    totalItems={totalNarrations}
+                    itemsPerPage={limit}
+                    onPageChange={handlePageChange}
                 />
             </div>
 
             {/* Upload Audio Modal */}
-            <Modal 
-                isOpen={isUploadOpen} 
+            <Modal
+                isOpen={isUploadOpen}
                 onClose={() => setIsUploadOpen(false)}
                 title="Tạo bản thuyết minh mới"
                 maxWidth="max-w-2xl"
@@ -344,9 +344,9 @@ const AudioManagement: React.FC = () => {
                     <div className="grid grid-cols-1 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-1.5">Địa điểm dừng chân</label>
-                            <select 
-                                value={formData.storeId} 
-                                onChange={e => setFormData({...formData, storeId: e.target.value})}
+                            <select
+                                value={formData.storeId}
+                                onChange={e => setFormData({ ...formData, storeId: e.target.value })}
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
                             >
                                 <option value="">Chọn địa điểm...</option>
@@ -354,14 +354,14 @@ const AudioManagement: React.FC = () => {
                             </select>
                         </div>
                     </div>
-                    
+
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-1.5">Nội dung thuyết minh (Tiếng Việt)</label>
-                        <textarea 
-                            rows={8} 
-                            value={formData.textContent} 
-                            onChange={e => setFormData({...formData, textContent: e.target.value})}
-                            placeholder="Nhập nội dung câu chuyện hoặc thông tin giới thiệu về địa điểm này bằng Tiếng Việt..." 
+                        <textarea
+                            rows={8}
+                            value={formData.textContent}
+                            onChange={e => setFormData({ ...formData, textContent: e.target.value })}
+                            placeholder="Nhập nội dung câu chuyện hoặc thông tin giới thiệu về địa điểm này bằng Tiếng Việt..."
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all resize-none"
                         ></textarea>
                         <p className="text-[10px] text-slate-400 mt-2 flex items-center gap-1 uppercase font-bold tracking-tight">
@@ -369,15 +369,15 @@ const AudioManagement: React.FC = () => {
                             Hệ thống sẽ tự động dịch sang ngôn ngữ của khách tham quan và chuyển thành giọng nói.
                         </p>
                     </div>
-                    
+
                     <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
-                        <button 
+                        <button
                             onClick={() => setIsUploadOpen(false)}
                             className="px-6 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors"
                         >
                             Hủy bỏ
                         </button>
-                        <button 
+                        <button
                             onClick={handleUpload}
                             className="bg-primary-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/30 flex items-center gap-2"
                         >

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, Image, ScrollView, TouchableOpacity,
-  ImageBackground, Dimensions, ActivityIndicator,
+  ImageBackground, Dimensions, ActivityIndicator, Modal, Pressable,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import api from '../../../constants/api';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
@@ -22,8 +23,10 @@ interface Store {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { selectedLanguage, languages, setSelectedLanguage } = useLanguage();
   const [featuredStores, setFeaturedStores] = useState<Store[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLangModal, setShowLangModal] = useState(false);
 
   useEffect(() => {
     const loadStores = async () => {
@@ -81,7 +84,7 @@ export default function HomeScreen() {
         </Text>
 
         {/* --- Search Bar --- */}
-        <View className="flex-row items-center bg-[#F3F4F6] rounded-2xl h-14 px-4 mb-6">
+        <View className="flex-row items-center bg-[#F3F4F6] rounded-2xl h-14 px-4 mb-5">
           <Ionicons name="search-outline" size={20} color="#9CA3AF" />
           <TextInput
             className="flex-1 ml-3 text-base text-[#1F2937]"
@@ -89,6 +92,76 @@ export default function HomeScreen() {
             placeholderTextColor="#9CA3AF"
           />
         </View>
+
+        {/* --- LANGUAGE SELECTOR --- */}
+        <View className="mb-8">
+          <View className="flex-row justify-between items-center mb-3">
+            <View className="flex-row items-center">
+              <Ionicons name="globe-outline" size={16} color="#009FB7" />
+              <Text className="text-xs font-bold text-[#009FB7] ml-1.5 uppercase tracking-wider">Ngôn ngữ thuyết minh</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowLangModal(true)}>
+              <Text className="text-xs font-bold text-[#9CA3AF]">Tất cả ›</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1">
+            {languages.map((lang) => {
+              const isActive = selectedLanguage?.code === lang.code;
+              return (
+                <TouchableOpacity
+                  key={lang.code}
+                  onPress={() => setSelectedLanguage(lang)}
+                  className={`flex-row items-center mx-1 px-4 py-2.5 rounded-2xl border ${
+                    isActive
+                      ? 'bg-[#009FB7] border-[#009FB7]'
+                      : 'bg-white border-[#E5E7EB]'
+                  }`}
+                  style={{ shadowColor: isActive ? '#009FB7' : '#000', shadowOpacity: isActive ? 0.3 : 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: isActive ? 4 : 1 }}
+                >
+                  <Text className="text-base mr-2">{lang.flagIcon}</Text>
+                  <Text className={`text-xs font-bold ${ isActive ? 'text-white' : 'text-[#4B5563]'}`}>{lang.name}</Text>
+                  {isActive && <Ionicons name="checkmark-circle" size={14} color="white" style={{ marginLeft: 4 }} />}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {selectedLanguage && (
+            <View className="flex-row items-center mt-2.5 bg-[#009FB7]/8 px-3 py-2 rounded-xl">
+              <Ionicons name="headset-outline" size={14} color="#009FB7" />
+              <Text className="text-[11px] text-[#009FB7] font-semibold ml-1.5">
+                Thuyết minh sẽ được dịch sang <Text className="font-extrabold">{selectedLanguage.name}</Text> khi bạn tiếp cận quán
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Language Full Modal */}
+        <Modal visible={showLangModal} transparent animationType="fade" onRequestClose={() => setShowLangModal(false)}>
+          <Pressable className="flex-1 bg-black/40 justify-end" onPress={() => setShowLangModal(false)}>
+            <View className="bg-white rounded-t-3xl px-6 pt-4 pb-10">
+              <View className="w-12 h-1 rounded-full bg-[#E5E7EB] self-center mb-5" />
+              <Text className="text-lg font-extrabold text-[#1F2937] mb-5">Chọn ngôn ngữ thuyết minh</Text>
+              {languages.map((lang) => {
+                const isActive = selectedLanguage?.code === lang.code;
+                return (
+                  <TouchableOpacity
+                    key={lang.code}
+                    onPress={() => { setSelectedLanguage(lang); setShowLangModal(false); }}
+                    className={`flex-row items-center px-4 py-3.5 rounded-2xl mb-2 ${
+                      isActive ? 'bg-[#009FB7]/10 border border-[#009FB7]' : 'bg-[#F9FAFB]'
+                    }`}
+                  >
+                    <Text className="text-2xl mr-4">{lang.flagIcon}</Text>
+                    <Text className={`flex-1 text-base font-bold ${ isActive ? 'text-[#009FB7]' : 'text-[#1F2937]'}`}>{lang.name}</Text>
+                    {isActive && <Ionicons name="checkmark-circle" size={22} color="#009FB7" />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Modal>
 
         {/* --- PROMINENT UPGRADE BANNER --- */}
         <TouchableOpacity 

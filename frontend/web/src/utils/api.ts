@@ -74,13 +74,13 @@ export const merchantApi = {
 
 // --- Stores ---
 export const storesApi = {
-    getAll: (page = 1, limit = 20, status?: string, merchantId?: string) => 
+    getAll: (page = 1, limit = 20, status?: string, merchantId?: string) =>
         unwrapData(apiClient.get(`/stores`, { params: { page, limit, status, merchantId } })),
     getOne: (id: string) => unwrapData(apiClient.get(`/stores/${id}`)),
     create: (dto: any) => unwrapData(apiClient.post('/stores', dto)),
     update: (id: string, dto: any) => unwrapData(apiClient.patch(`/stores/${id}`, dto)),
     remove: (id: string) => unwrapData(apiClient.delete(`/stores/${id}`)),
-    
+
     // Narrations (related to stores)
     getNarrations: (storeId: string) => unwrapData(apiClient.get(`/stores/${storeId}/narrations`)),
     createNarration: (storeId: string, dto: any) => unwrapData(apiClient.post(`/stores/${storeId}/narrations`, dto)),
@@ -88,7 +88,7 @@ export const storesApi = {
 
 // --- Narrations (Global) ---
 export const narrationsApi = {
-    getAll: (page = 1, limit = 20, merchantId?: string) => 
+    getAll: (page = 1, limit = 20, merchantId?: string) =>
         unwrapData(apiClient.get(`/narrations`, { params: { page, limit, merchantId } })),
     update: (id: string, dto: any) => unwrapData(apiClient.patch(`/narrations/${id}`, dto)),
     remove: (id: string) => unwrapData(apiClient.delete(`/narrations/${id}`)),

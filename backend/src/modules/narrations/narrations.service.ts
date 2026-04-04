@@ -1,22 +1,11 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateNarrationDto } from './dto/create-narration.dto';
 import { UpdateNarrationDto } from './dto/update-narration.dto';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 @Injectable()
 export class NarrationsService {
-  private genAI: GoogleGenerativeAI;
-  private model: any;
-
-  constructor(private prisma: PrismaService) {
-    // Khởi tạo Gemini AI (API Key được lấy từ .env)
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey) {
-      this.genAI = new GoogleGenerativeAI(apiKey);
-      this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    }
-  }
+  constructor(private prisma: PrismaService) {}
 
   private async verifyStoreOwner(storeId: string, user: { id: string; role: string }) {
     const store = await this.prisma.store.findUnique({
@@ -81,34 +70,39 @@ export class NarrationsService {
   }
 
   /**
-   * Dịch thuật nội dung sử dụng Google Gemini AI
+   * Dịch thuật văn bản bằng MyMemory API (Miễn phí, không cần API Key)
+   * Hỗ trợ: vi, en, ja, ko, zh, fr, th, de, es...
    */
   private async translateText(text: string, sourceLang: string, targetLang: string): Promise<string> {
-    if (!this.model) {
-      console.warn('[Gemini] API Key chưa được cấu hình. Trả về text gốc.');
-      return text;
-    }
+    // Nếu cùng ngôn ngữ, trả về luôn
+    if (sourceLang === targetLang) return text;
+
+    // Map mã ngôn ngữ sang format MyMemory (zh-CN thay vì zh)
+    const LANG_MAP: Record<string, string> = {
+      zh: 'zh-CN',
+      'zh-CN': 'zh-CN',
+    };
+    const src = LANG_MAP[sourceLang] ?? sourceLang;
+    const tgt = LANG_MAP[targetLang] ?? targetLang;
 
     try {
-      // Prompt được tối ưu cho du lịch và ẩm thực
-      const prompt = `Bạn là một biên dịch viên chuyên nghiệp về du lịch và ẩm thực. 
-      Hãy dịch đoạn giới thiệu quán ăn sau từ ${sourceLang} sang mã ngôn ngữ ${targetLang}. 
-      Yêu cầu: Dịch tự nhiên, cuốn hút, giữ đúng ý nghĩa văn hóa và sự thân thiện. 
-      Chỉ trả về đoạn văn bản đã dịch, không thêm lời dẫn giải hay dấu ngoặc kép.
-      Nội dung cần dịch: "${text}"`;
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${src}|${tgt}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      let translatedText = response.text();
+      const data = await response.json() as any;
 
-      // Dọn dẹp dấu ngoặc kép nếu AI tự thêm vào
-      translatedText = translatedText.replace(/^"|"$/g, '').trim();
-      
-      console.log(`[Gemini AI] Đã dịch xong sang ${targetLang}: "${translatedText.substring(0, 30)}..."`);
-      return translatedText;
+      if (data.responseStatus === 200 && data.responseData?.translatedText) {
+        const translated = data.responseData.translatedText.trim();
+        console.log(`[Translation] ${src} → ${tgt}: "${translated.substring(0, 40)}..."`);
+        return translated;
+      }
+
+      console.warn('[Translation] Không dịch được, dùng text gốc:', data.responseDetails);
+      return text;
     } catch (error) {
-      console.error('Lỗi khi gọi Gemini API:', error);
-      return text; // Fallback: trả về text gốc nếu lỗi
+      console.error('[Translation] Lỗi khi gọi MyMemory API:', error);
+      return text; // Fallback: trả về text gốc nếu lỗi mạng
     }
   }
 
@@ -265,39 +259,6 @@ export class NarrationsService {
     });
   }
 
-  async translateNarration(id: string, dto: any) {
-    const narration = await this.prisma.narration.findUnique({
-      where: { id },
-      include: { language: true, store: true },
-    });
-    if (!narration) throw new NotFoundException('Narration không tồn tại');
-
-    // Giả sử dto có targetLanguageCode
-    const targetLangCode = dto.targetLanguageCode || 'en';
-    const translatedText = await this.translateText(narration.textContent || '', narration.language.code, targetLangCode);
-
-    if (dto.save) {
-      const targetLang = await this.prisma.language.findUnique({ where: { code: targetLangCode } });
-      if (!targetLang) throw new NotFoundException(`Ngôn ngữ ${targetLangCode} chưa được hỗ trợ`);
-
-      return this.prisma.narration.upsert({
-        where: { storeId_languageId: { storeId: narration.storeId, languageId: targetLang.id } },
-        update: { textContent: translatedText },
-        create: {
-          storeId: narration.storeId,
-          languageId: targetLang.id,
-          textContent: translatedText,
-          isActive: true,
-        },
-      });
-    }
-
-    return {
-      originalId: id,
-      targetLanguage: targetLangCode,
-      translatedText,
-    };
-  }
 
   async update(id: string, user: { id: string; role: string }, dto: UpdateNarrationDto) {
     const narration = await this.prisma.narration.findUnique({ where: { id } });

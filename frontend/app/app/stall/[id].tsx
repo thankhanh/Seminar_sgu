@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Animated, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
@@ -49,6 +49,7 @@ export default function StallDetailScreen() {
     const [isPlaying, setIsPlaying] = useState(false);
     const [activeNarration, setActiveNarration] = useState<Narration | null>(null);
     const [autoPlayed, setAutoPlayed] = useState(false);
+    const [isLimitReached, setIsLimitReached] = useState(false);
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
     // Pulse animation khi đang auto-play
@@ -75,13 +76,15 @@ export default function StallDetailScreen() {
                 const userRaw = await AsyncStorage.getItem('auth_user');
                 const userPreferredLang = userRaw ? JSON.parse(userRaw).preferredLanguage || 'vi' : 'vi';
 
-                const [storeRes, menuRes, narrRes] = await Promise.all([
+                const [storeRes, menuRes, narrRes, profileRes] = await Promise.all([
                     api.get(`/stores/${storeId}`),
                     api.get(`/stores/${storeId}/menus`),
                     api.get(`/stores/${storeId}/narrations`).catch(() => ({ data: { success: false } })),
+                    api.get('/users/me').catch(() => ({ data: { success: false } })),
                 ]);
                 if (storeRes.data.success) setStore(storeRes.data.data);
                 if (menuRes.data.success) setMenus(menuRes.data.data?.data ?? menuRes.data.data ?? []);
+                if (profileRes.data.success) setIsLimitReached(profileRes.data.data.isLimitReached);
                 if (narrRes.data.success) {
                     const narrs = narrRes.data.data ?? [];
                     setNarrations(narrs);
@@ -96,6 +99,10 @@ export default function StallDetailScreen() {
                     // ✅ Auto-play ngay sau khi có data — dùng preferred trực tiếp, không qua closure
                     if (autoplay && preferred?.textContent) {
                         setAutoPlayed(true);
+                        // Ghi lịch sử nghe ngay lập tức
+                        api.post(`/listen/${preferred.id}?source=autoplay`).catch(err => {
+                            console.warn('Không thể lưu lịch sử nghe (auto):', err);
+                        });
                         setTimeout(() => {
                             setIsPlaying(true);
                             Speech.speak(preferred.textContent!, {
@@ -123,7 +130,23 @@ export default function StallDetailScreen() {
             setIsPlaying(false);
             return;
         }
+        if (isLimitReached) {
+            Alert.alert(
+                'Giới hạn lượt nghe',
+                'Bạn đã hết lượt nghe miễn phí trong ngày. Vui lòng nâng cấp gói để tiếp tục trải nghiệm!',
+                [
+                    { text: 'Để sau', style: 'cancel' },
+                    { text: 'Nâng cấp ngay', onPress: () => router.push('/plans' as any) }
+                ]
+            );
+            return;
+        }
         setIsPlaying(true);
+        // Ghi lịch sử nghe vào backend
+        api.post(`/listen/${activeNarration.id}?source=manual`).catch(err => {
+            if (err.response?.status === 403) setIsLimitReached(true);
+            console.warn('Không thể lưu lịch sử nghe:', err);
+        });
         Speech.speak(activeNarration.textContent, {
             language: SPEECH_LANG_MAP[activeNarration.language?.code] ?? 'vi-VN',
             rate: 0.9,
@@ -230,11 +253,23 @@ export default function StallDetailScreen() {
                                 <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                                     <TouchableOpacity
                                         onPress={playNarration}
-                                        className={`mt-6 w-16 h-16 rounded-full items-center justify-center shadow-lg ${isPlaying ? 'bg-red-500' : 'bg-[#009FB7]'}`}
+                                        disabled={isLimitReached && !isPlaying}
+                                        className={`mt-6 w-16 h-16 rounded-full items-center justify-center shadow-lg ${
+                                            isPlaying ? 'bg-red-500' : isLimitReached ? 'bg-gray-300' : 'bg-[#009FB7]'
+                                        }`}
                                     >
                                         <Ionicons name={isPlaying ? "stop" : "play"} size={32} color="white" style={{ marginLeft: isPlaying ? 0 : 4 }} />
                                     </TouchableOpacity>
                                 </Animated.View>
+                                {isLimitReached && !isPlaying && (
+                                    <TouchableOpacity
+                                        onPress={() => router.push('/plans' as any)}
+                                        className="mt-3 flex-row items-center"
+                                    >
+                                        <Ionicons name="lock-closed" size={12} color="#EF4444" />
+                                        <Text className="text-red-500 text-xs font-bold ml-1">Hết lượt nghe — Nâng cấp ngày</Text>
+                                    </TouchableOpacity>
+                                )}
                                 {activeNarration.textContent && (
                                     <Text className="text-[#9CA3AF] text-xs text-center mt-4 px-2" numberOfLines={3}>
                                         {activeNarration.textContent}

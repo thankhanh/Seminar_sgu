@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { usersHelpers } from '../../../constants/api';
 
 export default function VisitHistoryScreen() {
@@ -10,19 +11,23 @@ export default function VisitHistoryScreen() {
     const [history, setHistory] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchHistory = async () => {
-            try {
-                const data = await usersHelpers.getListenHistory();
-                setHistory(data);
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchHistory();
-    }, []);
+    // Fetch lại mỗi khi màn hình được focus (không chỉ lần đầu)
+    useFocusEffect(
+        useCallback(() => {
+            const fetchHistory = async () => {
+                setIsLoading(true);
+                try {
+                    const data = await usersHelpers.getListenHistory();
+                    setHistory(data);
+                } catch (error) {
+                    console.error(error);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            fetchHistory();
+        }, [])
+    );
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);

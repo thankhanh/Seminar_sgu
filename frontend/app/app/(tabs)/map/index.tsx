@@ -6,9 +6,10 @@ import * as Speech from 'expo-speech';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import api from '../../../constants/api';
+import api, { narrationsHelpers } from '../../../constants/api';
 import ProximityAlert, { ProximityStore } from '../../../components/ProximityAlert';
 import { useLanguage } from '../../../contexts/LanguageContext';
+import { usersHelpers, storeHelpers } from '../../../constants/api';
 
 // ==========================================
 // TỌA ĐỘ DÀNH CHO USER ĐỂ TEST (Cách gian hàng ~ 5 mét):
@@ -69,6 +70,7 @@ export default function MapScreen() {
     const [isLoadingLangs] = useState(false); // Lấy từ context, không cần fetch riêng
     const [showLangPicker, setShowLangPicker] = useState(false);
     const [isLimitReached, setIsLimitReached] = useState(false);
+    const [isNarrationDisabled, setIsNarrationDisabled] = useState(false);
 
     // Proximity alert queue
     const [proximityAlert, setProximityAlert] = useState<ProximityStore | null>(null);
@@ -84,26 +86,21 @@ export default function MapScreen() {
     useEffect(() => { lastNarratedRef.current = lastNarratedStoreId; }, [lastNarratedStoreId]);
     useEffect(() => { storesRef.current = stores; }, [stores]);
 
-    // Fetch limit status
+    // Fetch limit status & stores
     useEffect(() => {
         const fetchLimitStatus = async () => {
             try {
-                const { data: profile } = await api.get('/users/me');
-                if (profile.success) setIsLimitReached(profile.data.isLimitReached);
+                const profile = await usersHelpers.getProfile();
+                if (profile && profile.data) setIsLimitReached(profile.data.isLimitReached);
             } catch (error) {
                 console.warn('Lỗi khi tải limit status:', error);
             }
         };
-        fetchLimitStatus();
-    }, []);
-
-    // Fetch stores
-    useEffect(() => {
         const fetchStores = async () => {
             try {
-                const { data: json } = await api.get('/stores', { params: { status: 'active', limit: 100 } });
-                if (json.success && json.data?.data) {
-                    setStores(json.data.data);
+                const data = await storeHelpers.getStore();
+                if (data && data?.data) {
+                    setStores(data.data);
                 }
             } catch (error) {
                 console.warn('Lỗi khi tải danh sách quán:', error);
@@ -111,6 +108,7 @@ export default function MapScreen() {
                 setIsLoadingStores(false);
             }
         };
+        fetchLimitStatus();
         fetchStores();
     }, []);
 
@@ -193,19 +191,34 @@ export default function MapScreen() {
     const checkNearbyNarration = async (lat: number, lng: number) => {
         if (!selectedLanguage || isLimitReached) return;
         try {
-            const { data: json } = await api.get('/nearby', {
-                params: { lat, lng, lang: selectedLanguage.code },
-            });
+            const { data: json } = await storeHelpers.checkNearBy(lat, lng, selectedLanguage.code);
             const data = json.data ?? json;
             if (data.found && data.storeName) {
                 if (data.storeName !== lastNarratedRef.current && !isNarratingRef.current) {
                     playNarration(data.textContent, data.storeName);
                 }
+                setIsNarrationDisabled(false);
+            } else {
+                setIsNarrationDisabled(true);
             }
         } catch (error) {
             console.warn('Lỗi kết nối API thuyết minh:', error);
         }
     };
+
+    const handleListen = async (store: any) => {
+        if (isNarrating) { stopNarration(); return; }
+        if (isLimitReached) {
+            Alert.alert('Giới hạn lượt nghe', 'Bạn đã hết lượt nghe trong ngày. Vui lòng nâng cấp gói.');
+            return;
+        }
+        checkNearbyNarration(store.lat, store.lng);
+        const data = narrationsHelpers.addListenHistory(store.id);
+        if (!data) {
+            Alert.alert('Lỗi', 'Không thể thêm lịch sử nghe.');
+            return;
+        }
+    }
 
     const playNarration = (text: string, storeId: string) => {
         if (!selectedLanguage) return;
@@ -438,17 +451,12 @@ export default function MapScreen() {
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={() => {
-                                            if (isNarrating) { stopNarration(); return; }
-                                            if (isLimitReached) {
-                                                Alert.alert('Giới hạn lượt nghe', 'Bạn đã hết lượt nghe trong ngày. Vui lòng nâng cấp gói.');
-                                                return;
-                                            }
-                                            checkNearbyNarration(selectedStall.lat, selectedStall.lng);
+                                            handleListen(selectedStall);
                                         }}
-                                        disabled={isLimitReached && !isNarrating}
+                                        disabled={(isLimitReached || isNarrationDisabled) && !isNarrating}
                                         className={`w-12 h-12 rounded-xl items-center justify-center border ${isNarrating
                                             ? 'bg-[#009FB7] border-[#009FB7]'
-                                            : isLimitReached
+                                            : (isLimitReached || isNarrationDisabled) && !isNarrating
                                                 ? 'bg-gray-200 border-gray-300'
                                                 : 'bg-[#F3F4F6] border-gray-200'
                                             }`}

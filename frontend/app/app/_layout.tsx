@@ -3,7 +3,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import '../global.css';
-
+import { useEffect } from 'react';
+import { Audio } from 'expo-av';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { LanguageProvider } from '../contexts/LanguageContext';
 
@@ -13,6 +14,20 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    const initAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+        });
+      } catch (e) {
+        console.warn('Failed to configure audio iOS:', e);
+      }
+    };
+    initAudio();
+  }, []);
 
   return (
     <LanguageProvider>

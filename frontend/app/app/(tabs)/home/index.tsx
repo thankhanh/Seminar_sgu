@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, Image, ScrollView, TouchableOpacity,
   ImageBackground, Dimensions, ActivityIndicator, Modal, Pressable,
@@ -6,7 +6,7 @@ import {
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import api from '../../../constants/api';
+import api, { storeHelpers } from '../../../constants/api';
 import { useLanguage } from '../../../contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
@@ -27,15 +27,16 @@ export default function HomeScreen() {
   const [featuredStores, setFeaturedStores] = useState<Store[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showLangModal, setShowLangModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [featuredStoresY, setFeaturedStoresY] = useState(0);
 
   useEffect(() => {
     const loadStores = async () => {
       try {
-        const { data } = await api.get('/stores', {
-          params: { status: 'active', limit: 10 },
-        });
-        if (data.success && data.data?.data) {
-          setFeaturedStores(data.data.data);
+        const result = await storeHelpers.getStore();
+        if (result && result.data) {
+          setFeaturedStores(result.data);
         }
       } catch (e) {
         console.warn('Lỗi tải danh sách quán:', e);
@@ -46,9 +47,29 @@ export default function HomeScreen() {
     loadStores();
   }, []);
 
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+
+    if (query.trim().length > 0 && scrollViewRef.current && featuredStoresY > 0) {
+      scrollViewRef.current.scrollTo({ y: featuredStoresY - 20, animated: true });
+    }
+
+    try {
+      const result = await storeHelpers.getStore(query);
+      if (result && result.data) {
+        setFeaturedStores(result.data);
+      }
+    } catch (e) {
+      console.warn('Lỗi tải danh sách quán:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-[#F4FBFC]">
       <ScrollView
+        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
         className="px-5"
@@ -66,7 +87,7 @@ export default function HomeScreen() {
             </View>
           </View>
           <View className="flex-row items-center">
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => router.push('/plans' as any)}
               className="w-11 h-11 rounded-full bg-[#009FB7]/10 items-center justify-center mr-3"
             >
@@ -90,6 +111,8 @@ export default function HomeScreen() {
             className="flex-1 ml-3 text-base text-[#1F2937]"
             placeholder="Tìm quán ăn, món ăn..."
             placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={handleSearch}
           />
         </View>
 
@@ -112,15 +135,14 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   key={lang.code}
                   onPress={() => setSelectedLanguage(lang)}
-                  className={`flex-row items-center mx-1 px-4 py-2.5 rounded-2xl border ${
-                    isActive
-                      ? 'bg-[#009FB7] border-[#009FB7]'
-                      : 'bg-white border-[#E5E7EB]'
-                  }`}
+                  className={`flex-row items-center mx-1 px-4 py-2.5 rounded-2xl border ${isActive
+                    ? 'bg-[#009FB7] border-[#009FB7]'
+                    : 'bg-white border-[#E5E7EB]'
+                    }`}
                   style={{ shadowColor: isActive ? '#009FB7' : '#000', shadowOpacity: isActive ? 0.3 : 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: isActive ? 4 : 1 }}
                 >
                   <Text className="text-base mr-2">{lang.flagIcon}</Text>
-                  <Text className={`text-xs font-bold ${ isActive ? 'text-white' : 'text-[#4B5563]'}`}>{lang.name}</Text>
+                  <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-[#4B5563]'}`}>{lang.name}</Text>
                   {isActive && <Ionicons name="checkmark-circle" size={14} color="white" style={{ marginLeft: 4 }} />}
                 </TouchableOpacity>
               );
@@ -149,12 +171,11 @@ export default function HomeScreen() {
                   <TouchableOpacity
                     key={lang.code}
                     onPress={() => { setSelectedLanguage(lang); setShowLangModal(false); }}
-                    className={`flex-row items-center px-4 py-3.5 rounded-2xl mb-2 ${
-                      isActive ? 'bg-[#009FB7]/10 border border-[#009FB7]' : 'bg-[#F9FAFB]'
-                    }`}
+                    className={`flex-row items-center px-4 py-3.5 rounded-2xl mb-2 ${isActive ? 'bg-[#009FB7]/10 border border-[#009FB7]' : 'bg-[#F9FAFB]'
+                      }`}
                   >
                     <Text className="text-2xl mr-4">{lang.flagIcon}</Text>
-                    <Text className={`flex-1 text-base font-bold ${ isActive ? 'text-[#009FB7]' : 'text-[#1F2937]'}`}>{lang.name}</Text>
+                    <Text className={`flex-1 text-base font-bold ${isActive ? 'text-[#009FB7]' : 'text-[#1F2937]'}`}>{lang.name}</Text>
                     {isActive && <Ionicons name="checkmark-circle" size={22} color="#009FB7" />}
                   </TouchableOpacity>
                 );
@@ -164,7 +185,7 @@ export default function HomeScreen() {
         </Modal>
 
         {/* --- PROMINENT UPGRADE BANNER --- */}
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => router.push('/plans' as any)}
           className="bg-[#1F2937] rounded-[32px] p-5 mb-8 flex-row items-center border border-[#374151] shadow-xl"
         >
@@ -183,7 +204,7 @@ export default function HomeScreen() {
             </Text>
           </View>
           <View className="w-10 h-10 rounded-full bg-white/10 items-center justify-center">
-             <Ionicons name="chevron-forward" size={20} color="white" />
+            <Ionicons name="chevron-forward" size={20} color="white" />
           </View>
         </TouchableOpacity>
 
@@ -208,7 +229,7 @@ export default function HomeScreen() {
         </View>
 
         {/* --- Categories --- */}
-        <View className="flex-row justify-between mb-8">
+        {/* <View className="flex-row justify-between mb-8">
           {[
             { label: 'Hải sản', icon: 'fish', color: '#009FB7', bg: '#F4FBFC' },
             { label: 'Ăn vặt', icon: 'hamburger', color: '#4B5563', bg: '#F3F4F6' },
@@ -222,7 +243,7 @@ export default function HomeScreen() {
               <Text className={`text-[12px] font-bold ${index === 0 ? 'text-[#1F2937]' : 'text-[#9CA3AF]'}`}>{item.label}</Text>
             </View>
           ))}
-        </View>
+        </View> */}
 
         {/* --- Audio Tour Banner --- */}
         <ImageBackground
@@ -232,7 +253,7 @@ export default function HomeScreen() {
           <View className="flex-1 bg-black/40 p-6 justify-center">
             <Text className="text-gray-200 text-xs font-medium mb-1">Trải nghiệm nghe nhìn</Text>
             <Text className="text-white text-2xl font-extrabold mb-4">Câu chuyện ẩm thực</Text>
-            <TouchableOpacity className="bg-[#009FB7] flex-row items-center justify-center py-3 px-6 rounded-2xl self-start">
+            <TouchableOpacity onPress={() => router.push('/guide' as any)} className="bg-[#009FB7] flex-row items-center justify-center py-3 px-6 rounded-2xl self-start">
               <Ionicons name="headset-outline" size={20} color="#FFFFFF" />
               <Text className="text-white text-sm font-bold ml-2">Bắt đầu Audio Tour</Text>
             </TouchableOpacity>
@@ -240,7 +261,10 @@ export default function HomeScreen() {
         </ImageBackground>
 
         {/* --- Featured Stalls Header --- */}
-        <View className="flex-row justify-between items-center mb-5">
+        <View
+          className="flex-row justify-between items-center mb-5"
+          onLayout={(event) => setFeaturedStoresY(event.nativeEvent.layout.y)}
+        >
           <Text className="text-xl font-extrabold text-[#1F2937]">Quán nổi bật</Text>
           <TouchableOpacity><Text className="text-sm font-bold text-[#009FB7]">Xem tất cả</Text></TouchableOpacity>
         </View>

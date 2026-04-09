@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
-import api from '../../../constants/api';
+import api, { narrationsHelpers, storeHelpers, usersHelpers } from '../../../constants/api';
 
 interface Store {
     id: string;
@@ -32,15 +32,15 @@ export default function GuideScreen() {
         const fetchInitialData = async () => {
             try {
                 // Fetch limit status
-                const { data: profile } = await api.get('/users/me');
-                if (profile.success) {
-                    setIsLimitReached(profile.data.isLimitReached);
+                const profile = await usersHelpers.getProfile();
+                if (profile) {
+                    setIsLimitReached(profile.isLimitReached);
                 }
 
                 // Fetch stores
-                const { data: json } = await api.get('/stores', { params: { status: 'active', limit: 100 } });
-                if (json.success && json.data?.data) {
-                    const filtered = json.data.data.filter((s: Store) => (s._count?.narrations ?? 0) > 0);
+                const result = await storeHelpers.getStore();
+                if (result && result.data) {
+                    const filtered = result.data.filter((s: Store) => (s._count?.narrations ?? 0) > 0);
                     setStores(filtered);
                 }
             } catch (error) {
@@ -65,7 +65,7 @@ export default function GuideScreen() {
             setIsPlaying(false);
 
             // Tải thuyết minh của quán
-            const res = await api.get(`/stores/${store.id}/narrations`);
+            const res = await narrationsHelpers.getNarrationsByStoreId(store.id);
             if (!res.data.success || !res.data.data?.length) {
                 Alert.alert('Thông báo', 'Quán này hiện chưa có bài thuyết minh.');
                 return;
@@ -78,7 +78,7 @@ export default function GuideScreen() {
 
             // Ghi nhận lịch sử nghe (kiểm tra giới hạn)
             try {
-                await api.post(`/listen/${narration.id}?source=gps`);
+                await narrationsHelpers.addListenHistory(narration.id);
             } catch (err: any) {
                 if (err.response?.status === 403) {
                     setIsLimitReached(true);
@@ -207,7 +207,7 @@ export default function GuideScreen() {
                     ) : (
                         stores.map((item) => (
                             <View key={item.id} className="flex-row items-center justify-between mb-6">
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     className="flex-row items-center flex-1 pr-4"
                                     onPress={() => router.push(`/stall/${item.id}` as any)}
                                 >

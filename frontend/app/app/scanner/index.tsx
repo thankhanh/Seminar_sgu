@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-nati
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import api from '../../constants/api';
+import api, { scannerHelpers } from '../../constants/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -25,18 +25,18 @@ export default function QRScannerScreen() {
                     Yêu cầu quyền Camera
                 </Text>
                 <Text className="text-sm text-[#6B7280] text-center mb-8 px-8 leading-6">
-                    Chúng tôi cần truy cập máy ảnh của bạn để quét mã QR. 
+                    Chúng tôi cần truy cập máy ảnh của bạn để quét mã QR.
                 </Text>
-                
-                <TouchableOpacity 
-                    onPress={requestPermission} 
+
+                <TouchableOpacity
+                    onPress={requestPermission}
                     className="bg-[#009FB7] w-[80%] py-4 rounded-2xl items-center shadow-lg shadow-[#009FB7]/40 mb-4"
                 >
                     <Text className="text-white font-extrabold text-[15px]">Cấp Quyền Camera</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
-                    onPress={() => router.back()} 
+
+                <TouchableOpacity
+                    onPress={() => router.back()}
                     className="w-[80%] py-4 rounded-2xl items-center bg-white border border-[#E5E7EB]"
                 >
                     <Text className="text-[#4B5563] font-bold text-[15px]">Quay Lại</Text>
@@ -62,7 +62,7 @@ export default function QRScannerScreen() {
             }
 
             // 🔄 Loại 2: QR cũ chứa UUID thô → gọi API resolve
-            const { data: json } = await api.post(`/qr/scan/${data}`);
+            const { data: json } = await scannerHelpers.scanQR(data);
 
             // Backend trả { success: true, data: { storeId, store, ... } }
             const storeId = json.data?.storeId || json.data?.store?.id;
@@ -83,24 +83,24 @@ export default function QRScannerScreen() {
 
     return (
         <View className="flex-1 bg-black relative">
-            <CameraView 
+            <CameraView
                 style={StyleSheet.absoluteFillObject}
                 facing="back"
                 onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
             >
                 {/* --- HEADER --- */}
                 <SafeAreaView edges={['top']} className="flex-row items-center justify-between px-6 pt-4 z-10 w-full absolute top-0">
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => router.back()}
                         className="w-12 h-12 rounded-full bg-black/50 items-center justify-center border border-white/20"
                     >
                         <Ionicons name="close" size={24} color="white" />
                     </TouchableOpacity>
-                    
+
                     <View className="bg-black/50 px-5 py-2 rounded-full border border-white/20">
                         <Text className="text-white text-sm font-bold tracking-wider">Quét Mã QR</Text>
                     </View>
-                    
+
                     <TouchableOpacity className="w-12 h-12 rounded-full bg-black/50 items-center justify-center border border-white/20">
                         <Ionicons name="flash-outline" size={22} color="white" />
                     </TouchableOpacity>
@@ -123,10 +123,10 @@ export default function QRScannerScreen() {
                         <View style={[styles.corner, styles.bottomRightCorner]} />
 
                         {/* Animated Line Mock */}
-                        <View className="w-full h-[2px] bg-[#009FB7] absolute top-1/2 opacity-80" 
-                              style={{ shadowColor: '#009FB7', shadowOffset: {width: 0, height: 2}, shadowOpacity: 1, shadowRadius: 6}} />
+                        <View className="w-full h-[2px] bg-[#009FB7] absolute top-1/2 opacity-80"
+                            style={{ shadowColor: '#009FB7', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6 }} />
                     </View>
-                    
+
                     {/* Bottom Instructions */}
                     <View className="absolute bottom-[15%] items-center w-full px-10 z-20">
                         <View className="bg-black/60 px-6 py-3 rounded-2xl flex-row items-center backdrop-blur-md">
@@ -135,9 +135,9 @@ export default function QRScannerScreen() {
                                 Di chuyển camera vào mã QR
                             </Text>
                         </View>
-                        
+
                         {scanned && (
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => setScanned(false)}
                                 className="bg-[#009FB7] px-10 py-4 rounded-full mt-6 flex-row items-center shadow-lg shadow-[#009FB7]/50"
                             >

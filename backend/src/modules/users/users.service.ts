@@ -70,13 +70,22 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const data: any = {
+      ...(dto.name && { name: dto.name }),
+      ...(dto.phone !== undefined && { phone: dto.phone }),
+      ...(dto.preferredLanguage && { preferredLanguage: dto.preferredLanguage }),
+      ...(dto.email && { email: dto.email }),
+      ...(dto.avatarUrl && { avatarUrl: dto.avatarUrl }),
+    };
+
+    if (dto.password) {
+      const bcrypt = require('bcryptjs');
+      data.passwordHash = await bcrypt.hash(dto.password, 10);
+    }
+
     return this.prisma.user.update({
       where: { id: userId },
-      data: {
-        ...(dto.name && { name: dto.name }),
-        ...(dto.phone !== undefined && { phone: dto.phone }),
-        ...(dto.preferredLanguage && { preferredLanguage: dto.preferredLanguage }),
-      },
+      data,
       select: {
         id: true,
         name: true,

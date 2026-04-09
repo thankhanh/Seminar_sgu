@@ -62,7 +62,7 @@ export class StoresService {
     });
   }
 
-  async findAll(page = 1, limit = 20, status?: string, merchantId?: string) {
+  async findAll(page = 1, limit = 20, status?: string, merchantId?: string, keyword?: string) {
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -76,6 +76,12 @@ export class StoresService {
 
     if (merchantId) {
       where.merchantId = merchantId;
+    }
+
+    if (keyword) {
+      where.name = {
+        contains: keyword,
+      };
     }
 
     const [data, total] = await Promise.all([

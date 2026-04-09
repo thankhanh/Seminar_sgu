@@ -3,8 +3,9 @@ import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView, Activity
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
-import api from '../../constants/api';
+import api, { narrationsHelpers, storeHelpers, usersHelpers } from '../../constants/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface StoreDetail {
     id: string;
@@ -41,6 +42,7 @@ export default function StallDetailScreen() {
     const router = useRouter();
     const storeId = params?.id as string;
     const autoplay = params?.autoplay === '1';
+    const { selectedLanguage } = useLanguage();
 
     const [store, setStore] = useState<StoreDetail | null>(null);
     const [menus, setMenus] = useState<MenuItem[]>([]);
@@ -72,21 +74,20 @@ export default function StallDetailScreen() {
         if (!storeId) return;
         const loadAll = async () => {
             try {
-                // Lấy preferredLanguage của user
-                const userRaw = await AsyncStorage.getItem('auth_user');
-                const userPreferredLang = userRaw ? JSON.parse(userRaw).preferredLanguage || 'vi' : 'vi';
+                // Lấy preferredLanguage từ context chung toàn app
+                const userPreferredLang = selectedLanguage?.code || 'vi';
 
                 const [storeRes, menuRes, narrRes, profileRes] = await Promise.all([
-                    api.get(`/stores/${storeId}`),
-                    api.get(`/stores/${storeId}/menus`),
-                    api.get(`/stores/${storeId}/narrations`).catch(() => ({ data: { success: false } })),
-                    api.get('/users/me').catch(() => ({ data: { success: false } })),
+                    storeHelpers.getStoreById(storeId).catch(() => null),
+                    storeHelpers.getMenuStores(storeId).catch(() => null),
+                    narrationsHelpers.getNarrationsByStoreId(storeId).catch(() => null),
+                    usersHelpers.getProfile().catch(() => null),
                 ]);
-                if (storeRes.data.success) setStore(storeRes.data.data);
-                if (menuRes.data.success) setMenus(menuRes.data.data?.data ?? menuRes.data.data ?? []);
-                if (profileRes.data.success) setIsLimitReached(profileRes.data.data.isLimitReached);
-                if (narrRes.data.success) {
-                    const narrs = narrRes.data.data ?? [];
+                if (storeRes) setStore(storeRes);
+                if (menuRes) setMenus(menuRes.data ?? menuRes ?? []); // Handles both array and paginated objects
+                if (profileRes) setIsLimitReached(profileRes.isLimitReached);
+                if (narrRes) {
+                    const narrs = narrRes ?? [];
                     setNarrations(narrs);
 
                     // Chọn narration theo ngôn ngữ ưa thích → vi → bản đầu tiên
@@ -100,7 +101,7 @@ export default function StallDetailScreen() {
                     if (autoplay && preferred?.textContent) {
                         setAutoPlayed(true);
                         // Ghi lịch sử nghe ngay lập tức
-                        api.post(`/listen/${preferred.id}?source=autoplay`).catch(err => {
+                        narrationsHelpers.addListenHistory(preferred.id, 'autoplay').catch(err => {
                             console.warn('Không thể lưu lịch sử nghe (auto):', err);
                         });
                         setTimeout(() => {
@@ -143,7 +144,7 @@ export default function StallDetailScreen() {
         }
         setIsPlaying(true);
         // Ghi lịch sử nghe vào backend
-        api.post(`/listen/${activeNarration.id}?source=manual`).catch(err => {
+        narrationsHelpers.addListenHistory(activeNarration.id, 'manual').catch(err => {
             if (err.response?.status === 403) setIsLimitReached(true);
             console.warn('Không thể lưu lịch sử nghe:', err);
         });
@@ -254,9 +255,8 @@ export default function StallDetailScreen() {
                                     <TouchableOpacity
                                         onPress={playNarration}
                                         disabled={isLimitReached && !isPlaying}
-                                        className={`mt-6 w-16 h-16 rounded-full items-center justify-center shadow-lg ${
-                                            isPlaying ? 'bg-red-500' : isLimitReached ? 'bg-gray-300' : 'bg-[#009FB7]'
-                                        }`}
+                                        className={`mt-6 w-16 h-16 rounded-full items-center justify-center shadow-lg ${isPlaying ? 'bg-red-500' : isLimitReached ? 'bg-gray-300' : 'bg-[#009FB7]'
+                                            }`}
                                     >
                                         <Ionicons name={isPlaying ? "stop" : "play"} size={32} color="white" style={{ marginLeft: isPlaying ? 0 : 4 }} />
                                     </TouchableOpacity>
@@ -267,7 +267,7 @@ export default function StallDetailScreen() {
                                         className="mt-3 flex-row items-center"
                                     >
                                         <Ionicons name="lock-closed" size={12} color="#EF4444" />
-                                        <Text className="text-red-500 text-xs font-bold ml-1">Hết lượt nghe — Nâng cấp ngày</Text>
+                                        <Text className="text-red-500 text-xs font-bold ml-1">Hết lượt nghe — Nâng cấp ngay</Text>
                                     </TouchableOpacity>
                                 )}
                                 {activeNarration.textContent && (

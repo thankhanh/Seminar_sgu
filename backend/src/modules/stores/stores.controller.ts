@@ -28,13 +28,15 @@ export class StoresController {
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiQuery({ name: 'status', required: false, type: String, example: 'active' })
   @ApiQuery({ name: 'merchantId', required: false, type: String })
+  @ApiQuery({ name: 'keyword', required: false, type: String })
   findAll(
     @Query('page') page = 1,
     @Query('limit') limit = 20,
     @Query('status') status?: string,
+    @Query('keyword') keyword?: string,
     @Query('merchantId') merchantId?: string,
   ) {
-    return this.storesService.findAll(+page, +limit, status, merchantId);
+    return this.storesService.findAll(+page, +limit, status, merchantId, keyword);
   }
 
   @Get('nearby')

@@ -122,10 +122,10 @@ export default function MapScreen() {
     }, [stores]);
 
     const initialRegion = {
-        latitude: 10.4967,
-        longitude: 105.1167,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
+        latitude: 10.7592,
+        longitude: 106.7071,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
     };
 
     // GPS watcher
@@ -137,9 +137,11 @@ export default function MapScreen() {
                 { accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
                 (loc) => {
                     setLocation(loc);
-                    // TEST: Uncomment để test gần Vinh Khanh Coffee
-                    checkProximity(10.28405, 105.52044);
-                    lastLocationRef.current = { lat: 10.28405, lng: 105.52044 };
+                    // TEST: Tọa độ mô phỏng tại Vĩnh Khánh Quận 4 để kích hoạt Proximity
+                    const testLat = 10.7592;
+                    const testLng = 106.7071;
+                    checkProximity(testLat, testLng);
+                    lastLocationRef.current = { lat: testLat, lng: testLng };
                     // checkProximity(loc.coords.latitude, loc.coords.longitude);
                     // lastLocationRef.current = { lat: loc.coords.latitude, lng: loc.coords.longitude };
                 }
@@ -147,6 +149,7 @@ export default function MapScreen() {
             return () => locationWatcher.remove();
         })();
     }, [selectedLanguage]);
+
 
     // Tìm tất cả POI trong 10m, sort theo khoảng cách, queue lần lượt
     const checkProximity = (lat: number, lng: number) => {
@@ -243,7 +246,8 @@ export default function MapScreen() {
 
     const userLocation = location
         ? { latitude: location.coords.latitude, longitude: location.coords.longitude }
-        : { latitude: 10.4967, longitude: 105.1167 };
+        : { latitude: 10.7592, longitude: 106.7071 };
+
 
     return (
         <SafeAreaView className="flex-1 bg-[#F9FAFB] relative">

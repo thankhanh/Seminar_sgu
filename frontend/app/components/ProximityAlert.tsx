@@ -8,6 +8,8 @@ import {
     Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '../contexts/LanguageContext';
+
 
 const { width } = Dimensions.get('window');
 
@@ -26,7 +28,9 @@ interface ProximityAlertProps {
 }
 
 export default function ProximityAlert({ store, onConfirm, onDismiss }: ProximityAlertProps) {
+    const { t } = useLanguage();
     const slideAnim = useRef(new Animated.Value(200)).current;
+
     const opacityAnim = useRef(new Animated.Value(0)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -115,9 +119,10 @@ export default function ProximityAlert({ store, onConfirm, onDismiss }: Proximit
                             <Ionicons name="location" size={16} color="white" />
                         </View>
                     </Animated.View>
-                    <Text style={{ color: 'white', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', flex: 1 }}>
-                        📍 Gian hàng gần bạn · {distanceText}
+                     <Text style={{ color: 'white', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', flex: 1 }}>
+                        📍 {t('proximity.title')} · {distanceText}
                     </Text>
+
                     <TouchableOpacity
                         onPress={() => onDismiss(store)}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -152,17 +157,19 @@ export default function ProximityAlert({ store, onConfirm, onDismiss }: Proximit
                             </Text>
                         </View>
                         <Text style={{ fontSize: 11, color: '#009FB7', fontWeight: '700', marginTop: 4 }}>
-                            🎧 Có thuyết minh audio hướng dẫn
+                            🎧 {t('proximity.has_narration')}
                         </Text>
+
                     </View>
                 </View>
 
                 {/* Câu hỏi */}
                 <View style={{ paddingHorizontal: 14, paddingBottom: 6 }}>
                     <Text style={{ fontSize: 13, color: '#374151', fontWeight: '600', textAlign: 'center' }}>
-                        Bạn có muốn nghe thuyết minh gian hàng này không?
+                        {t('proximity.ask')}
                     </Text>
                 </View>
+
 
                 {/* Nút bấm */}
                 <View style={{ flexDirection: 'row', padding: 12, gap: 10 }}>
@@ -180,9 +187,10 @@ export default function ProximityAlert({ store, onConfirm, onDismiss }: Proximit
                     >
                         <Ionicons name="arrow-forward" size={14} color="#6B7280" />
                         <Text style={{ fontSize: 13, fontWeight: '700', color: '#6B7280', marginLeft: 5 }}>
-                            Bỏ qua
+                            {t('proximity.skip')}
                         </Text>
                     </TouchableOpacity>
+
 
                     <TouchableOpacity
                         onPress={() => onConfirm(store)}
@@ -203,9 +211,10 @@ export default function ProximityAlert({ store, onConfirm, onDismiss }: Proximit
                     >
                         <Ionicons name="headset" size={16} color="white" />
                         <Text style={{ fontSize: 14, fontWeight: '800', color: 'white', marginLeft: 6 }}>
-                            Có, nghe thuyết minh!
+                            {t('proximity.confirm')}
                         </Text>
                     </TouchableOpacity>
+
                 </View>
             </View>
         </Animated.View>

@@ -7,7 +7,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_URL = 'http://192.168.1.2:3000/api/v1'; // LAN IP for Physical Devices (Hotspot)
+export const API_URL = 'http://192.168.1.6:3000/api/v1'; // LAN IP for Physical Devices (Hotspot)
 // export const API_URL = 'http://10.0.2.2:3000/api/v1'; // For Android Emulator
 export const TOKEN_KEY = 'auth_access_token';
 export const REFRESH_KEY = 'auth_refresh_token';
@@ -19,12 +19,27 @@ const api = axios.create({
     headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor: tự động đính kèm token vào header nếu có
+// Request interceptor: tự động đính kèm token và ngôn ngữ vào header
 api.interceptors.request.use(async (config) => {
+    // 1. Gắn Token
     const token = await AsyncStorage.getItem(TOKEN_KEY);
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // 2. Gắn Ngôn ngữ
+    const langData = await AsyncStorage.getItem('@smart_tour_lang');
+    if (langData) {
+        try {
+            const parsed = JSON.parse(langData);
+            if (parsed && parsed.code) {
+                config.headers['accept-language'] = parsed.code;
+            }
+        } catch (e) {
+            console.warn('[API Interceptor] Lỗi parse ngôn ngữ:', e);
+        }
+    }
+
     return config;
 });
 

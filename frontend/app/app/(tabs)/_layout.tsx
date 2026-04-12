@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const TabItem = ({ icon, label, active = false, isIonicons = true, onPress }: any) => (
   <TouchableOpacity onPress={onPress} className="items-center justify-center flex-1">
@@ -19,6 +20,7 @@ const TabItem = ({ icon, label, active = false, isIonicons = true, onPress }: an
 
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const router = useRouter();
+  const { t } = useLanguage();
   const currentRouteName = state.routes[state.index]?.name || '';
 
   return (
@@ -26,13 +28,13 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       <View className="flex-row justify-around items-center px-4">
         <TabItem
           icon="home"
-          label="Home"
+          label={t('tabs.home')}
           active={currentRouteName.includes('home')}
           onPress={() => router.push('/(tabs)/home')}
         />
         <TabItem
           icon="map-outline"
-          label="Map"
+          label={t('tabs.map')}
           active={currentRouteName.includes('map')}
           onPress={() => router.push('/(tabs)/map')}
         />
@@ -51,13 +53,13 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
         <TabItem
           icon="compass-outline"
-          label="Guide"
+          label={t('tabs.guide')}
           active={currentRouteName.includes('guide')}
           onPress={() => router.push('/(tabs)/guide')}
         />
         <TabItem
           icon="person-outline"
-          label="Profile"
+          label={t('tabs.profile')}
           active={currentRouteName.includes('profile')}
           onPress={() => router.push('/(tabs)/profile')}
         />
@@ -65,6 +67,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     </View>
   );
 }
+
 
 export default function TabLayout() {
   return (

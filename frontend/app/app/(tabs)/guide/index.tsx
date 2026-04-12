@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import api, { narrationsHelpers, storeHelpers, usersHelpers } from '../../../constants/api';
+import { useLanguage } from '../../../contexts/LanguageContext';
+
 
 interface Store {
     id: string;
@@ -20,7 +22,9 @@ const SPEECH_LANG_MAP: Record<string, string> = {
 
 export default function GuideScreen() {
     const router = useRouter();
+    const { t } = useLanguage();
     const [stores, setStores] = useState<Store[]>([]);
+
     const [isLoading, setIsLoading] = useState(true);
     const [activeNarration, setActiveNarration] = useState<any>(null);
     const [activeStoreName, setActiveStoreName] = useState<string>('');
@@ -67,9 +71,10 @@ export default function GuideScreen() {
             // Tải thuyết minh của quán
             const res = await narrationsHelpers.getNarrationsByStoreId(store.id);
             if (!res.data.success || !res.data.data?.length) {
-                Alert.alert('Thông báo', 'Quán này hiện chưa có bài thuyết minh.');
+                Alert.alert(t('common.notification'), t('guide.no_narration'));
                 return;
             }
+
 
             const narration = res.data.data[0]; // Lấy cái đầu tiên làm mặc định
             setActiveNarration(narration);
@@ -83,13 +88,14 @@ export default function GuideScreen() {
                 if (err.response?.status === 403) {
                     setIsLimitReached(true);
                     Alert.alert(
-                        'Giới hạn lượt nghe',
-                        err.response?.data?.message || 'Bạn đã hết lượt nghe trong ngày.',
+                        t('map.limit_reached_title'),
+                        err.response?.data?.message || t('map.limit_reached_msg'),
                         [
-                            { text: 'Để sau', style: 'cancel' },
-                            { text: 'Nâng cấp ngay', onPress: () => router.push('/plans' as any) }
+                            { text: t('common.cancel'), style: 'cancel' },
+                            { text: t('map.view_details'), onPress: () => router.push('/plans' as any) }
                         ]
                     );
+
                     return; // Không phát audio nếu bị chặn
                 }
             }
@@ -120,8 +126,9 @@ export default function GuideScreen() {
                     <Ionicons name="close" size={28} color="#1F2937" />
                 </TouchableOpacity>
                 <Text className="text-[18px] font-extrabold text-[#111827]">
-                    Vinh Khanh Market
+                    {t('guide.header')}
                 </Text>
+
                 <TouchableOpacity>
                     <Ionicons name="notifications-outline" size={24} color="#1F2937" />
                 </TouchableOpacity>
@@ -147,14 +154,15 @@ export default function GuideScreen() {
                                 )}
                                 <View className="flex-1">
                                     <Text className={`text-[10px] font-extrabold uppercase tracking-wider mb-0.5 ${isLimitReached && !isPlaying ? 'text-gray-400' : 'text-[#009FB7]'}`}>
-                                        {isPlaying ? 'Now Playing' : isLimitReached ? 'Daily Limit Reached' : 'Select a Story'}
+                                        {isPlaying ? t('guide.now_playing') : isLimitReached ? t('map.limit_reached_title') : t('guide.select_story')}
                                     </Text>
                                     <Text className={`text-[16px] font-extrabold leading-tight mb-0.5 ${isLimitReached && !isPlaying ? 'text-gray-400' : 'text-[#1F2937]'}`} numberOfLines={1}>
-                                        {activeStoreName || 'Guide Tab'}
+                                        {activeStoreName || t('tabs.guide')}
                                     </Text>
                                     <Text className="text-[12px] text-[#6B7280]">
-                                        {isPlaying ? 'Audio Guide Active' : isLimitReached ? 'Please upgrade your plan' : 'Listen to learn more'}
+                                        {isPlaying ? t('guide.audio_active') : isLimitReached ? t('map.limit_reached_msg') : t('guide.listen_more')}
                                     </Text>
+
                                 </View>
                             </View>
 
@@ -173,9 +181,10 @@ export default function GuideScreen() {
                         <Ionicons name="search-outline" size={20} color="#9CA3AF" />
                         <TextInput
                             className="flex-1 ml-2 text-base text-[#1F2937]"
-                            placeholder="Search stall audio guides"
+                            placeholder={t('guide.search_placeholder')}
                             placeholderTextColor="#9CA3AF"
                         />
+
                     </View>
                 </View>
 
@@ -187,20 +196,22 @@ export default function GuideScreen() {
                     contentContainerStyle={{ paddingRight: 40 }}
                 >
                     <TouchableOpacity className="bg-[#009FB7] px-6 py-2.5 rounded-full mr-3 shadow-sm shadow-[#009FB7]/20">
-                        <Text className="text-white text-[13px] font-bold">All</Text>
+                        <Text className="text-white text-[13px] font-bold">{t('common.all')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity className="bg-[#F3F4F6] px-5 py-2.5 rounded-full mr-3">
-                        <Text className="text-[#4B5563] text-[13px] font-bold">Recent</Text>
+                        <Text className="text-[#4B5563] text-[13px] font-bold">{t('guide.recent') || 'Recent'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity className="bg-[#F3F4F6] px-5 py-2.5 rounded-full mr-3">
-                        <Text className="text-[#4B5563] text-[13px] font-bold">Favorites</Text>
+                        <Text className="text-[#4B5563] text-[13px] font-bold">{t('guide.favorites') || 'Favorites'}</Text>
                     </TouchableOpacity>
+
                 </ScrollView>
 
                 <View className="px-5">
                     <Text className="text-[13px] font-extrabold text-[#111827] tracking-wider uppercase mb-5">
-                        Market Stories
+                        {t('guide.market_stories')}
                     </Text>
+
 
                     {isLoading ? (
                         <ActivityIndicator color="#009FB7" size="large" className="mt-10" />
@@ -239,8 +250,9 @@ export default function GuideScreen() {
                                     className={`px-5 py-2.5 rounded-full ${isPlaying && activeNarration?.storeId === item.id ? 'bg-red-500' : isLimitReached ? 'bg-gray-200' : 'bg-[#F3F4F6]'}`}
                                 >
                                     <Text className={`text-[13px] font-bold ${isPlaying && activeNarration?.storeId === item.id ? 'text-white' : isLimitReached ? 'text-gray-400' : 'text-[#009FB7]'}`}>
-                                        {isPlaying && activeNarration?.storeId === item.id ? 'Stop' : isLimitReached ? 'Limited' : 'Listen'}
+                                        {isPlaying && activeNarration?.storeId === item.id ? t('guide.stop') : isLimitReached ? t('guide.limited') : t('guide.listen')}
                                     </Text>
+
                                 </TouchableOpacity>
                             </View>
                         ))

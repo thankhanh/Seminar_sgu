@@ -60,7 +60,8 @@ interface Store {
 export default function MapScreen() {
     const router = useRouter();
     // Dùng ngôn ngữ đã chọn toàn cục từ Home screen
-    const { selectedLanguage, languages, setSelectedLanguage } = useLanguage();
+    const { selectedLanguage, languages, setSelectedLanguage, t } = useLanguage();
+
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [stores, setStores] = useState<Store[]>([]);
     const [isLoadingStores, setIsLoadingStores] = useState(true);
@@ -209,15 +210,17 @@ export default function MapScreen() {
     const handleListen = async (store: any) => {
         if (isNarrating) { stopNarration(); return; }
         if (isLimitReached) {
-            Alert.alert('Giới hạn lượt nghe', 'Bạn đã hết lượt nghe trong ngày. Vui lòng nâng cấp gói.');
+            Alert.alert(t('map.limit_reached_title'), t('map.limit_reached_msg'));
             return;
         }
+
         checkNearbyNarration(store.lat, store.lng);
         const data = narrationsHelpers.addListenHistory(store.id);
         if (!data) {
-            Alert.alert('Lỗi', 'Không thể thêm lịch sử nghe.');
+            Alert.alert(t('common.error'), t('map.history_error', 'Không thể thêm lịch sử nghe.'));
             return;
         }
+
     }
 
     const playNarration = (text: string, storeId: string) => {
@@ -252,13 +255,15 @@ export default function MapScreen() {
                     </TouchableOpacity>
                     <View className="items-center">
                         <Text className="text-[14px] font-extrabold text-[#1F2937] tracking-wider uppercase">
-                            Vinh Khanh Street
+                            {t('login.brand')}
                         </Text>
+
                         <View className="flex-row items-center mt-0.5">
                             <View className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5" />
                             <Text className="text-[10px] font-bold text-[#6B7280] tracking-widest uppercase">
-                                Live Density Heatmap
+                                {t('map.heatmap')}
                             </Text>
+
                         </View>
                     </View>
                     <TouchableOpacity>
@@ -279,11 +284,13 @@ export default function MapScreen() {
                             <Text className="text-base mr-2">{selectedLanguage?.flagIcon ?? '🌐'}</Text>
                         )}
                         <Text className="text-xs font-bold text-[#1F2937] mr-1">
-                            {selectedLanguage?.name ?? 'Chọn ngôn ngữ'}
+                            {selectedLanguage?.name ?? t('map.select_lang')}
                         </Text>
+
                         <Ionicons name="chevron-down" size={12} color="#6B7280" />
                     </TouchableOpacity>
-                    <Text className="text-[11px] text-[#9CA3AF] ml-3">Ngôn ngữ thuyết minh</Text>
+                    <Text className="text-[11px] text-[#9CA3AF] ml-3">{t('home.lang_selector')}</Text>
+
                 </View>
 
                 {/* === LANGUAGE PICKER MODAL === */}
@@ -297,8 +304,9 @@ export default function MapScreen() {
                         <View className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl pb-8 pt-4 px-6">
                             <View className="w-12 h-1 rounded-full bg-[#E5E7EB] self-center mb-5" />
                             <Text className="text-[17px] font-extrabold text-[#1F2937] mb-4">
-                                Chọn ngôn ngữ thuyết minh
+                                {t('login.select_language')}
                             </Text>
+
                             {languages.map((lang) => {
                                 const isActive = selectedLanguage?.code === lang.code;
                                 return (
@@ -379,8 +387,9 @@ export default function MapScreen() {
                     {isLoadingStores && (
                         <View className="absolute top-4 left-1/2 -translate-x-12 z-20 bg-white rounded-full px-4 py-2 shadow-md flex-row items-center">
                             <ActivityIndicator size="small" color="#009FB7" />
-                            <Text className="text-xs text-[#4B5563] ml-2">Đang tải quán...</Text>
+                            <Text className="text-xs text-[#4B5563] ml-2">{t('map.loading_stalls')}</Text>
                         </View>
+
                     )}
 
                     {/* Narration indicator */}
@@ -390,8 +399,9 @@ export default function MapScreen() {
                             className="absolute top-4 left-4 z-20 bg-[#009FB7] rounded-full px-4 py-2 shadow-md flex-row items-center"
                         >
                             <Ionicons name="volume-high" size={14} color="white" />
-                            <Text className="text-xs text-white font-bold ml-2">Đang đọc... (bấm dừng)</Text>
+                            <Text className="text-xs text-white font-bold ml-2">{t('map.narrating')}</Text>
                         </TouchableOpacity>
+
                     )}
 
                     {/* Floating Controls */}
@@ -427,8 +437,10 @@ export default function MapScreen() {
                                             <View className="flex-row items-center mt-1">
                                                 <Ionicons name="document-text-outline" size={11} color="#009FB7" />
                                                 <Text className="text-[11px] text-[#009FB7] ml-1 font-semibold">
-                                                    {selectedStall._count.narrations} thuyết minh
+                                                    {selectedStall._count.narrations} {t('common.units.narrations')}
                                                 </Text>
+
+
                                             </View>
                                         )}
                                     </View>
@@ -446,8 +458,9 @@ export default function MapScreen() {
                                         className="flex-1 bg-[#009FB7] rounded-xl h-12 items-center justify-center shadow-lg"
                                     >
                                         <Text className="text-white text-[12px] font-extrabold tracking-widest uppercase">
-                                            Xem Chi Tiết
+                                            {t('map.view_details')}
                                         </Text>
+
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={() => {

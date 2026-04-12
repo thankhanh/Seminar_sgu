@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Animated, Alert } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Animated, Alert, StatusBar } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import api, { narrationsHelpers, storeHelpers, usersHelpers } from '../../constants/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface StoreDetail {
@@ -42,7 +42,7 @@ export default function StallDetailScreen() {
     const router = useRouter();
     const storeId = params?.id as string;
     const autoplay = params?.autoplay === '1';
-    const { selectedLanguage } = useLanguage();
+    const { selectedLanguage, t } = useLanguage();
 
     const [store, setStore] = useState<StoreDetail | null>(null);
     const [menus, setMenus] = useState<MenuItem[]>([]);
@@ -50,17 +50,16 @@ export default function StallDetailScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [isPlaying, setIsPlaying] = useState(false);
     const [activeNarration, setActiveNarration] = useState<Narration | null>(null);
-    const [autoPlayed, setAutoPlayed] = useState(false);
     const [isLimitReached, setIsLimitReached] = useState(false);
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
-    // Pulse animation khi đang auto-play
+    // Pulse animation for active playback
     useEffect(() => {
         if (isPlaying) {
             const pulse = Animated.loop(
                 Animated.sequence([
-                    Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, useNativeDriver: true }),
-                    Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 1.1, duration: 800, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
                 ])
             );
             pulse.start();
@@ -74,7 +73,6 @@ export default function StallDetailScreen() {
         if (!storeId) return;
         const loadAll = async () => {
             try {
-                // Lấy preferredLanguage từ context chung toàn app
                 const userPreferredLang = selectedLanguage?.code || 'vi';
 
                 const [storeRes, menuRes, narrRes, profileRes] = await Promise.all([
@@ -83,249 +81,291 @@ export default function StallDetailScreen() {
                     narrationsHelpers.getNarrationsByStoreId(storeId).catch(() => null),
                     usersHelpers.getProfile().catch(() => null),
                 ]);
+                
                 if (storeRes) setStore(storeRes);
-                if (menuRes) setMenus(menuRes.data ?? menuRes ?? []); // Handles both array and paginated objects
+                if (menuRes) setMenus(menuRes.data ?? menuRes ?? []);
                 if (profileRes) setIsLimitReached(profileRes.isLimitReached);
+                
                 if (narrRes) {
                     const narrs = narrRes ?? [];
                     setNarrations(narrs);
 
-                    // Chọn narration theo ngôn ngữ ưa thích → vi → bản đầu tiên
+                    // Pick preferred language -> Vietnamese -> fallback to first
                     const preferred: Narration | null =
                         narrs.find((n: Narration) => n.language?.code === userPreferredLang)
                         || narrs.find((n: Narration) => n.language?.code === 'vi')
                         || narrs[0] || null;
                     setActiveNarration(preferred);
 
-                    // ✅ Auto-play ngay sau khi có data — dùng preferred trực tiếp, không qua closure
-                    if (autoplay && preferred?.textContent) {
-                        setAutoPlayed(true);
-                        // Ghi lịch sử nghe ngay lập tức
-                        narrationsHelpers.addListenHistory(preferred.id, 'autoplay').catch(err => {
-                            console.warn('Không thể lưu lịch sử nghe (auto):', err);
-                        });
+                    // Auto-play if requested
+                    if (autoplay && preferred?.textContent && !profileRes?.isLimitReached) {
                         setTimeout(() => {
-                            setIsPlaying(true);
-                            Speech.speak(preferred.textContent!, {
-                                language: SPEECH_LANG_MAP[preferred.language?.code] ?? 'vi-VN',
-                                rate: 0.9,
-                                onDone: () => setIsPlaying(false),
-                                onError: () => setIsPlaying(false),
-                            });
-                        }, 600);
+                            startSpeech(preferred);
+                        }, 800);
                     }
                 }
             } catch (error) {
-                console.warn('Lỗi tải dữ liệu quán:', error);
+                console.warn('[StallDetail] Error loading data:', error);
             } finally {
                 setIsLoading(false);
             }
         };
         loadAll();
+
+        return () => {
+            Speech.stop();
+        };
     }, [storeId]);
 
-    const playNarration = () => {
-        if (!activeNarration?.textContent) return;
-        if (isPlaying) {
-            Speech.stop();
-            setIsPlaying(false);
-            return;
-        }
-        if (isLimitReached) {
-            Alert.alert(
-                'Giới hạn lượt nghe',
-                'Bạn đã hết lượt nghe miễn phí trong ngày. Vui lòng nâng cấp gói để tiếp tục trải nghiệm!',
-                [
-                    { text: 'Để sau', style: 'cancel' },
-                    { text: 'Nâng cấp ngay', onPress: () => router.push('/plans' as any) }
-                ]
-            );
-            return;
-        }
+    const startSpeech = (narration: Narration) => {
+        if (!narration.textContent) return;
+        
         setIsPlaying(true);
-        // Ghi lịch sử nghe vào backend
-        narrationsHelpers.addListenHistory(activeNarration.id, 'manual').catch(err => {
-            if (err.response?.status === 403) setIsLimitReached(true);
-            console.warn('Không thể lưu lịch sử nghe:', err);
-        });
-        Speech.speak(activeNarration.textContent, {
-            language: SPEECH_LANG_MAP[activeNarration.language?.code] ?? 'vi-VN',
+        narrationsHelpers.addListenHistory(narration.id, 'auto').catch(() => {});
+        
+        Speech.speak(narration.textContent, {
+            language: SPEECH_LANG_MAP[narration.language?.code] ?? 'vi-VN',
             rate: 0.9,
             onDone: () => setIsPlaying(false),
             onError: () => setIsPlaying(false),
         });
     };
 
+    const togglePlayback = () => {
+        if (isPlaying) {
+            Speech.stop();
+            setIsPlaying(false);
+            return;
+        }
+
+        if (isLimitReached) {
+            Alert.alert(
+                t('map.limit_reached_title'),
+                t('map.limit_reached_msg'),
+                [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    { text: t('map.view_details'), onPress: () => router.push('/plans' as any) }
+                ]
+            );
+            return;
+        }
+
+        if (activeNarration?.textContent) {
+            setIsPlaying(true);
+            narrationsHelpers.addListenHistory(activeNarration.id, 'manual').catch(err => {
+                if (err.response?.status === 403) setIsLimitReached(true);
+            });
+            Speech.speak(activeNarration.textContent, {
+                language: SPEECH_LANG_MAP[activeNarration.language?.code] ?? 'vi-VN',
+                rate: 0.9,
+                onDone: () => setIsPlaying(false),
+                onError: () => setIsPlaying(false),
+            });
+        }
+    };
+
     if (isLoading) {
         return (
             <SafeAreaView className="flex-1 bg-white items-center justify-center">
                 <ActivityIndicator size="large" color="#009FB7" />
-                <Text className="text-[#9CA3AF] mt-4">
-                    {autoplay ? 'Đang chuẩn bị thuyết minh...' : 'Đang tải thông tin quán...'}
-                </Text>
+                <Text className="text-[#9CA3AF] mt-4 font-medium">{t('common.loading')}</Text>
             </SafeAreaView>
         );
     }
 
     if (!store) {
         return (
-            <SafeAreaView className="flex-1 bg-white items-center justify-center">
-                <Ionicons name="storefront-outline" size={64} color="#E5E7EB" />
-                <Text className="text-[#9CA3AF] text-base mt-4">Không tìm thấy thông tin quán</Text>
-                <TouchableOpacity onPress={() => router.back()} className="mt-4">
-                    <Text className="text-[#009FB7] font-bold">← Quay lại</Text>
+            <SafeAreaView className="flex-1 bg-white items-center justify-center px-6">
+                <Ionicons name="storefront-outline" size={80} color="#F3F4F6" />
+                <Text className="text-[#9CA3AF] text-lg mt-4 font-bold">{t('common.error')}</Text>
+                <TouchableOpacity 
+                    onPress={() => router.back()} 
+                    className="mt-6 bg-[#009FB7] px-8 py-3 rounded-full"
+                >
+                    <Text className="text-white font-bold">{t('common.back')}</Text>
                 </TouchableOpacity>
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
+        <View className="flex-1 bg-white">
+            <StatusBar barStyle="light-content" />
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-                {/* HERO IMAGE */}
-                <View className="relative w-full h-[210px]">
+                {/* HERO SECTION */}
+                <View className="relative w-full h-[280px]">
                     {store.coverImage ? (
                         <Image source={{ uri: store.coverImage }} className="w-full h-full" resizeMode="cover" />
                     ) : (
-                        <View className="w-full h-full bg-[#E5E7EB] items-center justify-center">
-                            <Ionicons name="storefront-outline" size={60} color="#9CA3AF" />
+                        <View className="w-full h-full bg-[#F3F4F6] items-center justify-center">
+                            <Ionicons name="restaurant" size={80} color="#E5E7EB" />
                         </View>
                     )}
-                    <View className="absolute inset-0 bg-black/40" />
+                    
+                    <LinearGradient
+                        colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.8)']}
+                        className="absolute inset-0"
+                    />
+
                     {/* Header Actions */}
-                    <View className="absolute top-4 left-4 right-4 flex-row justify-between items-center z-10">
+                    <View className="absolute top-12 left-5 right-5 flex-row justify-between items-center z-10">
                         <TouchableOpacity
                             onPress={() => router.back()}
-                            className="w-10 h-10 rounded-full bg-white/20 items-center justify-center border border-white/30"
+                            className="w-10 h-10 rounded-full bg-black/30 items-center justify-center"
                         >
                             <Ionicons name="arrow-back" size={24} color="white" />
                         </TouchableOpacity>
-                        <TouchableOpacity className="w-10 h-10 rounded-full bg-white/20 items-center justify-center border border-white/30">
+                        <TouchableOpacity className="w-10 h-10 rounded-full bg-black/30 items-center justify-center">
                             <Ionicons name="share-social-outline" size={22} color="white" />
                         </TouchableOpacity>
                     </View>
+
                     {/* Bottom Info inside Hero */}
-                    <View className="absolute bottom-4 left-4 right-4">
-                        <View className="bg-[#009FB7] px-2 py-1 rounded-md self-start mb-2">
-                            <Text className="text-[10px] font-bold text-white uppercase tracking-wider">
-                                {store.merchant?.businessName ?? 'Quán ăn'}
+                    <View className="absolute bottom-8 left-6 right-6">
+                        <View className="bg-[#009FB7] px-3 py-1 rounded-full self-start mb-3">
+                            <Text className="text-[10px] font-black text-white uppercase tracking-widest">
+                                {store.merchant?.businessName ?? t('home.stalls')}
                             </Text>
                         </View>
-                        <Text className="text-3xl font-extrabold text-white shadow-lg">{store.name}</Text>
-                        <View className="flex-row items-center mt-2">
-                            <Ionicons name="location-outline" size={14} color="white" />
-                            <Text className="text-white text-xs font-medium ml-1" numberOfLines={1}>{store.address}</Text>
+                        <Text className="text-3xl font-black text-white leading-tight">{store.name}</Text>
+                        <View className="flex-row items-center mt-3">
+                            <Ionicons name="location" size={16} color="#009FB7" />
+                            <Text className="text-white/90 text-[13px] font-semibold ml-1.5 flex-1" numberOfLines={1}>{store.address}</Text>
                         </View>
                     </View>
                 </View>
 
-                <View className="bg-white rounded-t-3xl -mt-4 pt-6 px-5 gap-5">
-                    {/* === AUDIO CARD === */}
-                    {activeNarration && (
-                        <View className="rounded-xl bg-[#F3F4F6] p-5">
-                            {narrations.length > 1 && (
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-                                    {narrations.map((n) => (
-                                        <TouchableOpacity
-                                            key={n.id}
-                                            onPress={() => { Speech.stop(); setIsPlaying(false); setActiveNarration(n); }}
-                                            className={`flex-row items-center px-3 py-1.5 rounded-full mr-2 ${activeNarration.id === n.id ? 'bg-[#009FB7]' : 'bg-white border border-[#E5E7EB]'}`}
-                                        >
-                                            <Text className="text-sm mr-1">{n.language?.flagIcon}</Text>
-                                            <Text className={`text-xs font-bold ${activeNarration.id === n.id ? 'text-white' : 'text-[#4B5563]'}`}>
-                                                {n.language?.name}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            )}
-                            <View className="items-center">
-                                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                    <View className="w-24 h-24 rounded-full bg-[#F4FBFC] items-center justify-center border-4 border-[#B3EBF2] mb-6">
-                                        <Ionicons name={isPlaying ? "headset" : "headset-outline"} size={40} color="#009FB7" />
-                                    </View>
-                                </Animated.View>
-                                <Text className="text-[#1F2937] font-bold text-lg text-center mb-1">
-                                    Thuyết minh: {activeNarration.language?.name}
-                                </Text>
-                                <Text className="text-[#6B7280] text-[13px]">
-                                    {isPlaying ? '🔊 Đang phát thuyết minh...' : 'Hướng dẫn âm thanh tự động'}
-                                </Text>
-                                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                    <TouchableOpacity
-                                        onPress={playNarration}
-                                        disabled={isLimitReached && !isPlaying}
-                                        className={`mt-6 w-16 h-16 rounded-full items-center justify-center shadow-lg ${isPlaying ? 'bg-red-500' : isLimitReached ? 'bg-gray-300' : 'bg-[#009FB7]'
-                                            }`}
-                                    >
-                                        <Ionicons name={isPlaying ? "stop" : "play"} size={32} color="white" style={{ marginLeft: isPlaying ? 0 : 4 }} />
-                                    </TouchableOpacity>
-                                </Animated.View>
-                                {isLimitReached && !isPlaying && (
-                                    <TouchableOpacity
-                                        onPress={() => router.push('/plans' as any)}
-                                        className="mt-3 flex-row items-center"
-                                    >
-                                        <Ionicons name="lock-closed" size={12} color="#EF4444" />
-                                        <Text className="text-red-500 text-xs font-bold ml-1">Hết lượt nghe — Nâng cấp ngay</Text>
-                                    </TouchableOpacity>
+                {/* CONTENT SECTION */}
+                <View className="bg-white rounded-t-[35px] -mt-10 pt-8 pb-10">
+                    <View className="px-6 gap-8">
+                        
+                        {/* === AUDIO EXPERIENCE CARD === */}
+                        {activeNarration && (
+                            <View className="rounded-[30px] bg-[#F8FAFC] p-6 shadow-sm border border-slate-100">
+                                {narrations.length > 1 && (
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
+                                        {narrations.map((n) => (
+                                            <TouchableOpacity
+                                                key={n.id}
+                                                onPress={() => { Speech.stop(); setIsPlaying(false); setActiveNarration(n); }}
+                                                className={`flex-row items-center px-4 py-2 rounded-full mr-2.5 ${activeNarration.id === n.id ? 'bg-[#009FB7]' : 'bg-white border border-slate-200'}`}
+                                            >
+                                                <Text className="text-base mr-1.5">{n.language?.flagIcon}</Text>
+                                                <Text className={`text-xs font-black uppercase tracking-wider ${activeNarration.id === n.id ? 'text-white' : 'text-slate-500'}`}>
+                                                    {n.language?.name}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
                                 )}
-                                {activeNarration.textContent && (
-                                    <Text className="text-[#9CA3AF] text-xs text-center mt-4 px-2" numberOfLines={3}>
-                                        {activeNarration.textContent}
+                                
+                                <View className="items-center">
+                                    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                                        <View className="w-28 h-28 rounded-full bg-white items-center justify-center border-8 border-teal-50 mb-6">
+                                            <Ionicons name={isPlaying ? "mic" : "mic-outline"} size={44} color="#009FB7" />
+                                        </View>
+                                    </Animated.View>
+                                    
+                                    <Text className="text-slate-800 font-black text-xl text-center mb-1.5">
+                                        {t('stall.narration')}
                                     </Text>
-                                )}
-                            </View>
-                        </View>
-                    )}
+                                    <Text className="text-slate-400 text-[13px] font-medium text-center px-4 leading-5">
+                                        {isPlaying 
+                                            ? `🔊 ${t('map.narrating')}` 
+                                            : t('home.lang_subtext').replace('{lang}', activeNarration.language?.name)}
+                                    </Text>
 
-                    {/* === INTRODUCTION === */}
-                    <View className="rounded-xl bg-[#F3F4F6] p-5">
-                        <Text className="text-[#009FB7] text-2xl font-bold text-center mb-5">Giới thiệu</Text>
-                        <Text className="text-[#1F2937] text-base leading-6 font-medium">
-                            {store.description ?? 'Một địa điểm ẩm thực tuyệt vời tại khu phố Vĩnh Khánh.'}
-                        </Text>
-                        {(store.openTime || store.closeTime) && (
-                            <View className="mt-8 flex-row items-center p-4 bg-[#F4FBFC] border border-[#B3EBF2] rounded-2xl">
-                                <View className="w-10 h-10 rounded-full bg-[#009FB7] items-center justify-center">
-                                    <Ionicons name="time-outline" size={20} color="white" />
-                                </View>
-                                <View className="ml-3">
-                                    <Text className="text-[#1F2937] font-bold text-[13px]">Giờ hoạt động</Text>
-                                    <Text className="text-[#4B5563] text-xs mt-0.5">
-                                        {store.openTime} - {store.closeTime} hằng ngày
-                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={togglePlayback}
+                                        disabled={isLimitReached && !isPlaying}
+                                        activeOpacity={0.8}
+                                        className={`mt-8 w-16 h-16 rounded-full items-center justify-center ${
+                                            isPlaying ? 'bg-rose-500' : isLimitReached ? 'bg-slate-300' : 'bg-[#009FB7]'
+                                        }`}
+                                    >
+                                        <Ionicons name={isPlaying ? "square" : "play"} size={28} color="white" style={{ marginLeft: isPlaying ? 0 : 4 }} />
+                                    </TouchableOpacity>
+
+                                    {isLimitReached && !isPlaying && (
+                                        <TouchableOpacity
+                                            onPress={() => router.push('/plans' as any)}
+                                            className="mt-5 flex-row items-center bg-rose-50 px-4 py-2 rounded-full border border-rose-100"
+                                        >
+                                            <Ionicons name="lock-closed" size={14} color="#F43F5E" />
+                                            <Text className="text-rose-500 text-xs font-extrabold ml-1.5 uppercase tracking-wider">{t('map.limit_reached_title')}</Text>
+                                        </TouchableOpacity>
+                                    )}
+
+                                    {activeNarration.textContent && (
+                                        <View className="mt-8 bg-white/60 p-4 rounded-2xl border border-slate-50 w-full">
+                                            <Text className="text-slate-400 text-[13px] text-center italic leading-5" numberOfLines={2}>
+                                                "{activeNarration.textContent}"
+                                            </Text>
+                                        </View>
+                                    )}
                                 </View>
                             </View>
                         )}
-                    </View>
 
-                    {/* === MENU === */}
-                    {menus.length > 0 && (
-                        <View className="rounded-xl bg-[#F3F4F6] p-5 mb-6">
-                            <Text className="text-[#009FB7] text-2xl font-bold text-center mb-5">Thực đơn</Text>
-                            {menus.map((item) => (
-                                <View key={item.id} className="flex-row items-center bg-white border border-gray-100 p-3 rounded-2xl mb-3 shadow-sm">
-                                    {item.imageUrl ? (
-                                        <Image source={{ uri: item.imageUrl }} className="w-20 h-20 rounded-xl bg-gray-100" />
-                                    ) : (
-                                        <View className="w-20 h-20 rounded-xl bg-[#E5E7EB] items-center justify-center">
-                                            <Ionicons name="restaurant-outline" size={28} color="#9CA3AF" />
-                                        </View>
-                                    )}
-                                    <View className="flex-1 ml-3 justify-center">
-                                        <Text className="text-[#1F2937] font-bold text-[15px] mb-2">{item.name}</Text>
-                                        <Text className="text-[#009FB7] font-extrabold text-[14px]">
-                                            {Number(item.price).toLocaleString('vi-VN')}đ
+                        {/* === ABOUT SECTION === */}
+                        <View className="rounded-[30px] bg-white border border-slate-100 p-6">
+                            <View className="flex-row items-center mb-4">
+                                <View className="w-1.5 h-6 bg-[#009FB7] rounded-full mr-3" />
+                                <Text className="text-slate-800 text-2xl font-black">{t('stall.about')}</Text>
+                            </View>
+                            
+                            <Text className="text-slate-500 text-base leading-7 font-medium">
+                                {store.description || t('stall.about_fallback')}
+                            </Text>
+
+                            {(store.openTime || store.closeTime) && (
+                                <View className="mt-8 flex-row items-center p-5 bg-[#F8FAFC] rounded-3xl border border-slate-50">
+                                    <View className="w-12 h-12 rounded-2xl bg-[#009FB7] items-center justify-center">
+                                        <Ionicons name="time" size={24} color="white" />
+                                    </View>
+                                    <View className="ml-4">
+                                        <Text className="text-slate-400 font-extrabold text-[12px] uppercase tracking-widest">{t('home.status')}</Text>
+                                        <Text className="text-slate-700 font-black text-base mt-0.5">
+                                            {store.status === 'opening' ? t('home.opening') : t('home.active')} • {store.openTime} - {store.closeTime}
                                         </Text>
                                     </View>
-
                                 </View>
-                            ))}
+                            )}
                         </View>
-                    )}
+
+                        {/* === MENU SECTION === */}
+                        {menus.length > 0 && (
+                            <View className="mb-4">
+                                <View className="flex-row items-center mb-6 pl-2">
+                                    <View className="w-1.5 h-6 bg-[#009FB7] rounded-full mr-3" />
+                                    <Text className="text-slate-800 text-2xl font-black">{t('stall.menu')}</Text>
+                                </View>
+
+                                {menus.map((item) => (
+                                    <View key={item.id} className="flex-row items-center bg-white border border-slate-50 p-4 rounded-3xl mb-4 shadow-sm">
+                                        {item.imageUrl ? (
+                                            <Image source={{ uri: item.imageUrl }} className="w-24 h-24 rounded-2xl bg-slate-50" />
+                                        ) : (
+                                            <View className="w-24 h-24 rounded-2xl bg-slate-100 items-center justify-center">
+                                                <Ionicons name="restaurant" size={32} color="#CBD5E1" />
+                                            </View>
+                                        )}
+                                        <View className="flex-1 ml-4 justify-center">
+                                            <Text className="text-slate-800 font-black text-base mb-1.5" numberOfLines={2}>{item.name}</Text>
+                                            <Text className="text-[#009FB7] font-black text-lg">
+                                                {Number(item.price).toLocaleString('vi-VN')}₫
+                                            </Text>
+                                        </View>
+                                        <View className="w-10 h-10 items-center justify-center rounded-full bg-slate-50">
+                                            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                    </View>
                 </View>
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }

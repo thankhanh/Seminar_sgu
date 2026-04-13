@@ -6,10 +6,11 @@ import * as Speech from 'expo-speech';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import api, { narrationsHelpers } from '../../../constants/api';
+import api, { authHelpers, languagesHelpers, narrationsHelpers, storeHelpers, usersHelpers } from '../../../constants/api';
 import ProximityAlert, { ProximityStore } from '../../../components/ProximityAlert';
 import { useLanguage } from '../../../contexts/LanguageContext';
-import { usersHelpers, storeHelpers } from '../../../constants/api';
+
+
 
 // ==========================================
 // TỌA ĐỘ DÀNH CHO USER ĐỂ TEST (Cách gian hàng ~ 5 mét):
@@ -20,18 +21,7 @@ import { usersHelpers, storeHelpers } from '../../../constants/api';
 
 const { width, height } = Dimensions.get('window');
 
-const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371e3;
-    const p1 = lat1 * Math.PI / 180;
-    const p2 = lat2 * Math.PI / 180;
-    const dp = (lat2 - lat1) * Math.PI / 180;
-    const dl = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
-        Math.cos(p1) * Math.cos(p2) *
-        Math.sin(dl / 2) * Math.sin(dl / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-};
+
 
 const SPEECH_LANG_MAP: Record<string, string> = {
     vi: 'vi-VN', en: 'en-US', zh: 'zh-CN', ko: 'ko-KR',
@@ -46,7 +36,14 @@ interface Language {
     isActive: boolean;
 }
 
+interface Narration {
+    id?: string;
+    textContent?: string;
+    language: { code: string; name?: string };
+}
+
 interface Store {
+
     id: string;
     name: string;
     address: string;
@@ -62,6 +59,7 @@ export default function MapScreen() {
     // Dùng ngôn ngữ đã chọn toàn cục từ Home screen
     const { selectedLanguage, languages, setSelectedLanguage, t } = useLanguage();
 
+
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [stores, setStores] = useState<Store[]>([]);
     const [isLoadingStores, setIsLoadingStores] = useState(true);
@@ -72,6 +70,8 @@ export default function MapScreen() {
     const [showLangPicker, setShowLangPicker] = useState(false);
     const [isLimitReached, setIsLimitReached] = useState(false);
     const [isNarrationDisabled, setIsNarrationDisabled] = useState(false);
+    const [isTranslating, setIsTranslating] = useState(false);
+
 
     // Proximity alert queue
     const [proximityAlert, setProximityAlert] = useState<ProximityStore | null>(null);
@@ -91,17 +91,24 @@ export default function MapScreen() {
     useEffect(() => {
         const fetchLimitStatus = async () => {
             try {
+                const loggedIn = await authHelpers.isLoggedIn();
+                if (!loggedIn) {
+                    setIsLimitReached(false);
+                    return;
+                }
                 const profile = await usersHelpers.getProfile();
-                if (profile && profile.data) setIsLimitReached(profile.data.isLimitReached);
+                if (profile) setIsLimitReached(profile.isLimitReached);
             } catch (error) {
                 console.warn('Lỗi khi tải limit status:', error);
             }
         };
+
         const fetchStores = async () => {
             try {
                 const data = await storeHelpers.getStore();
                 if (data && data?.data) {
                     setStores(data.data);
+                    storesRef.current = data.data; // Sync ref immediately
                 }
             } catch (error) {
                 console.warn('Lỗi khi tải danh sách quán:', error);
@@ -112,6 +119,12 @@ export default function MapScreen() {
         fetchLimitStatus();
         fetchStores();
     }, []);
+
+    // Keep storesRef in sync with stores state for GPS watcher
+    useEffect(() => {
+        storesRef.current = stores;
+    }, [stores]);
+
 
     // Khi stores load xong, kiểm tra lại proximity với vị trí GPS mới nhất
     useEffect(() => {
@@ -137,13 +150,23 @@ export default function MapScreen() {
                 { accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
                 (loc) => {
                     setLocation(loc);
-                    // TEST: Tọa độ mô phỏng tại Vĩnh Khánh Quận 4 để kích hoạt Proximity
-                    const testLat = 10.7592;
-                    const testLng = 106.7071;
-                    checkProximity(testLat, testLng);
-                    lastLocationRef.current = { lat: testLat, lng: testLng };
-                    // checkProximity(loc.coords.latitude, loc.coords.longitude);
-                    // lastLocationRef.current = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+
+                    // ==========================================
+                    // CHẾ ĐỘ GIẢ LẬP ĐỂ TEST (BẬT cái này để thấy thông báo ngay lập tức)
+                    // ==========================================
+                    const SIMULATE_GPS = false; // Đổi thành false để dùng GPS thật
+
+                    if (SIMULATE_GPS) {
+                        // Tọa độ gần Ớt Xiêm Quán (Để test thông báo hiện lên ngay)
+                        const testLat = 10.76105;
+                        const testLng = 106.70466;
+                        checkProximity(testLat, testLng);
+                        lastLocationRef.current = { lat: testLat, lng: testLng };
+                    } else {
+                        checkProximity(loc.coords.latitude, loc.coords.longitude);
+                        lastLocationRef.current = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+                    }
+
                 }
             );
             return () => locationWatcher.remove();
@@ -151,9 +174,12 @@ export default function MapScreen() {
     }, [selectedLanguage]);
 
 
-    // Tìm tất cả POI trong 10m, sort theo khoảng cách, queue lần lượt
+    // Tìm tất cả POI trong phạm vi gần, sort theo khoảng cách, queue lần lượt
     const checkProximity = (lat: number, lng: number) => {
-        if (storesRef.current.length === 0) return;
+        if (storesRef.current.length === 0) {
+            console.log('[GPS] Haven\'t loaded stores yet...');
+            return;
+        }
 
         const nearby: ProximityStore[] = storesRef.current
             .map(store => ({
@@ -163,10 +189,15 @@ export default function MapScreen() {
                 coverImage: store.coverImage,
                 distance: haversineDistance(lat, lng, store.lat, store.lng),
             }))
-            .filter(s => s.distance <= 10)
+            .filter(s => s.distance <= 50) // Tăng lên 50m để dễ kích hoạt thông báo khi test
             .sort((a, b) => a.distance - b.distance);
 
+        if (nearby.length > 0) {
+            console.log(`[GPS] Found ${nearby.length} stores nearby!`);
+        }
+
         const undismissed = nearby.filter(s => !dismissedStoresRef.current.has(s.id));
+
 
         if (undismissed.length > 0) {
             proximityQueueRef.current = undismissed;
@@ -192,23 +223,27 @@ export default function MapScreen() {
         setProximityAlert(remaining.length > 0 ? remaining[0] : null);
     };
 
-    const checkNearbyNarration = async (lat: number, lng: number) => {
-        if (!selectedLanguage || isLimitReached) return;
-        try {
-            const { data: json } = await storeHelpers.checkNearBy(lat, lng, selectedLanguage.code);
-            const data = json.data ?? json;
-            if (data.found && data.storeName) {
-                if (data.storeName !== lastNarratedRef.current && !isNarratingRef.current) {
-                    playNarration(data.textContent, data.storeName);
-                }
-                setIsNarrationDisabled(false);
-            } else {
-                setIsNarrationDisabled(true);
-            }
-        } catch (error) {
-            console.warn('Lỗi kết nối API thuyết minh:', error);
-        }
-    };
+    // const checkNearbyNarration = async (lat: number, lng: number) => {
+    //     if (!selectedLanguage || isLimitReached) return;
+    //     try {
+    //         const { data: json } = await storeHelpers.checkNearBy(lat, lng, selectedLanguage.code);
+    //         const data = json.data ?? json;
+    //         if (data.found && data.storeName) {
+    //             if (data.storeName !== lastNarratedRef.current && !isNarratingRef.current) {
+    //                 playNarration({
+    //                     textContent: data.textContent,
+    //                     language: { code: selectedLanguage.code }
+    //                 });
+    //             }
+
+    //             setIsNarrationDisabled(false);
+    //         } else {
+    //             setIsNarrationDisabled(true);
+    //         }
+    //     } catch (error) {
+    //         console.warn('Lỗi kết nối API thuyết minh:', error);
+    //     }
+    // };
 
     const handleListen = async (store: any) => {
         if (isNarrating) { stopNarration(); return; }
@@ -217,27 +252,67 @@ export default function MapScreen() {
             return;
         }
 
-        checkNearbyNarration(store.lat, store.lng);
-        const data = narrationsHelpers.addListenHistory(store.id);
-        if (!data) {
-            Alert.alert(t('common.error'), t('map.history_error', 'Không thể thêm lịch sử nghe.'));
-            return;
-        }
+        if (!selectedLanguage) return;
 
+        try {
+            // 1. Fetch available narrations for this store
+            const narrs = await narrationsHelpers.getNarrationsByStoreId(store.id);
+            const matching = (narrs as Narration[]).find(n => n.language?.code === selectedLanguage.code);
+
+            if (matching?.textContent) {
+                // Record history and play
+                narrationsHelpers.addListenHistory(matching.id || '', 'manual').catch(() => { });
+                playNarration(matching);
+            } else {
+                // 2. No matching narration -> Look for source (VI)
+                const source = (narrs as Narration[]).find(n => n.language?.code === 'vi') || (narrs[0] as Narration);
+                if (source?.textContent) {
+                    setIsTranslating(true);
+                    try {
+                        // 3. Trigger translation with persistence
+                        const translatedData = await languagesHelpers.translateText(source.textContent, 'vi', selectedLanguage.code, store.id);
+
+
+                        // 4. Refresh narrations to get the new one
+                        const freshNarrs = await narrationsHelpers.getNarrationsByStoreId(store.id);
+                        const newMatching = (freshNarrs as Narration[]).find((n: Narration) => n.language?.code === selectedLanguage.code)
+                            || { ...translatedData, textContent: translatedData.textContent || translatedData.translatedText, language: { code: selectedLanguage.code } };
+
+                        if (newMatching) {
+                            setTimeout(() => {
+                                playNarration(newMatching);
+                            }, 500);
+                        }
+                    } catch (err) {
+
+                        console.error('[Map] Translation failed', err);
+                        Alert.alert(t('common.error'), t('common.error_msg'));
+                    } finally {
+                        setIsTranslating(false);
+                    }
+                } else {
+                    Alert.alert(t('stall.narration'), "No source text available for translation.");
+                }
+            }
+        } catch (error) {
+            console.warn('[Map] Error in handleListen:', error);
+            Alert.alert(t('common.error'), "Could not connect to narration service.");
+        }
     }
 
-    const playNarration = (text: string, storeId: string) => {
-        if (!selectedLanguage) return;
-        setLastNarratedStoreId(storeId);
+    const playNarration = (narration: Narration) => {
+        if (!narration.textContent) return;
+        setLastNarratedStoreId(selectedStall?.id || null);
         setIsNarrating(true);
-        Speech.speak(text, {
-            language: SPEECH_LANG_MAP[selectedLanguage.code] ?? 'vi-VN',
+        Speech.speak(narration.textContent, {
+            language: SPEECH_LANG_MAP[narration.language?.code] || 'vi-VN',
             pitch: 1.0,
             rate: 0.9,
             onDone: () => setIsNarrating(false),
             onError: () => setIsNarrating(false),
         });
     };
+
 
     const stopNarration = () => {
         Speech.stop();
@@ -319,9 +394,10 @@ export default function MapScreen() {
                                         onPress={() => {
                                             if (isNarrating) stopNarration();
                                             setLastNarratedStoreId(null);
-                                            setSelectedLanguage(lang);
                                             setShowLangPicker(false);
+                                            setSelectedLanguage(lang);
                                         }}
+
                                         className={`flex-row items-center px-4 py-3.5 rounded-2xl mb-2 ${isActive ? 'bg-[#009FB7]/10 border border-[#009FB7]' : 'bg-[#F9FAFB]'}`}
                                     >
                                         <Text className="text-2xl mr-4">{lang.flagIcon}</Text>
@@ -490,13 +566,37 @@ export default function MapScreen() {
                     )}
                 </View>
 
-                {/* === PROXIMITY ALERT COMPONENT === */}
                 <ProximityAlert
                     store={proximityAlert}
                     onConfirm={handleProximityConfirm}
                     onDismiss={handleProximityDismiss}
                 />
+
+                {/* === TRANSLATION MODAL === */}
+                <Modal transparent visible={isTranslating} animationType="fade">
+                    <View className="flex-1 bg-black/50 items-center justify-center px-10">
+                        <View className="bg-white rounded-[30px] p-8 w-full items-center shadow-2xl">
+                            <ActivityIndicator size="large" color="#009FB7" />
+                            <Text className="text-[#1F2937] text-lg font-black mt-6 text-center">{t('stall.translating')}</Text>
+                            <Text className="text-[#6B7280] text-sm font-medium mt-2 text-center">{t('stall.translating_sub')}</Text>
+
+                        </View>
+                    </View>
+                </Modal>
             </View>
+
         </SafeAreaView>
     );
+}
+// Hàm tính khoảng cách giữa 2 tọa độ (đơn vị: mét)
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+    const R = 6371000; // Bán kính trái đất tính bằng mét
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
 }

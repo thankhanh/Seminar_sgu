@@ -43,14 +43,28 @@ api.interceptors.request.use(async (config) => {
     return config;
 });
 
-// Response interceptor: log lỗi
+// Response interceptor: xử lý lỗi toàn cục
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
-        console.error('[API Error]', error.config?.url, error.response?.status, error.message);
+    async (error) => {
+        const status = error.response?.status;
+        const originalRequest = error.config;
+
+        if (status === 401) {
+            console.warn('[API 401] Unauthorized. Session expired or missing token.');
+            // Tự động dọn dẹp data nếu bị 401
+            await Promise.all([
+                AsyncStorage.removeItem(TOKEN_KEY),
+                AsyncStorage.removeItem(REFRESH_KEY),
+                AsyncStorage.removeItem(USER_KEY),
+            ]);
+        }
+
+        console.error('[API Error]', originalRequest?.url, status, error.message);
         return Promise.reject(error);
     }
 );
+
 
 // ─── Auth Helpers ─────────────────────────────────────────────────
 export const authHelpers = {
@@ -113,6 +127,27 @@ export const authHelpers = {
         const token = await AsyncStorage.getItem(TOKEN_KEY);
         return !!token;
     },
+};
+
+// languages
+export const languagesHelpers = {
+    async getLanguages() {
+        const response = await api.get('/languages');
+        const { success, data, message } = response.data;
+        if (!success) {
+            throw new Error(message || 'Failed to fetch languages');
+        }
+        return data;
+    },
+    async translateText(text: string, fromLang: string, toLang: string, storeId?: string) {
+        const response = await api.post('/languages/translate', { text, fromLang, toLang, storeId });
+        const { success, data, message } = response.data;
+        if (!success) {
+            throw new Error(message || 'Failed to translate text');
+        }
+        return data;
+    },
+
 };
 
 // ─── Users Helpers ─────────────────────────────────────────────────

@@ -38,6 +38,7 @@ interface Language {
 interface Narration {
     id?: string;
     textContent?: string;
+    audioUrl?: string; // Add this
     language: Language;
     isManual?: boolean;
 }
@@ -89,14 +90,18 @@ export default function StallDetailScreen() {
             return {
                 language: lang,
                 textContent: autoNarrations[lang.code] || '',
+                audioUrl: undefined, // Explicitly undefined for auto-generated
                 isManual: false
             };
         });
     }, [languages, manualNarrations, autoNarrations]);
 
+
     const activeNarration = useMemo(() => {
         return unifiedNarrations.find(n => n.language?.code === activeLangCode) || null;
     }, [unifiedNarrations, activeLangCode]);
+
+    const [localCoverImage, setLocalCoverImage] = useState<string | null>(null);
 
     useEffect(() => {
         if (!storeId) return;
@@ -112,7 +117,12 @@ export default function StallDetailScreen() {
                 ]);
 
 
-                if (storeRes) setStore(storeRes);
+                if (storeRes) {
+                    setStore(storeRes);
+                    // RESOLVE LOCAL IMAGE
+                    const { OfflineService } = require('../../services/OfflineService');
+                    OfflineService.resolve(storeRes.coverImage).then((uri: string) => setLocalCoverImage(uri));
+                }
                 if (menuRes) setMenus(menuRes.data ?? menuRes ?? []);
                 if (profileRes) setIsLimitReached(profileRes.isLimitReached);
 
@@ -142,20 +152,52 @@ export default function StallDetailScreen() {
             }
         };
         loadAll();
-        return () => { Speech.stop(); };
+        return () => { 
+            Speech.stop(); 
+        };
     }, [storeId]);
 
-    const startSpeech = (narration: Narration) => {
-        if (!narration?.textContent) return;
+    const playbackInstance = useRef<any>(null);
+
+    const startSpeech = async (narration: Narration | any) => {
+        if (!narration?.textContent && !narration?.audioUrl) return;
+        
         setIsPlaying(true);
         if (narration.id) narrationsHelpers.addListenHistory(narration.id, 'auto').catch(() => { });
-        Speech.speak(narration.textContent, {
+
+        // Ưu tiên dùng MP3 (Local hoặc Remote)
+        const { OfflineService } = require('../../services/OfflineService');
+        const audioUri = await OfflineService.resolve(narration.audioUrl);
+
+        if (audioUri) {
+            try {
+                const { Audio } = require('expo-av');
+                if (playbackInstance.current) {
+                    await playbackInstance.current.unloadAsync();
+                }
+                const { sound } = await Audio.Sound.createAsync(
+                    { uri: audioUri },
+                    { shouldPlay: true }
+                );
+                playbackInstance.current = sound;
+                sound.setOnPlaybackStatusUpdate((status: any) => {
+                    if (status.didJustFinish) setIsPlaying(false);
+                });
+                return;
+            } catch (err) {
+                console.warn('[Audio] Playback failed, falling back to TTS', err);
+            }
+        }
+
+        // Fallback: TTS
+        Speech.speak(narration.textContent || '', {
             language: SPEECH_LANG_MAP[narration.language?.code] ?? 'vi-VN',
             rate: 0.9,
             onDone: () => setIsPlaying(false),
             onError: () => setIsPlaying(false),
         });
     };
+
 
     const handleLangSelect = async (lang: Language, autoPlay: boolean = false) => {
         if (!lang) return; // Guard
@@ -199,9 +241,14 @@ export default function StallDetailScreen() {
         }
     };
 
-    const togglePlayback = () => {
+    const togglePlayback = async () => {
         if (isPlaying) {
             Speech.stop();
+            if (playbackInstance.current) {
+                await playbackInstance.current.stopAsync();
+                await playbackInstance.current.unloadAsync();
+                playbackInstance.current = null;
+            }
             setIsPlaying(false);
             return;
         }
@@ -215,31 +262,20 @@ export default function StallDetailScreen() {
             return;
         }
 
-        if (activeNarration?.textContent) {
-            setIsPlaying(true);
-            if (activeNarration.id) {
-                narrationsHelpers.addListenHistory(activeNarration.id, 'manual').catch(err => {
-                    if (err.response?.status === 403) setIsLimitReached(true);
-                });
-            }
-            Speech.speak(activeNarration.textContent, {
-                language: SPEECH_LANG_MAP[activeNarration.language?.code] ?? 'vi-VN',
-                rate: 0.9,
-                onDone: () => setIsPlaying(false),
-                onError: () => setIsPlaying(false),
-            });
+        if (activeNarration?.textContent || activeNarration?.audioUrl) {
+            startSpeech(activeNarration);
         } else if (activeLangCode) {
-            // No text content -> Trigger translation and auto-play
+            // No content -> Trigger translation and auto-play
             const lang = languages.find(l => l.code === activeLangCode);
             if (lang) {
                 handleLangSelect(lang, true);
             } else {
-                // Fallback: If no lang found for active code, try to reset to default
                 const defaultLang = languages.find(l => l.code === 'vi') || languages[0];
                 if (defaultLang) handleLangSelect(defaultLang, true);
             }
         }
     };
+
 
     if (isLoading) {
         return (
@@ -268,8 +304,8 @@ export default function StallDetailScreen() {
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 {/* HERO */}
                 <View className="relative w-full h-[280px]">
-                    {store.coverImage ? (
-                        <Image source={{ uri: store.coverImage }} className="w-full h-full" resizeMode="cover" />
+                    {localCoverImage || store.coverImage ? (
+                        <Image source={{ uri: localCoverImage || store.coverImage }} className="w-full h-full" resizeMode="cover" />
                     ) : (
                         <View className="w-full h-full bg-[#F3F4F6] items-center justify-center">
                             <Ionicons name="restaurant" size={80} color="#E5E7EB" />

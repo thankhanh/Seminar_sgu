@@ -62,7 +62,26 @@ export default function MapScreen() {
 
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [stores, setStores] = useState<Store[]>([]);
+    const [localImages, setLocalImages] = useState<Record<string, string>>({});
+    const storesRef = useRef<Store[]>([]);
     const [isLoadingStores, setIsLoadingStores] = useState(true);
+
+    // Xử lý nạp ảnh cục bộ (nếu có)
+    useEffect(() => {
+        const resolveImages = async () => {
+            const { OfflineService } = require('../../../services/OfflineService');
+            const mapping: Record<string, string> = {};
+            for (const store of stores) {
+                if (store.coverImage) {
+                    const uri = await OfflineService.resolve(store.coverImage);
+                    if (uri) mapping[store.id] = uri;
+                }
+            }
+            setLocalImages(mapping);
+        };
+        if (stores.length > 0) resolveImages();
+    }, [stores]);
+
     const [selectedStall, setSelectedStall] = useState<Store | null>(null);
     const [lastNarratedStoreId, setLastNarratedStoreId] = useState<string | null>(null);
     const [isNarrating, setIsNarrating] = useState(false);
@@ -80,8 +99,8 @@ export default function MapScreen() {
 
     const isNarratingRef = useRef(false);
     const lastNarratedRef = useRef<string | null>(null);
-    const storesRef = useRef<Store[]>([]);
     const lastLocationRef = useRef<{ lat: number; lng: number } | null>(null);
+
 
     useEffect(() => { isNarratingRef.current = isNarrating; }, [isNarrating]);
     useEffect(() => { lastNarratedRef.current = lastNarratedStoreId; }, [lastNarratedStoreId]);
@@ -447,11 +466,12 @@ export default function MapScreen() {
                                 onPress={() => setSelectedStall(store)}
                             >
                                 <View className="items-center mt-4">
-                                    <View className={`px-4 py-2 rounded-2xl shadow-xl mb-1 items-center border-2 ${selectedStall?.id === store.id
-                                        ? 'bg-[#009FB7] border-[#009FB7]'
-                                        : 'bg-[#111827] border-[#111827]'
-                                        }`}>
-                                        <Text className="text-[11px] font-extrabold text-white tracking-wider uppercase">
+                                    <View className={`px-4 py-2 rounded-2xl shadow-xl mb-1 items-center border-2 ${selectedStall?.id === store.id ? 'bg-[#009FB7] border-white' : 'bg-white border-[#009FB7]/10'}`}>
+                                        <Image
+                                            source={{ uri: localImages[store.id] || store.coverImage || 'https://via.placeholder.com/150' }}
+                                            className="w-12 h-12 rounded-xl mb-1.5 bg-gray-100"
+                                        />
+                                        <Text className={`text-[10px] font-bold ${selectedStall?.id === store.id ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={1}>
                                             {store.name.length > 15 ? store.name.slice(0, 15) + '...' : store.name}
                                         </Text>
                                     </View>

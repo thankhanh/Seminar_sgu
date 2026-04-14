@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../constants/api';
+import api, { languagesHelpers, TOKEN_KEY } from '../constants/api';
 import { translations } from '../constants/translations';
 
 export interface Language {
@@ -25,7 +25,7 @@ const LanguageContext = createContext<LanguageContextType>({
     selectedLanguage: null,
     languages: [],
     isLoading: true,
-    setSelectedLanguage: () => {},
+    setSelectedLanguage: () => { },
     t: (key) => key,
 });
 
@@ -38,26 +38,39 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         const init = async () => {
             try {
                 // Load languages from backend
-                const { data: response } = await api.get('/languages');
-                const active: Language[] = (response.data || []).filter((l: Language) => l.isActive);
+                const response = await languagesHelpers.getLanguages();
+                const active: Language[] = (response || []).filter((l: Language) => l.isActive);
                 setLanguages(active);
 
                 // Restore selected language from storage
                 const saved = await AsyncStorage.getItem(STORAGE_KEY);
+                let currentLang: Language | null = null;
+
                 if (saved) {
                     const parsed = JSON.parse(saved) as Language;
-                    const stillActive = active.find(l => l.code === parsed.code);
-                    if (stillActive) {
-                        setSelectedLanguageState(stillActive);
-                        return;
+                    currentLang = active.find(l => l.code === parsed.code) || null;
+                }
+
+                // Default to Vietnamese or first available language if no saved lang or saved lang is inactive
+                if (!currentLang) {
+                    currentLang = active.find(l => l.code === 'vi') ?? active[0];
+                }
+
+                if (currentLang) {
+                    setSelectedLanguageState(currentLang);
+
+                    // --- TRUY VẤN LẠI OFFLINE NẾU ĐÃ LOGIN ---
+                    const token = await AsyncStorage.getItem(TOKEN_KEY);
+                    if (token) {
+                        try {
+                            const { OfflineService } = require('../services/OfflineService');
+                            OfflineService.syncResources(currentLang.code);
+                        } catch (e) {
+                            console.warn('[LanguageContext] Parallel sync failed:', e);
+                        }
                     }
                 }
 
-                // Default to Vietnamese or first language
-                const defaultLang = active.find(l => l.code === 'vi') ?? active[0];
-                if (defaultLang) {
-                    setSelectedLanguageState(defaultLang);
-                }
             } catch (error) {
                 console.warn('[LanguageContext] Error loading languages:', error);
             } finally {
@@ -66,6 +79,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         };
         init();
     }, []);
+
 
     const setSelectedLanguage = async (lang: Language) => {
         setSelectedLanguageState(lang);
@@ -78,7 +92,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const t = (keyPath: string, defaultValue?: string): string => {
         const langCode = selectedLanguage?.code || 'vi';
         const keys = keyPath.split('.');
-        
+
         // Source of truth: local translations.ts
         let result: any = translations[langCode] || translations['vi'];
 
@@ -98,7 +112,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
                 return fallback;
             }
         }
-        
+
         return typeof result === 'string' ? result : (defaultValue || keyPath);
     };
 

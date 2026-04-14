@@ -7,7 +7,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_URL = 'http://192.168.1.6:3000/api/v1'; // LAN IP for Physical Devices (Hotspot)
+export const API_URL = 'http://172.20.10.6:3000/api/v1'; // LAN IP for Physical Devices (Hotspot)
 // export const API_URL = 'http://10.0.2.2:3000/api/v1'; // For Android Emulator
 export const TOKEN_KEY = 'auth_access_token';
 export const REFRESH_KEY = 'auth_refresh_token';
@@ -86,6 +86,17 @@ export const authHelpers = {
         if (data.user) {
             await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
         }
+
+        // --- OFFLINE SYNC ON LOGIN ---
+        try {
+            const langData = await AsyncStorage.getItem('@smart_tour_lang');
+            const langCode = langData ? JSON.parse(langData).code : 'vi';
+            const { OfflineService } = require('../services/OfflineService');
+            OfflineService.syncResources(langCode); // Chạy ngầm
+        } catch (e) {
+            console.warn('[Login] Failed to start offline sync:', e);
+        }
+
         return data;
     },
 
@@ -106,17 +117,36 @@ export const authHelpers = {
         if (data.user) {
             await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
         }
+
+        // --- OFFLINE SYNC ON REGISTER ---
+        try {
+            const langData = await AsyncStorage.getItem('@smart_tour_lang');
+            const langCode = langData ? JSON.parse(langData).code : 'vi';
+            const { OfflineService } = require('../services/OfflineService');
+            OfflineService.syncResources(langCode);
+        } catch (e) {
+            console.warn('[Register] Failed to start offline sync:', e);
+        }
+
         return data;
     },
 
+
     async logout() {
         try { await api.post('/auth/logout'); } catch (_) { }
+        try {
+            const { OfflineService } = require('../services/OfflineService');
+            await OfflineService.clearCache();
+        } catch (err) {
+            console.warn('[Logout] Failed to clear offline cache:', err);
+        }
         await Promise.all([
             AsyncStorage.removeItem(TOKEN_KEY),
             AsyncStorage.removeItem(REFRESH_KEY),
             AsyncStorage.removeItem(USER_KEY),
         ]);
     },
+
 
     async getUser() {
         const raw = await AsyncStorage.getItem(USER_KEY);

@@ -136,7 +136,21 @@ export const paymentsApi = {
 
 // --- QR Codes ---
 export const qrApi = {
-    getByStore: (storeId: string) => unwrapData(apiClient.get(`/qr/store/${storeId}`)),
     create: (storeId: string) => unwrapData(apiClient.post(`/qr/store/${storeId}`)),
 };
+
+// --- Generic Upload ---
+export const uploadApi = {
+    uploadFile: async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = (await apiClient.post('/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        })) as any;
+        return response.data; // { url, filename }
+    },
+};
+
 

@@ -71,8 +71,12 @@ export class AdminService {
         skip,
         take: limit,
         include: {
-          user: { select: { id: true, name: true, email: true, phone: true } },
-          stores: { select: { id: true, name: true, status: true } },
+          user: {
+            select: { id: true, name: true, email: true, phone: true }
+          },
+          _count: {
+            select: { stores: true }
+          }
         },
         orderBy: { createdAt: 'desc' },
       }),

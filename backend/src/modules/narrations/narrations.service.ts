@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, ConflictException } 
 import { PrismaService } from '../../database/prisma.service';
 import { CreateNarrationDto } from './dto/create-narration.dto';
 import { UpdateNarrationDto } from './dto/update-narration.dto';
+import { deleteFile } from '../../common/utils/file.util';
 
 @Injectable()
 export class NarrationsService {
@@ -264,6 +265,12 @@ export class NarrationsService {
     const narration = await this.prisma.narration.findUnique({ where: { id } });
     if (!narration) throw new NotFoundException('Narration không tồn tại');
     await this.verifyStoreOwner(narration.storeId, user);
+
+    // Xóa file âm thanh cũ nếu có bản mới thay thế
+    if (dto.audioUrl && narration.audioUrl && dto.audioUrl !== narration.audioUrl) {
+      await deleteFile(narration.audioUrl);
+    }
+
     return this.prisma.narration.update({ where: { id }, data: dto });
   }
 
@@ -271,7 +278,13 @@ export class NarrationsService {
     const narration = await this.prisma.narration.findUnique({ where: { id } });
     if (!narration) throw new NotFoundException('Narration không tồn tại');
     await this.verifyStoreOwner(narration.storeId, user);
+    
+    // Xóa file vật lý
+    if (narration.audioUrl) {
+      await deleteFile(narration.audioUrl);
+    }
+
     await this.prisma.narration.delete({ where: { id } });
-    return { success: true, message: 'Đã xóa narration' };
+    return { success: true, message: 'Đã xóa narration và file âm thanh liên quan' };
   }
 }

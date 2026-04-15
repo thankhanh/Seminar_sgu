@@ -1,99 +1,91 @@
-# HƯỚNG DẪN THIẾT KẾ & TRIỂN KHAI CHỨC NĂNG THUYẾT MINH (NARRATION)
+# HƯỚNG DẪN THIẾT KẾ & TRIỂN KHAI CHỨC NĂNG THUYẾT MINH (NARRATION v2.0)
 
-Tài liệu này trình bày giải pháp toàn diện cho chức năng thuyết minh tự động khi người tham quan di chuyển gần các quán ăn (POI).
+Tài liệu này trình bày giải pháp toàn diện cho chức năng thuyết minh tự động và thông minh, kết hợp giữa lưu trữ offline và dịch thuật AI tức thời.
 
 ---
 
 ## 1. TỔNG QUAN QUY TRÌNH (WORKFLOW)
 
-Tính năng hoạt động dựa trên sự phối hợp giữa ba phân hệ: **Web Quản trị**, **Backend Xử lý**, và **Mobile App**.
+Tính năng hoạt động dựa trên sự phối hợp giữa **Mobile App (Xử lý logic chính)** và **Backend (Cung cấp dữ liệu & Dịch thuật)**.
 
 ```mermaid
 sequenceDiagram
-    participant Web as 💻 Web (Admin/Merchant)
-    participant BE as ⚙️ Backend (NestJS)
-    participant DB as 🗄️ Database (PostgreSQL)
-    participant AI as 🧠 Dịch thuật API (Google/Azure)
     participant App as 📱 Mobile App (User)
+    participant Cache as 📁 Local Cache (500MB+)
+    participant BE as ⚙️ Backend (NestJS)
+    participant AI as 🧠 AI Translation (Google)
 
-    Note over Web: Merchant nhập văn bản Tiếng Việt
-    Web->>BE: Lưu text thuyết minh gốc (VI)
-    BE->>DB: Lưu vào bảng Narration
+    Note over App: App lấy vị trí GPS & tính khoảng cách
+    App->>App: Kiểm tra bán kính < 50m
+    App->>App: Hiển thị Proximity Modal
 
-    Note over App: App gửi vị trí định kỳ
-    App->>BE: Gửi (Lat, Lng) & Ngôn ngữ (VD: English - EN)
-    BE->>DB: Truy vấn Store trong bán kính < 100m
-    DB-->>BE: Trả về Store & Text gốc (VI)
+    User->>App: Nhấn nút "Phát thuyết minh"
     
-    rect rgb(230, 245, 255)
-        Note over BE, AI: Xử lý chuyển ngữ tự động
-        BE->>AI: Gửi Text (VI) -> Dịch sang (EN)
-        AI-->>BE: Text đã dịch (EN)
+    App->>Cache: Kiểm tra file MP3/Ảnh cục bộ
+    alt Có trong Cache
+        Cache-->>App: Trả về URI file cục bộ (Xử lý tức thì)
+    else Không có trong Cache
+        App->>BE: GET /stores/:id/narrations?lang=...
+        BE-->>App: Trả về nội dung (Text/Audio URL)
+        
+        opt Nếu thiếu bản dịch ngôn ngữ đó
+            App->>BE: POST /languages/translate (VI -> Target)
+            BE->>AI: Gọi Google Translate API
+            AI-->>BE: Kết quả dịch
+            BE-->>App: Trả về nội dung đã dịch
+        end
     end
 
-    BE-->>App: Trả về Text đã dịch
-    Note over App: Sử dụng thư viện TTS (expo-speech) để đọc lên
-    App->>App: Phát âm bằng giọng nói trên thiết bị
+    Note over App: Phát Audio: MP3 (Local) > MP3 (Remote) > TTS
+    App->>App: Phát thuyết minh cho người dùng
 ```
 
 ---
 
-## 2. GIAO DIỆN WEB (QUẢN LÝ NỘI DUNG)
+## 2. CHẾ ĐỘ PHÁT AUDIO (MEDIA STRATEGY)
 
-Để tối giản hóa cho người dùng (Chủ quán), giao diện đã được thiết kế lại như sau:
+Để tối ưu trải nghiệm, App sử dụng chiến lược 3 lớp:
 
-### A. Cho Chủ quán (Merchant UI)
-*   **Chỉ giữ lại 2 trường thông tin chính**:
-    1.  **Chọn quán ăn**: Dropdown danh sách các quán thuộc quyền sở hữu.
-    2.  **Đoạn nội dung thuyết minh**: Textarea để nhập câu chuyện hoặc thông tin (Yêu cầu nhập bằng **Tiếng Việt**).
-*   **Tự động hóa**: Hệ thống sẽ tự gán mã ngôn ngữ là `vi`, ẩn hoàn toàn các trường Audio URL và Thời lượng.
-
-### B. Cho Quản trị viên (Admin UI)
-*   **Hiển thị danh sách**:
-    *   **Tên quán ăn**: Để Admin biết nội dung thuộc về cơ sở nào.
-    *   **Nội dung văn bản (VI)**: Hiển thị đoạn văn bản thuyết minh gốc.
-    *   **Trạng thái**: Cho phép Admin duyệt (Active) hoặc ẩn (Hidden).
+1.  **Lớp 1: MP3 Offline (Ưu tiên cao nhất)**: Sử dụng `expo-file-system` để đọc file từ thư mục `offline_cache`. Không tốn băng thông, tải cực nhanh.
+2.  **Lớp 2: MP3 Online**: Nếu chưa tải về máy nhưng DB đã có sẵn file Audio (Merchant upload), App sẽ stream trực tiếp từ URL.
+3.  **Lớp 3: TTS (Text-to-Speech)**: Nếu không có file Audio, App dùng `expo-speech` để đọc đoạn văn bản (đã dịch) lên cho khách nghe.
 
 ---
 
-## 3. LOGIC BACKEND (XỬ LÝ TRUNG TÂM)
+## 3. LOGIC XỬ LÝ TRÊN MOBILE (FRONTEND)
 
-### A. Xác định vị trí (Geofencing)
-Backend cung cấp 1 API endpoint: `GET /api/narrations/nearby?lat=...&lng=...&lang=...`
-1.  **Thuật toán**: Tính khoảng cách giữa (Lat, Lng) của User và (Lat, Lng) của tất cả Stores.
-2.  **Bộ lọc**: Lấy Store có khoảng cách $\le 100m$ và có `isActive: true`.
+### A. Xác định vị trí (Geofencing tại Client)
+Hệ thống không còn gọi API liên tục để check khoảng cách. Thay vào đó:
+1.  **Thuật toán**: Sử dụng công thức `Haversine` để tính khoảng cách giữa User và danh sách quán đã tải về từ trước.
+2.  **Bộ lọc**: Kích hoạt Modal khi khoảng cách $\le 50m$.
 
-### B. Dịch thuật tự động (Translation)
-Sau khi tìm thấy Store, Backend kiểm tra:
-*   Nếu ngôn ngữ App yêu cầu là tiếng Việt (`vi`): Trả về text gốc.
-*   Nếu là ngôn ngữ khác (`en`, `ja`, `zh`...):
-    1.  Gọi API dịch thuật (ví dụ: Google Cloud Translation).
-    2.  Trả về kết quả dịch cho App.
-    3.  *(Mở rộng)*: Có thể cache lại bản dịch vào DB để dùng cho các User sau, tiết kiệm chi phí gọi API.
+### B. Đồng bộ Offline (Intelligent Sync)
+Tự động đồng bộ tài nguyên (Ảnh bìa + Audio ngôn ngữ chính) khi:
+-   **Đăng nhập thành công**.
+-   **Khởi động App** (nếu đã login).
+-   **Điều kiện**: Dung lượng trống thiết bị $> 500MB$.
 
 ---
 
-## 4. GIỌNG ĐỌC PHÍA FRONTEND (MOBILE APP)
+## 4. DỊCH THUẬT TỰ ĐỘNG (BACKEND & AI)
 
-Giọng đọc được hiện thực hóa bằng công nghệ **TTS (Text-to-Speech)** trên thiết bị di động.
+Khi User yêu cầu một ngôn ngữ chưa được Merchant chuẩn bị sẵn:
+1.  **Trigger**: Frontend gọi API `POST /languages/translate`.
+2.  **Xử lý**: Backend dịch nội dung Tiếng Việt gốc sang ngôn ngữ mục tiêu.
+3.  **Lưu trữ**: Bản dịch được lưu lại vào Database để sử dụng cho các lần sau (tiết kiệm chi phí AI).
 
-### A. Công nghệ sử dụng
-*   **Thư viện**: `expo-speech` (Sử dụng API giọng đọc hệ điều hành của iOS/Android).
-*   **Ưu điểm**: Giọng đọc tự nhiên, hỗ trợ hàng chục ngôn ngữ mà không cần tải file âm thanh nặng.
+---
 
-### B. Mã ví dụ (React Native/Expo)
-Cài đặt: `npx expo install expo-speech`
+## 5. MÃ NGUỒN THAM KHẢO
 
-```javascript
-import * as Speech from 'expo-speech';
+Cấu trúc logic chính tại:
+-   `frontend/app/services/OfflineService.ts`: Quản lý Cache & Storage.
+-   `frontend/app/app/(tabs)/map/index.tsx`: Xử lý GPS & 50m Alert.
+-   `frontend/app/app/stall/[id].tsx`: Xử lý logic Phát Media 3 lớp.
 
-/**
- * Hàm đọc văn bản nhận được từ Backend
- * @param {string} text - Nội dung backend trả về
- * @param {string} lang - Mã ngôn ngữ (VD: 'en-US', 'vi-VN')
- */
-const playNarration = (text, lang) => {
-    // Kiểm tra và dừng giọng nói cũ nếu đang phát
+---
+*Cập nhật lần cuối: 14/04/2026 bởi Đội ngũ Phát triển.*
+và dừng giọng nói cũ nếu đang phát
     Speech.stop(); 
     
     // Phát giọng nói mới

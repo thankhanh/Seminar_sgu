@@ -27,6 +27,7 @@ import { QrModule } from './modules/qr/qr.module';
 import { MerchantSubscriptionsModule } from './modules/merchant-subscriptions/merchant-subscriptions.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { PlanMetadataModule } from './modules/plan-metadata/plan-metadata.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 @Module({
   imports: [
@@ -59,7 +60,9 @@ import { PlanMetadataModule } from './modules/plan-metadata/plan-metadata.module
     QrModule,
     MerchantSubscriptionsModule,
     SubscriptionsModule,
+    UploadModule,
   ],
+
   controllers: [AppController],
   providers: [
     AppService,

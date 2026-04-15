@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Utensils, Plus, Edit2, Trash2, Search, Loader2, Store, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Utensils, Plus, Edit2, Trash2, Search, Loader2, Store, CheckCircle2, AlertCircle, Upload, X, Camera } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
-import { merchantApi, menusApi } from '../utils/api';
+import { merchantApi, menusApi, uploadApi } from '../utils/api';
 import type { Menu, Store as StoreType } from '../types';
 
 const MenuManagement: React.FC = () => {
@@ -15,6 +15,9 @@ const MenuManagement: React.FC = () => {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+    const [imageUploading, setImageUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Form states
     const [formData, setFormData] = useState({
@@ -24,6 +27,36 @@ const MenuManagement: React.FC = () => {
         imageUrl: '',
         isAvailable: true
     });
+
+    const validateForm = () => {
+        const errors: Record<string, string> = {};
+        if (!formData.name.trim()) errors.name = 'Vui lòng nhập tên món ăn';
+        if (!formData.price || parseFloat(formData.price.replace(/[^\d]/g, '')) <= 0) errors.price = 'Vui lòng nhập giá hợp lệ';
+        if (!formData.imageUrl) errors.imageUrl = 'Vui lòng tải lên ảnh minh họa';
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setImageUploading(true);
+        try {
+            const result = await uploadApi.uploadFile(file);
+            setFormData(prev => ({ ...prev, imageUrl: result.url }));
+            setFormErrors(prev => { const { imageUrl, ...rest } = prev; return rest; });
+        } catch (err: any) {
+            alert(err.message || 'Lỗi khi tải ảnh lên');
+        } finally {
+            setImageUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const getImageSrc = (url: string) => {
+        if (!url) return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c';
+        return url.startsWith('http') ? url : `http://localhost:3000${url}`;
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -54,6 +87,7 @@ const MenuManagement: React.FC = () => {
 
     const handleCreate = async () => {
         if (!selectedStoreId) return;
+        if (!validateForm()) return;
         try {
             await menusApi.create(selectedStoreId, {
                 ...formData,
@@ -69,6 +103,7 @@ const MenuManagement: React.FC = () => {
 
     const handleUpdate = async () => {
         if (!selectedMenu) return;
+        if (!validateForm()) return;
         try {
             await menusApi.update(selectedMenu.id, {
                 ...formData,
@@ -107,6 +142,7 @@ const MenuManagement: React.FC = () => {
     const resetForm = () => {
         setFormData({ name: '', price: '', description: '', imageUrl: '', isAvailable: true });
         setSelectedMenu(null);
+        setFormErrors({});
     };
 
     const filteredMenu = menus.filter(item => 
@@ -173,7 +209,7 @@ const MenuManagement: React.FC = () => {
                     {filteredMenu.map(item => (
                         <div key={item.id} className="flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all group overflow-hidden">
                             <div className="h-48 overflow-hidden relative">
-                                <img src={item.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <img src={getImageSrc(item.imageUrl)} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                 <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => openEdit(item)} className="p-2 bg-white/90 backdrop-blur-sm text-slate-700 hover:text-primary-600 rounded-lg shadow-sm transition-colors"><Edit2 size={16} /></button>
                                     <button onClick={() => handleDelete(item.id)} className="p-2 bg-white/90 backdrop-blur-sm text-slate-700 hover:text-rose-600 rounded-lg shadow-sm transition-colors"><Trash2 size={16} /></button>
@@ -224,25 +260,27 @@ const MenuManagement: React.FC = () => {
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Tên món ăn</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Tên món ăn <span className="text-rose-500">*</span></label>
                         <input 
                             type="text" 
                             value={formData.name}
-                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                            onChange={(e) => { setFormData({...formData, name: e.target.value}); setFormErrors(prev => { const {name, ...rest} = prev; return rest; }); }}
                             placeholder="Nhập tên món ăn..." 
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-primary-500 transition-all font-medium" 
+                            className={`w-full px-4 py-2.5 bg-slate-50 border ${formErrors.name ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200'} rounded-xl focus:outline-none focus:border-primary-500 transition-all font-medium`} 
                         />
+                        {formErrors.name && <p className="text-rose-500 text-[10px] mt-1 font-bold flex items-center gap-1"><AlertCircle size={10} /> {formErrors.name}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Giá bán (VND)</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Giá bán (VND) <span className="text-rose-500">*</span></label>
                             <input 
                                 type="text" 
                                 value={formData.price}
-                                onChange={(e) => setFormData({...formData, price: e.target.value})}
-                                placeholder="35.000" 
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-primary-500 transition-all font-bold text-primary-600" 
+                                onChange={(e) => { setFormData({...formData, price: e.target.value}); setFormErrors(prev => { const {price, ...rest} = prev; return rest; }); }}
+                                placeholder="35000" 
+                                className={`w-full px-4 py-2.5 bg-slate-50 border ${formErrors.price ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200'} rounded-xl focus:outline-none focus:border-primary-500 transition-all font-bold text-primary-600`} 
                             />
+                            {formErrors.price && <p className="text-rose-500 text-[10px] mt-1 font-bold flex items-center gap-1"><AlertCircle size={10} /> {formErrors.price}</p>}
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-1.5">Trạng thái</label>
@@ -267,26 +305,48 @@ const MenuManagement: React.FC = () => {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Link ảnh minh họa</label>
-                        <input 
-                            type="text" 
-                            value={formData.imageUrl}
-                            onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
-                            placeholder="https://images.unsplash.com/..." 
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-primary-500 transition-all" 
-                        />
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Ảnh minh họa <span className="text-rose-500">*</span></label>
+                        {formData.imageUrl ? (
+                            <div className="relative w-full h-40 rounded-xl overflow-hidden border border-slate-200 group">
+                                <img src={getImageSrc(formData.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 bg-white/90 backdrop-blur-sm rounded-xl text-slate-700 hover:text-primary-600 transition-colors shadow-sm">
+                                        <Camera size={18} />
+                                    </button>
+                                    <button type="button" onClick={() => setFormData({...formData, imageUrl: ''})} className="p-2.5 bg-white/90 backdrop-blur-sm rounded-xl text-slate-700 hover:text-rose-600 transition-colors shadow-sm">
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={imageUploading}
+                                className={`w-full h-40 rounded-xl border-2 border-dashed ${formErrors.imageUrl ? 'border-rose-300 bg-rose-50/20' : 'border-slate-200 hover:border-primary-500 hover:bg-primary-50/30'} transition-all flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-primary-600 disabled:opacity-50`}
+                            >
+                                {imageUploading ? (
+                                    <><Loader2 size={28} className="animate-spin text-primary-500" /><span className="text-xs font-bold">Đang tải lên...</span></>
+                                ) : (
+                                    <><Upload size={28} /><span className="text-xs font-bold">Click để chọn ảnh từ máy</span><span className="text-[10px] text-slate-400">JPG, PNG, WebP — Tối đa 5MB</span></>
+                                )}
+                            </button>
+                        )}
+                        {formErrors.imageUrl && <p className="text-rose-500 text-[10px] mt-1 font-bold flex items-center gap-1"><AlertCircle size={10} /> {formErrors.imageUrl}</p>}
+                        <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
                     </div>
                     
                     <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
                         <button 
-                            onClick={() => setIsAddMenuOpen(false)}
+                            onClick={() => { setIsAddMenuOpen(false); resetForm(); }}
                             className="px-6 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
                         >
                             Hủy bỏ
                         </button>
                         <button 
                             onClick={handleCreate}
-                            className="px-8 py-2.5 rounded-xl font-bold text-white bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-500/30 transition-all"
+                            disabled={imageUploading}
+                            className="px-8 py-2.5 rounded-xl font-bold text-white bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-500/30 transition-all disabled:opacity-50"
                         >
                             Thêm vào menu
                         </button>
@@ -303,23 +363,25 @@ const MenuManagement: React.FC = () => {
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Tên món ăn</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Tên món ăn <span className="text-rose-500">*</span></label>
                         <input 
                             type="text" 
                             value={formData.name}
-                            onChange={(e) => setFormData({...formData, name: e.target.value})}
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-primary-500 transition-all font-bold" 
+                            onChange={(e) => { setFormData({...formData, name: e.target.value}); setFormErrors(prev => { const {name, ...rest} = prev; return rest; }); }}
+                            className={`w-full px-4 py-2.5 bg-slate-50 border ${formErrors.name ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200'} rounded-xl focus:outline-none focus:border-primary-500 transition-all font-bold`} 
                         />
+                        {formErrors.name && <p className="text-rose-500 text-[10px] mt-1 font-bold flex items-center gap-1"><AlertCircle size={10} /> {formErrors.name}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Giá bán (VND)</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">Giá bán (VND) <span className="text-rose-500">*</span></label>
                             <input 
                                 type="text" 
                                 value={formData.price}
-                                onChange={(e) => setFormData({...formData, price: e.target.value})}
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-primary-500 transition-all font-black text-primary-600" 
+                                onChange={(e) => { setFormData({...formData, price: e.target.value}); setFormErrors(prev => { const {price, ...rest} = prev; return rest; }); }}
+                                className={`w-full px-4 py-2.5 bg-slate-50 border ${formErrors.price ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200'} rounded-xl focus:outline-none focus:border-primary-500 transition-all font-black text-primary-600`} 
                             />
+                            {formErrors.price && <p className="text-rose-500 text-[10px] mt-1 font-bold flex items-center gap-1"><AlertCircle size={10} /> {formErrors.price}</p>}
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-1.5">Trạng thái</label>
@@ -339,30 +401,52 @@ const MenuManagement: React.FC = () => {
                             rows={3}
                             value={formData.description}
                             onChange={(e) => setFormData({...formData, description: e.target.value})}
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-primary-500 transition-all resize-none shadow-inner" 
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-primary-500 transition-all resize-none" 
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Cập nhật ảnh</label>
-                        <input 
-                            type="text" 
-                            value={formData.imageUrl}
-                            onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
-                            placeholder="Link ảnh mới..." 
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-primary-500 transition-all" 
-                        />
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5">Ảnh minh họa <span className="text-rose-500">*</span></label>
+                        {formData.imageUrl ? (
+                            <div className="relative w-full h-40 rounded-xl overflow-hidden border border-slate-200 group">
+                                <img src={getImageSrc(formData.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 bg-white/90 backdrop-blur-sm rounded-xl text-slate-700 hover:text-primary-600 transition-colors shadow-sm">
+                                        <Camera size={18} />
+                                    </button>
+                                    <button type="button" onClick={() => setFormData({...formData, imageUrl: ''})} className="p-2.5 bg-white/90 backdrop-blur-sm rounded-xl text-slate-700 hover:text-rose-600 transition-colors shadow-sm">
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={imageUploading}
+                                className={`w-full h-40 rounded-xl border-2 border-dashed ${formErrors.imageUrl ? 'border-rose-300 bg-rose-50/20' : 'border-slate-200 hover:border-primary-500 hover:bg-primary-50/30'} transition-all flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-primary-600 disabled:opacity-50`}
+                            >
+                                {imageUploading ? (
+                                    <><Loader2 size={28} className="animate-spin text-primary-500" /><span className="text-xs font-bold">Đang tải lên...</span></>
+                                ) : (
+                                    <><Upload size={28} /><span className="text-xs font-bold">Click để chọn ảnh từ máy</span><span className="text-[10px] text-slate-400">JPG, PNG, WebP — Tối đa 5MB</span></>
+                                )}
+                            </button>
+                        )}
+                        {formErrors.imageUrl && <p className="text-rose-500 text-[10px] mt-1 font-bold flex items-center gap-1"><AlertCircle size={10} /> {formErrors.imageUrl}</p>}
+                        <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
                     </div>
                     
                     <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
                         <button 
-                            onClick={() => setIsEditOpen(false)}
+                            onClick={() => { setIsEditOpen(false); resetForm(); }}
                             className="px-6 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
                         >
                             Hủy bỏ
                         </button>
                         <button 
                             onClick={handleUpdate}
-                            className="px-8 py-2.5 rounded-xl font-bold text-white bg-primary-900 hover:bg-slate-900 shadow-lg shadow-slate-900/20 transition-all"
+                            disabled={imageUploading}
+                            className="px-8 py-2.5 rounded-xl font-bold text-white bg-primary-900 hover:bg-slate-900 shadow-lg shadow-slate-900/20 transition-all disabled:opacity-50"
                         >
                             Cập nhật món
                         </button>

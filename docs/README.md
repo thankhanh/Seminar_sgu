@@ -140,12 +140,14 @@ Seminar_sgu/
 
 ### 📱 Mobile App (User)
 - 🗺️ **Bản đồ GPS** — hiển thị quán gần đó trong bán kính 500m
-- 🔔 **Auto-detect** — popup khi user đến gần quán (< 20m)
-- 🎵 **Audio player** — phát thuyết minh với seek bar
-- 🌐 **Đa ngôn ngữ** — VI, EN, KO, JA, ZH + fallback tự động
+- 🔔 **Cảnh báo Tiệm cận (v2)** — popup Modal khi đến gần quán (< 50m)
+- 💾 **Offline Caching** — tự động lưu trữ ảnh & audio khi máy có > 500MB trống
+- 🎵 **Media Player** — ưu tiên phát MP3 offline, fallback TTS linh hoạt
+- 🌐 **Đa ngôn ngữ & AI** — hỗ trợ dịch thuật tức thời mọi ngôn ngữ qua AI
 - 📷 **QR Scanner** — dự phòng khi GPS không chính xác
 - ⭐ **Yêu thích** — bookmark các quán hay
 - 💎 **Premium** — thanh toán VNPAY / MoMo
+
 
 ### 🖥️ Merchant Dashboard
 - 📊 **Analytics** — lượt nghe, top món, top ngôn ngữ
@@ -264,10 +266,12 @@ AWS_REGION=ap-southeast-1
 | File | Nội dung |
 |------|----------|
 | [workflow.md](./workflow.md) | Luồng hoạt động chi tiết 3 vai trò |
+| [mobile_business_logic.md](./mobile_business_logic.md) | **Nghiệp vụ Mobile chi tiết (GPS, Caching, AI)** |
 | [database.md](./database.md) | Schema 14 bảng PostgreSQL |
 | [database_analysis.md](./database_analysis.md) | ERD + phân tích VNPAY/MoMo + UI checklist |
 | [api.md](./api.md) | Tài liệu REST API đầy đủ |
 | [migration.sql](./migration.sql) | SQL tạo toàn bộ database |
+
 
 ---
 

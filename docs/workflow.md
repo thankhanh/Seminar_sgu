@@ -51,26 +51,24 @@ User mở app
   ↓
 App lấy tọa độ GPS (lat, lng)
   ↓
-Gửi request: GET /stores/search?lat=...&lng=...&radius=500
+Gửi request: GET /stores (Lấy danh sách các quán active)
   ↓
-Backend query PostGIS (tìm quán trong bán kính 500m để hiển thị Map)
+Backend query DB lấy danh sách các quán
   ↓
-Trả về danh sách quán gần
+Trả về danh sách tất cả các quán
+  ↓
+Client tính khoảng cách Haversine để lọc các quán gần (Bán kính 50m)
   ↓
 Hiển thị trên bản đồ (Map View)
 ```
 
+**Query Backend ví dụ (Prisma):**
 
-**Query PostGIS ví dụ:**
-
-```sql
-SELECT *
-FROM stores
-WHERE ST_DWithin(
-  location,
-  ST_MakePoint(lng, lat)::geography,
-  50  -- bán kính 50 mét
-);
+```ts
+this.prisma.store.findMany({
+    where: { status: 'active' },
+    select: { id: true, name: true, address: true, lat: true, lng: true }
+});
 ```
 
 ---

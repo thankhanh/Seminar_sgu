@@ -85,7 +85,9 @@ Cấu trúc logic chính tại:
 
 ---
 *Cập nhật lần cuối: 14/04/2026 bởi Đội ngũ Phát triển.*
-và dừng giọng nói cũ nếu đang phát
+```ts
+    // 5. App phát âm thanh TTS
+    // Dừng giọng nói cũ nếu đang phát
     Speech.stop(); 
     
     // Phát giọng nói mới
@@ -101,6 +103,6 @@ và dừng giọng nói cũ nếu đang phát
 
 ## 5. KẾ HOẠCH TIẾP THEO
 1.  **Hoàn thành UI**: (Đã cập nhật giao diện `AudioManagement.tsx`).
-2.  **Xây dựng API Backend**: Implement logic tính toán khoảng cách 100m.
-3.  **Hợp nhất Dịch thuật**: Cấu hình API Key cho dịch vụ Google Translate trong Backend.
+2.  **Xây dựng API Backend**: Implement logic tính toán khoảng cách.
+3.  **Hợp nhất Dịch thuật**: Cấu hình API Key cho dịch vụ Translate trong Backend.
 4.  **Tích hợp App**: Cập nhật logic theo dõi GPS và gọi hàm `Speech.speak`.

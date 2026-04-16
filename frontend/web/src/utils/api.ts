@@ -137,6 +137,7 @@ export const paymentsApi = {
 // --- QR Codes ---
 export const qrApi = {
     create: (storeId: string) => unwrapData(apiClient.post(`/qr/store/${storeId}`)),
+    getByStore: (storeId: string) => unwrapData(apiClient.get(`/qr/store/${storeId}`)),
 };
 
 // --- Generic Upload ---

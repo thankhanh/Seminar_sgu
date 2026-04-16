@@ -12,6 +12,7 @@ import MapSelector from '../components/MapSelector';
 import ImageUpload from '../components/ImageUpload';
 import QRManagement from '../components/QRManagement';
 import NarrationManagement from '../components/NarrationManagement';
+import type { Store } from '../types';
 
 const StoreManagement: React.FC = () => {
     const { user } = useAuth();

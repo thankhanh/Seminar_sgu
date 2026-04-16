@@ -53,7 +53,7 @@ const MenuManagement: React.FC = () => {
         }
     };
 
-    const getImageSrc = (url: string) => {
+    const getImageSrc = (url?: string) => {
         if (!url) return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c';
         return url.startsWith('http') ? url : `http://localhost:3000${url}`;
     };

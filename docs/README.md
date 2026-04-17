@@ -10,8 +10,8 @@
 |---|---|
 | **Tên dự án** | Restaurant Audio Guide |
 | **Nhóm** | Seminar SGU |
-| **Phiên bản** | v1.0.0 |
-| **Cập nhật** | 2026-03-16 |
+| **Phiên bản** | v1.1.0 |
+| **Cập nhật** | 2026-04-17 |
 
 ### Vấn đề giải quyết
 Khách du lịch nước ngoài thường gặp khó khăn khi tìm hiểu về quán ăn địa phương do rào cản ngôn ngữ. Ứng dụng này tự động phát thuyết minh bằng tiếng mẹ đẻ của khách khi họ đến gần quán.
@@ -92,44 +92,31 @@ Khách du lịch nước ngoài thường gặp khó khăn khi tìm hiểu về 
 
 ```
 Seminar_sgu/
-├── backend/                    # Node.js API server
-│   ├── src/
-│   │   ├── auth/               # Authentication module
-│   │   ├── users/              # User management
-│   │   ├── stores/             # Store CRUD + PostGIS
-│   │   ├── narrations/         # Audio narration
-│   │   ├── menus/              # Menu items
-│   │   ├── payments/           # VNPAY + MoMo integration
-│   │   ├── merchant/           # Merchant dashboard APIs
-│   │   ├── admin/              # Admin APIs
-│   │   └── common/             # Middleware, guards, utils
-│   ├── prisma/                 # Database migrations
-│   │   └── migrations/
+├── backend/                    # Node.js API server (NestJS)
+│   ├── src/                    # Source code API (Auth, Stores, Narrations...)
+│   ├── prisma/                 # Database migrations & schema
 │   └── .env.example
 │
-├── mobile/                     # React Native app
-│   ├── src/
-│   │   ├── screens/
-│   │   ├── components/
-│   │   ├── navigation/
-│   │   ├── services/           # API calls
-│   │   └── store/              # Redux store
-│   └── app.json
-│
-├── dashboard/                  # React web dashboard
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── merchant/
-│   │   │   └── admin/
-│   │   ├── components/
-│   │   └── services/
-│   └── vite.config.ts
+├── frontend/
+│   ├── app/                    # React Native app (Mobile App)
+│   │   ├── app/                # Expo Router screens
+│   │   ├── components/         # Reusable UI components
+│   │   ├── services/           # APIs, Offline Caching (OfflineService.ts)
+│   │   └── constants/          # Consts & Config
+│   │
+│   └── web/                    # React Web Dashboard (Vite)
+│       ├── src/
+│       │   ├── pages/          # Admin & Merchant screens
+│       │   ├── components/
+│       │   └── contexts/
+│       └── vite.config.ts
 │
 └── docs/                       # 📚 Tài liệu dự án
     ├── README.md               ← file này
+    ├── PRD.md                  # Yêu cầu sản phẩm (Product Requirements)
     ├── workflow.md             # Luồng hoạt động
     ├── database.md             # Schema chi tiết
-    ├── database_analysis.md   # ERD + phân tích
+    ├── database_analysis.md    # ERD + phân tích dự án
     ├── api.md                  # API documentation
     └── migration.sql           # SQL tạo database
 ```
@@ -139,28 +126,27 @@ Seminar_sgu/
 ## ⚡ Tính năng chính
 
 ### 📱 Mobile App (User)
-- 🗺️ **Bản đồ GPS** — hiển thị quán gần đó trong bán kính 500m
-- 🔔 **Cảnh báo Tiệm cận (v2)** — popup Modal khi đến gần quán (< 50m)
-- 💾 **Offline Caching** — tự động lưu trữ ảnh & audio khi máy có > 500MB trống
-- 🎵 **Media Player** — ưu tiên phát MP3 offline, fallback TTS linh hoạt
-- 🌐 **Đa ngôn ngữ & AI** — hỗ trợ dịch thuật tức thời mọi ngôn ngữ qua AI
-- 📷 **QR Scanner** — dự phòng khi GPS không chính xác
-- ⭐ **Yêu thích** — bookmark các quán hay
-- 💎 **Premium** — thanh toán VNPAY / MoMo
-
+- 🗺️ **Bản đồ GPS** — hiển thị quán gần đó với logic khoanh vùng
+- 🔔 **Cảnh báo Tiệm cận (Geofencing)** — Modal tự động phát audio khi cách < 50m
+- 💾 **Offline Caching** — thuật toán quét Local FS tải dự phòng Media giúp app mượt mà
+- 🎵 **Media Player** — fallback auto TTS khi file âm thanh thiếu
+- 🌐 **Đa ngôn ngữ & Dịch AI** — Tự động gọi API dịch thông minh khi khác ngôn ngữ đích
+- 📷 **QR Scanner** — dự phòng khi định vị GPS sai sót
+- ⭐ **Hồ Sơ Cá Nhân** — Cập nhật thông tin profile dễ dàng
+- 💎 **Premium** — thanh toán bằng VNPAY / MoMo (sandbox)
 
 ### 🖥️ Merchant Dashboard
-- 📊 **Analytics** — lượt nghe, top món, top ngôn ngữ
-- 🏪 **Quản lý quán** — tạo/sửa quán với bản đồ chọn vị trí
-- 🎙️ **Upload narration** — hỗ trợ upload audio hoặc TTS từ text
-- 📋 **Quản lý menu** — thêm/sửa/xóa món ăn có ảnh
-- 📱 **QR Code** — tạo và tải về QR để in dán tại quán
+- 📊 **Analytics** — lượt nghe, top quán, top đánh giá
+- 🏪 **Quản lý quán** — tạo/sửa thông tin quán chi tiết, tích hợp UI File Uploads xịn xò
+- 🎙️ **Upload narration** — upload audio và văn bản đa chiều
+- 📋 **Quản lý menu & store img** — thêm/sửa/xóa album quán + menu với quản lý lưu trữ rác tự động
+- 📱 **QR Code** — tạo mã check-in in ấn
 
 ### 🖥️ Admin Dashboard
-- ✅ **Duyệt merchant & store** — approve/reject với lý do
-- 👥 **Quản lý users** — kích hoạt/vô hiệu hóa tài khoản
-- 💰 **Quản lý giao dịch** — xem chi tiết VNPAY/MoMo
-- 📈 **Analytics toàn hệ thống** — tổng quan tăng trưởng
+- ✅ **Duyệt merchant & store** — approve/reject gian thương vào hệ thống
+- 👥 **Quản lý users** — chỉnh sửa trạng thái thành viên (Active/Inactive)
+- 💰 **Quản lý giao dịch** — xem lịch sử VNPAY/MoMo
+- 📈 **Bảng xếp hạng hệ thống** — Top POI, Merchant, Khách hàng nổi bật nhất tháng hiển thị Dashboard
 
 ---
 
@@ -212,7 +198,7 @@ npm run start:dev
 ### Web Dashboard
 
 ```bash
-cd dashboard
+cd frontend/web
 npm install
 npm run dev
 # → http://localhost:5173
@@ -221,7 +207,7 @@ npm run dev
 ### Mobile App
 
 ```bash
-cd mobile
+cd frontend/app
 npm install
 npx expo start
 ```
@@ -285,4 +271,4 @@ AWS_REGION=ap-southeast-1
 ---
 
 *Tài liệu này được duy trì bởi nhóm phát triển dự án Seminar SGU.*
-*Cập nhật lần cuối: 2026-03-16*
+*Cập nhật lần cuối: 2026-04-17*

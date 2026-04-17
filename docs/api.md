@@ -785,39 +785,29 @@ textContent: "Welcome..." ← dùng TTS để generate audio
 #### `GET /admin/transactions/:id`
 > Chi tiết giao dịch + raw response VNPAY / MoMo.
 
-#### `GET /admin/transactions/stats`
-> Thống kê doanh thu.
+#### `GET /admin/stats`
+> Thống kê dữ liệu tổng quan cho Admin Dashboard, bao gồm doanh thu, số lượng người dùng/quán, mức độ tăng trưởng (Growth rate) và 3 bảng xếp hạng (Top POI, Top Merchant, Top Client).
 
 **Response `200`:**
 ```json
 {
   "success": true,
   "data": {
+    "userCount": 5420,
+    "merchantCount": 87,
+    "merchantCountPending": 12,
+    "storeCount": 215,
+    "storeCountActive": 200,
+    "transactionCount": 1500,
     "totalRevenue": 12500000,
-    "byMethod": { "vnpay": 8000000, "momo": 4500000 },
-    "byStatus": { "success": 11, "failed": 2, "pending": 1 }
-  }
-}
-```
-
----
-
-### Analytics Hệ Thống
-
-#### `GET /admin/analytics`
-> Tổng quan toàn hệ thống.
-
-**Response `200`:**
-```json
-{
-  "success": true,
-  "data": {
-    "totalUsers": 5420,
-    "totalMerchants": 87,
-    "totalStores": 215,
-    "totalListens": 34200,
-    "topStores": [ ... ],
-    "newUsersThisMonth": 320
+    "userGrowth": 10.5,
+    "storeGrowth": 5.2,
+    "transactionGrowth": 12.3,
+    "revenueGrowth": 15.0,
+    "monthlyRevenue": [10000, 20000, 30000, 40000, 15000, 25000, 50000, 0, 0, 0, 0, 0],
+    "topPOI": { "name": "Bún Bò Huế Mẹ Ghẻ", "count": 120 },
+    "topMerchant": { "name": "Công ty TNHH Ẩm Thực ABC", "count": 15 },
+    "topClient": { "name": "Nguyễn Văn A", "count": 45 }
   }
 }
 ```

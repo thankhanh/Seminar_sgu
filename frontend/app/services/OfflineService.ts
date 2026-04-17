@@ -40,7 +40,7 @@ export const OfflineService = {
      */
     async syncResources(langCode: string) {
         console.log(`[Offline] Starting sync for language: ${langCode}...`);
-        
+
         const sufficient = await this.isStorageSufficient();
         if (!sufficient) {
             console.warn('[Offline] Insufficient storage to start sync (>500MB required)');
@@ -71,7 +71,7 @@ export const OfflineService = {
                 try {
                     const narrations = await narrationsHelpers.getNarrationsByStoreId(store.id);
                     const matching = narrations.find((n: any) => n.language?.code === langCode);
-                    
+
                     if (matching?.audioUrl && matching.audioUrl.startsWith('http')) {
                         const localAudio = await this.downloadFile(matching.audioUrl, manifest);
                         if (localAudio) manifest[matching.audioUrl] = localAudio;
@@ -120,7 +120,7 @@ export const OfflineService = {
         try {
             const manifestRaw = await AsyncStorage.getItem(MANIFEST_KEY);
             if (!manifestRaw) return remoteUrl;
-            
+
             const manifest: OfflineManifest = JSON.parse(manifestRaw);
             const localUri = manifest[remoteUrl];
 

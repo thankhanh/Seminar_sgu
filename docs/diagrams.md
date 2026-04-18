@@ -516,59 +516,59 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A([🧳 User mở app]) --> B{Đã đăng nhập?}
+    A([User mo app]) --> B{Da dang nhap?}
 
-    B -->|Chưa| C[POST /auth/login hoặc /auth/register]
-    C --> D[Chọn ngôn ngữ yêu thích - preferredLanguage]
-    D --> E[Yêu cầu quyền GPS]
+    B -->|Chua| C[POST /auth/login hoac /auth/register]
+    C --> D[Chon ngon ngu yeu thich]
+    D --> E[Yeu cau quyen GPS]
 
-    B -->|Rồi| E
+    B -->|Roi| E
 
-    E --> F{GPS khả dụng?}
+    E --> F{GPS kha dung?}
 
-    F -->|Có| G[expo-location watchPositionAsync]
-    G --> H[GET /stores/nearby?lat=...&lng=...&radius=5]
-    H --> I[StoresService: Haversine filter server-side]
-    I --> J[Hiển thị markers trên MapView]
+    F -->|Co| G[expo-location watchPositionAsync]
+    G --> H[GET /stores/nearby - lat, lng, radius=5]
+    H --> I[StoresService - Haversine filter server-side]
+    I --> J[Hien thi markers tren MapView]
 
-    F -->|Không| K[Hiển thị nút Quét QR Code]
-    K --> L[Mở expo-barcode-scanner]
-    L --> M[Scan QR tại quán]
-    M --> N{QR hợp lệ?}
-    N -->|Có| O[POST /qr/scan/{code} — QrService.scanQr]
-    N -->|Không| P[❌ 404 NotFoundException]
+    F -->|Khong| K[Hien thi nut Quet QR Code]
+    K --> L[Mo expo-barcode-scanner]
+    L --> M[Scan QR tai quan]
+    M --> N{QR hop le?}
+    N -->|Co| O[POST /qr/scan/code - QrService.scanQr]
+    N -->|Khong| P[404 NotFoundException]
     P --> L
 
-    J --> Q{Khoảng cách store <= 100m?}
+    J --> Q{Khoang cach store nho hon 100m?}
 
-    Q -->|Chưa| R[User tiếp tục di chuyển]
+    Q -->|Chua| R[User tiep tuc di chuyen]
     R --> G
 
-    Q -->|Có| S[GET /nearby?lat=...&lng=...&lang=preferredLang]
-    S --> T{Cache hit: narration tồn tại?}
-    T -->|Có - dùng cache| U[Trả về textContent đã dịch sẵn]
-    T -->|Cache miss - dịch mới| V[MyMemory API vi → targetLang]
-    V --> V2[prisma.narration.create - lưu cache]
+    Q -->|Co| S[GET /nearby - lat, lng, lang=preferredLang]
+    S --> T{Cache hit - narration ton tai?}
+    T -->|Co - dung cache| U[Tra ve textContent da dich san]
+    T -->|Cache miss - dich moi| V[MyMemory API dich vi sang targetLang]
+    V --> V2[Luu ban dich vao narrations table]
     V2 --> U
-    T -->|Không có bản gốc vi| W[❌ Chưa có nội dung thuyết minh]
+    T -->|Khong co ban goc vi| W[Chua co noi dung thuyet minh]
 
-    U --> X[📍 Popup Bạn đang gần tên quán]
-    X --> Y{User chọn?}
+    U --> X[Popup - Ban dang gan ten quan]
+    X --> Y{User chon?}
 
-    Y -->|Nghe thuyết minh| Z[GET /stores/{storeId}/narrations]
-    Z --> AA{Narration có audioUrl?}
+    Y -->|Nghe thuyet minh| Z[GET /stores/storeId/narrations]
+    Z --> AA{Narration co audioUrl?}
     AA -->|File MP3| AB[expo-av play audio]
-    AA -->|Chỉ textContent| AC[expo-speech TTS]
-    AB --> AD[POST /listen/{narrationId}?source=gps]
-    AC --> AD
-    AD --> AE{Subscription check}
-    AE -->|free: < 10 hoặc monthly: < 30 hoặc yearly: ∞| AF[prisma.listenHistory.create]
-    AE -->|Hết giới hạn| AG[403 Forbidden - Nâng cấp gói]
-    AF --> AH([✅ Đã ghi lịch sử nghe])
+    AA -->|Chi textContent| AC[expo-speech TTS]
+    AB --> AD1L[POST /listen/narrationId?source=gps]
+    AC --> AD1L
+    AD1L --> AE{Subscription check}
+    AE -->|Con quota| AF[Ghi vao listen_history]
+    AE -->|Het gioi han| AG[403 Forbidden - Nang cap goi]
+    AF --> AH([Ghi lich su thanh cong])
 
-    Y -->|Xem menu| AI[GET /stores/{storeId} - include menus]
-    AI --> AJ[Hiển thị danh sách món ăn + giá]
-    Y -->|Bỏ qua| R
+    Y -->|Xem menu| AI[GET /stores/storeId - include menus]
+    AI --> AJ[Hien thi danh sach mon an va gia]
+    Y -->|Bo qua| R
 
     O --> Z
 
@@ -587,50 +587,50 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([🍜 Merchant truy cập Web Dashboard]) --> B{Có tài khoản?}
+    A([Merchant truy cap Web Dashboard]) --> B{Co tai khoan?}
 
-    B -->|Chưa| C[POST /auth/register - role=user]
-    C --> D[Đăng nhập]
-    D --> E
+    B -->|Chua| C[POST /auth/register - role=user]
+    C --> D[Dang nhap vao dashboard]
+    D --> E2
 
-    B -->|Có| E[POST /merchant/register - businessName, taxCode]
-    E --> F[prisma.merchant.create - status=pending, user.isActive=false]
-    F --> G[⏳ Chờ Admin duyệt]
+    B -->|Co| E2[POST /merchant/register - businessName, taxCode]
+    E2 --> F2[Tao merchant record - status pending, user isActive false]
+    F2 --> G2[Cho Admin duyet]
 
-    G -->|Admin PATCH /admin/merchants/{id}/approve| H[prisma.merchant.update - status=approved\nprisma.user.update - isActive=true\nmerchantSubscriptions.activatePlan - starter]
-    H --> I[✅ Merchant Dashboard mở khóa]
+    G2 -->|Admin Approve| H2[Merchant approved - user kich hoat - nhan goi Starter]
+    H2 --> I2[Merchant Dashboard mo khoa]
 
-    G -->|Admin PATCH /admin/merchants/{id}/reject| J[❌ merchant.rejectReason hiển thị]
-    J --> K{Đăng ký lại?}
-    K -->|Có| E
-    K -->|Không| L([Kết thúc])
+    G2 -->|Admin Reject| J2[merchant.rejectReason hien thi]
+    J2 --> K2{Dang ky lai?}
+    K2 -->|Co| E2
+    K2 -->|Khong| L2([Ket thuc])
 
-    I --> M{Chọn chức năng?}
+    I2 --> M2{Chon chuc nang?}
 
-    M -->|Tạo quán mới| N[Nhập name, address, lat, lng + upload coverImage]
-    N --> O[POST /stores - StoresService.create]
-    O --> P[Multer lưu /uploads + prisma.store.create - status=pending]
-    P --> Q[⏳ Chờ Admin PATCH /stores/{id} - status=active]
-    Q -->|Active| R[✅ Quán live trên app]
+    M2 -->|Tao quan moi| N2[Nhap name, address, lat, lng, upload coverImage]
+    N2 --> O2[POST /stores - StoresService.create]
+    O2 --> P2[Multer luu file + Tao store record - status pending]
+    P2 --> Q2[Cho Admin duyet quan]
+    Q2 -->|Admin kich hoat| R2[Quan live tren app - status active]
 
-    M -->|Upload Narration| S[POST /stores/{storeId}/narrations]
-    S --> T{Có file MP3?}
-    T -->|Có| U[Multer lưu /uploads/audio/]
-    T -->|Không| V[Chỉ nhập textContent - TTS phía client]
-    U --> W[prisma.narration.create - UNIQUE storeId+languageId]
-    V --> W
+    M2 -->|Upload Narration| S2[POST /stores/storeId/narrations]
+    S2 --> T2{Co file MP3?}
+    T2 -->|Co| U2[Multer luu vao /uploads/audio/]
+    T2 -->|Khong| V2[Chi nhap textContent - TTS phia client]
+    U2 --> W2[Tao narration record - UNIQUE storeId + languageId]
+    V2 --> W2
 
-    M -->|Quản lý Menu| X[POST/PATCH/DELETE menus - prisma.menu.create]
-    M -->|Tạo QR Code| Y[POST /qr/store/{storeId} - vô hiệu hóa QR cũ trước]
-    M -->|Xem lịch sử| Z[Xem listen_history của quán mình]
+    M2 -->|Quan ly Menu| X2[POST PATCH DELETE menus]
+    M2 -->|Tao QR Code| Y2[POST /qr/store/storeId - vo hieu hoa QR cu]
+    M2 -->|Xem lich su| Z2[Xem listen_history cua quan minh]
 
-    R --> AA([✅ Setup hoàn tất])
+    R2 --> AA2([Setup hoan tat])
 
     style A fill:#FF9800,color:#fff
-    style I fill:#4CAF50,color:#fff
-    style R fill:#4CAF50,color:#fff
-    style J fill:#f44336,color:#fff
-    style G fill:#FFC107,color:#333
+    style I2 fill:#4CAF50,color:#fff
+    style R2 fill:#4CAF50,color:#fff
+    style J2 fill:#f44336,color:#fff
+    style G2 fill:#FFC107,color:#333
 ```
 
 ---
@@ -639,52 +639,51 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([🛡️ Admin đăng nhập]) --> B[Vào Admin Dashboard]
-    B --> C{Chọn chức năng?}
+    A3([Admin dang nhap]) --> B3[Vao Admin Dashboard]
+    B3 --> C3{Chon chuc nang?}
 
-    C -->|Merchant| D[GET /admin/merchants - AdminService.getAllMerchants]
-    D --> E[prisma.merchant.findMany include user + _count.stores]
-    E --> F[Hiển thị: businessName, taxCode, status, storeCount]
-    F --> G{Quyết định?}
+    C3 -->|Merchant| D3[GET /admin/merchants]
+    D3 --> E3[Lay danh sach merchant - co thong tin user va so quan]
+    E3 --> F3{Quyet dinh?}
 
-    G -->|Approve| H[PATCH /admin/merchants/{id}/approve]
-    H --> H1[prisma.user.update isActive=true]
-    H1 --> H2[prisma.merchant.update status=approved]
-    H2 --> H3[merchantSubscriptionsService.activatePlan - MerchantPlan.starter]
-    H3 --> I[✅ Merchant kích hoạt + auto gói Starter]
+    F3 -->|Approve| G3[PATCH /admin/merchants/id/approve]
+    G3 --> G3a[Cap nhat user isActive = true]
+    G3a --> G3b[Cap nhat merchant status = approved]
+    G3b --> G3c[Kich hoat goi Starter tu dong]
+    G3c --> H3[Merchant duoc kich hoat voi goi Starter]
 
-    G -->|Reject| J[PATCH /admin/merchants/{id}/reject - body.reason]
-    J --> J1[prisma.merchant.update status=rejected + rejectReason]
-    J1 --> K[❌ Merchant bị từ chối]
+    F3 -->|Reject| I3[PATCH /admin/merchants/id/reject - kem ly do]
+    I3 --> I3a[Cap nhat merchant status = rejected, luu rejectReason]
+    I3a --> J3[Merchant bi tu choi]
 
-    C -->|Store| L[GET /stores?status=pending - StoresService.findAll]
-    L --> M[Kiểm tra: ảnh, menu, narrations]
-    M --> N{Nội dung OK?}
+    C3 -->|Store| K3[GET /stores?status=pending]
+    K3 --> L3[Kiem tra: anh, menu, narrations]
+    L3 --> M3{Noi dung OK?}
 
-    N -->|Đủ & hợp lệ| O[PATCH /stores/{id} data.status=active]
-    O --> O1[prisma.store.update status=active]
-    O1 --> P[✅ Quán xuất hiện trên app]
+    M3 -->|Du va hop le| N3[PATCH /stores/id - status active]
+    N3 --> N3a[Cap nhat store status = active]
+    N3a --> O3[Quan xuat hien tren app]
 
-    N -->|Vi phạm hoặc thiếu| Q[PATCH /stores/{id} data.status=hidden]
-    Q --> Q1[prisma.store.update status=hidden]
-    Q1 --> R[Liên hệ Merchant chỉnh sửa]
+    M3 -->|Vi pham hoac thieu| P3[PATCH /stores/id - status hidden]
+    P3 --> P3a[Cap nhat store status = hidden]
+    P3a --> Q3[Lien he Merchant chinh sua]
 
-    C -->|Người dùng| S[GET /admin/users - AdminService.getAllUsers]
-    S --> T[PATCH /admin/users/{id}/toggle-active]
-    T --> T1[prisma.user.update isActive=!isActive]
-    T1 --> U[Bật/tắt tài khoản]
+    C3 -->|Nguoi dung| R3[GET /admin/users]
+    R3 --> S3[PATCH /admin/users/id/toggle-active]
+    S3 --> S3a[Cap nhat user isActive dao nguoc]
+    S3a --> T3[Bat tat tai khoan]
 
-    C -->|Thống kê| V[GET /admin/stats - AdminService.getStats]
-    V --> W[📊 userCount, merchantCount, storeCount, totalRevenue\nmonthlyRevenue chart, topPOI, topMerchant, topClient]
+    C3 -->|Thong ke| U3[GET /admin/stats]
+    U3 --> V3[Dashboard: userCount, merchantCount, storeCount, totalRevenue, topPOI, topMerchant]
 
-    C -->|Lịch sử giao dịch| X[GET /payments/history]
-    X --> Y[Xem transactions: status, amount, paymentMethod, MoMo/VNPAY detail]
+    C3 -->|Giao dich| W3[GET /payments/history]
+    W3 --> X3[Xem transactions: status, amount, paymentMethod, MoMo va VNPAY detail]
 
-    style A fill:#9C27B0,color:#fff
-    style P fill:#4CAF50,color:#fff
-    style I fill:#4CAF50,color:#fff
-    style K fill:#f44336,color:#fff
-    style Q fill:#f44336,color:#fff
+    style A3 fill:#9C27B0,color:#fff
+    style O3 fill:#4CAF50,color:#fff
+    style H3 fill:#4CAF50,color:#fff
+    style J3 fill:#f44336,color:#fff
+    style P3 fill:#f44336,color:#fff
 ```
 
 ---
@@ -693,60 +692,60 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([User / Merchant chọn gói]) --> B[POST /payments/create - type + paymentMethod]
-    B --> C[prisma.planMetadata.findUnique - lấy price theo planKey]
-    C --> D[prisma.transaction.create - status=pending]
+    A4([User hoac Merchant chon goi]) --> B4[POST /payments/create - type va paymentMethod]
+    B4 --> C4[Tra cuu PlanMetadata de lay price theo planKey]
+    C4 --> D4[Tao transaction record - status pending]
 
-    D --> E{paymentMethod?}
+    D4 --> E4{paymentMethod?}
 
-    E -->|vnpay| F[Tạo VNPAY params - vnp_TxnRef, vnp_Amount×100, vnp_ExpireDate]
-    F --> G[HMAC-SHA512 → vnp_SecureHash]
-    G --> G1[prisma.paymentVnpay.create]
-    G1 --> H[Trả về paymentUrl → App mở WebView]
-    H --> I[User thanh toán tại VNPAY]
-    I --> J[VNPAY redirect về /payments/vnpay/return]
-    J --> K{Verify vnp_SecureHash?}
+    E4 -->|vnpay| F4[Tao VNPAY params - vnp TxnRef, Amount nhan 100, ExpireDate]
+    F4 --> G4[Ky HMAC-SHA512 tao vnp SecureHash]
+    G4 --> G4a[Luu paymentVnpay record]
+    G4a --> H4[Tra ve paymentUrl - App mo WebView]
+    H4 --> I4[User thanh toan tai VNPAY]
+    I4 --> J4[VNPAY redirect ve /payments/vnpay/return]
+    J4 --> K4{Verify vnp SecureHash?}
 
-    E -->|momo| L[Tạo MoMo body - orderId, requestType=captureWallet]
-    L --> M[HMAC-SHA256 → signature]
-    M --> M1[prisma.paymentMomo.create]
-    M1 --> N[HTTPS POST /v2/gateway/api/create tới MoMo]
-    N --> O[Trả về payUrl / deeplink → App mở MoMo]
-    O --> P[User xác nhận trong MoMo]
-    P --> Q[MoMo POST /payments/momo/ipn]
-    Q --> R{Verify HMAC-SHA256?}
+    E4 -->|momo| L4[Tao MoMo request - orderId, requestType captureWallet]
+    L4 --> M4[Ky HMAC-SHA256 tao signature]
+    M4 --> M4a[Luu paymentMomo record]
+    M4a --> N4[HTTPS POST toi MoMo API]
+    N4 --> O4[Nhan ve payUrl va deeplink - App mo MoMo]
+    O4 --> P4[User xac nhan trong MoMo]
+    P4 --> Q4[MoMo goi POST /payments/momo/ipn]
+    Q4 --> R4{Verify HMAC-SHA256?}
 
-    K -->|Hợp lệ| S{vnp_ResponseCode = 00?}
-    K -->|Không hợp lệ| T[prisma.transaction.update status=failed]
+    K4 -->|Hop le| S4{vnp ResponseCode bang 00?}
+    K4 -->|Khong hop le| T4[Cap nhat transaction status = failed]
 
-    R -->|Hợp lệ| U{resultCode = 0?}
-    R -->|Không hợp lệ| T
+    R4 -->|Hop le| U4{resultCode bang 0?}
+    R4 -->|Khong hop le| T4
 
-    S -->|Thành công| V[prisma.transaction.update status=success]
-    S -->|Thất bại| T
+    S4 -->|Thanh cong| V4[Cap nhat transaction status = success]
+    S4 -->|That bai| T4
 
-    U -->|Thành công| V
-    U -->|Thất bại| T
+    U4 -->|Thanh cong| V4
+    U4 -->|That bai| T4
 
-    V --> W[handlePostPayment - private method]
-    W --> X{transaction.type?}
-    X -->|user_subscription| Y[userSubscriptionService.create - prisma.subscription.create]
-    X -->|merchant_subscription| Z[merchantSubscriptionsService.activatePlan - prisma.merchantSubscription.create]
+    V4 --> W4[handlePostPayment - private method]
+    W4 --> X4{transaction.type?}
+    X4 -->|user_subscription| Y4[Tao subscription record - plan, startDate, endDate, status active]
+    X4 -->|merchant_subscription| Z4[merchantSubscriptionsService.activatePlan]
 
-    Y --> AA[🎉 Thông báo thành công]
-    Z --> AA
+    Y4 --> AA4[Thong bao thanh cong cho user]
+    Z4 --> AA4
 
-    T --> AB[Thông báo thất bại]
-    AB --> AC{Thử lại?}
-    AC -->|Có| A
-    AC -->|Không| AD([Kết thúc])
+    T4 --> AB4[Thong bao that bai]
+    AB4 --> AC4{Thu lai?}
+    AC4 -->|Co| A4
+    AC4 -->|Khong| AD4([Ket thuc])
 
-    AA --> AD
+    AA4 --> AD4
 
-    style A fill:#FF9800,color:#fff
-    style V fill:#4CAF50,color:#fff
-    style T fill:#f44336,color:#fff
-    style AA fill:#2196F3,color:#fff
+    style A4 fill:#FF9800,color:#fff
+    style V4 fill:#4CAF50,color:#fff
+    style T4 fill:#f44336,color:#fff
+    style AA4 fill:#2196F3,color:#fff
 ```
 
 ---
@@ -755,53 +754,53 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([User kích hoạt GPS gần quán]) --> B[GET /nearby?lat=...&lng=...&lang=preferredLang]
-    B --> C[NarrationsService.findNearby]
+    A5([User kich hoat GPS gan quan]) --> B5[GET /nearby - lat, lng, lang=preferredLang]
+    B5 --> C5[NarrationsService.findNearby]
 
-    C --> D[prisma.store.findMany - status=active]
-    D --> E[Haversine: tìm store trong 100m]
+    C5 --> D5[Lay danh sach stores active]
+    D5 --> E5[Haversine - tim store trong 100m]
 
-    E --> F{Tìm được store?}
-    F -->|Không| G([Không tìm thấy địa điểm trong 100m])
+    E5 --> F5{Tim duoc store?}
+    F5 -->|Khong| G5([Khong tim thay dia diem trong 100m])
 
-    F -->|Có| H[prisma.language.findUnique - where code=targetLang]
-    H --> I{Language hợp lệ?}
-    I -->|Không| J([Ngôn ngữ chưa được hỗ trợ])
+    F5 -->|Co| H5[Tim language theo code targetLang]
+    H5 --> I5{Language hop le?}
+    I5 -->|Khong| J5([Ngon ngu chua duoc ho tro])
 
-    I -->|Có| K[prisma.narration.findUnique - where storeId_languageId]
-    K --> L{Cache hit?}
+    I5 -->|Co| K5[Tim narration theo storeId va languageId]
+    K5 --> L5{Cache hit?}
 
-    L -->|✅ Có sẵn| M[Trả về textContent đã lưu]
+    L5 -->|Co san| M5[Tra ve textContent da luu]
 
-    L -->|❌ Cache miss| N[prisma.narration.findUnique - languageId=vi gốc]
-    N --> O{Bản gốc vi tồn tại?}
+    L5 -->|Cache miss| N5[Tim narration goc - languageId vi]
+    N5 --> O5{Ban goc vi ton tai?}
 
-    O -->|✅ Có| P[translateText via MyMemory API vi→targetLang]
-    P --> Q[prisma.narration.create - lưu cache bản dịch mới]
-    Q --> M
+    O5 -->|Co| P5[Goi MyMemory API dich vi sang targetLang]
+    P5 --> Q5[Luu ban dich moi vao narrations table]
+    Q5 --> M5
 
-    O -->|❌ Không có| R([Địa điểm chưa có thuyết minh gốc tiếng Việt])
+    O5 -->|Khong co| R5([Dia diem chua co thuyet minh goc tieng Viet])
 
-    M --> S[Response found=true storeName textContent distance]
-    S --> T[App nhận textContent → expo-speech TTS đọc]
-    T --> U[POST /listen/{narrationId}?source=gps]
-    U --> V[NarrationsService.recordListen]
-    V --> W{Subscription limit check}
-    W -->|OK| X[prisma.listenHistory.create]
-    X --> Y([✅ Ghi lịch sử thành công])
-    W -->|Hết quota| Z([403 ForbiddenException])
+    M5 --> S5[Tra ve response - found=true, storeName, textContent, distance]
+    S5 --> T5[App nhan textContent - expo-speech TTS doc]
+    T5 --> U5[POST /listen/narrationId?source=gps]
+    U5 --> V5[NarrationsService.recordListen]
+    V5 --> W5{Subscription limit check}
+    W5 -->|Con quota| X5[Ghi vao listen_history]
+    X5 --> Y5([Ghi lich su thanh cong])
+    W5 -->|Het quota| Z5([403 ForbiddenException])
 
-    R --> AA([Gợi ý: Quét QR hoặc xem menu])
-    G --> AA
+    R5 --> AA5([Goi y: Quet QR hoac xem menu])
+    G5 --> AA5
 
-    style A fill:#2196F3,color:#fff
-    style M fill:#4CAF50,color:#fff
-    style Q fill:#4CAF50,color:#fff
-    style Y fill:#4CAF50,color:#fff
-    style R fill:#f44336,color:#fff
-    style J fill:#f44336,color:#fff
-    style Z fill:#f44336,color:#fff
-    style T fill:#9C27B0,color:#fff
+    style A5 fill:#2196F3,color:#fff
+    style M5 fill:#4CAF50,color:#fff
+    style Q5 fill:#4CAF50,color:#fff
+    style Y5 fill:#4CAF50,color:#fff
+    style R5 fill:#f44336,color:#fff
+    style J5 fill:#f44336,color:#fff
+    style Z5 fill:#f44336,color:#fff
+    style T5 fill:#9C27B0,color:#fff
 ```
 
 ---

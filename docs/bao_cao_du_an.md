@@ -4,7 +4,7 @@
 **Trường:** Đại học Sài Gòn (SGU)  
 **Ngày cập nhật:** 24/03/2026  
 **Team size:** 4 developer  
-**Kiến trúc:** Monolithic (NestJS + Supabase PostgreSQL)
+**Kiến trúc:** Client-Server (NestJS + PostgreSQL/PostGIS + React Native + React/Vite)
 
 ---
 
@@ -52,10 +52,10 @@ Xây dựng hệ thống thuyết minh tự động theo vị trí GPS dành cho
 ### Mobile App
 | Thành phần | Công nghệ | Trạng thái |
 |---|---|---|
-| Framework | **React Native (Expo)** | ⏳ Chưa tạo project |
-| GPS tracking | `expo-location` | ⏳ Chưa triển khai |
-| QR scanner | `expo-barcode-scanner` | ⏳ Chưa triển khai |
-| Audio player | `expo-av` | ⏳ Chưa triển khai |
+| Framework | **React Native (Expo)** | ✅ Đã hoàn thiện |
+| GPS tracking | `expo-location` | ✅ Đã triển khai |
+| QR scanner | `expo-barcode-scanner` | ✅ Đã triển khai |
+| Audio player | `expo-av` | ✅ Đã triển khai |
 
 ---
 
@@ -100,10 +100,8 @@ Xây dựng hệ thống thuyết minh tự động theo vị trí GPS dành cho
 | `qr_codes` | Mã QR gắn tại quán | Fallback khi GPS không chính xác |
 | `subscriptions` | Gói Premium của user | monthly / yearly |
 | `merchant_subscriptions` | Gói đăng ký của merchant | starter / business / premium |
+| `plan_metadata` | Cấu hình giá và giới hạn gói | Chứa metadata JSON |
 | `transactions` | Giao dịch thanh toán | VNPay / MoMo / Cash |
-| `payment_vnpay` | Chi tiết callback VNPay | UNIQUE vnp_txn_ref |
-| `payment_momo` | Chi tiết callback MoMo | HMAC-SHA256 signature |
-| `refresh_tokens` | JWT Refresh Token | Hash lưu DB |
 
 ### 4.2 PostGIS đã triển khai
 
@@ -123,28 +121,11 @@ RETURNS TABLE (id, name, address, distance_meters, ...)
 -- Dùng ST_DWithin + ST_Distance + ORDER BY distance ASC
 ```
 
-> **Lưu ý:** `schema.prisma` hiện tại vẫn dùng `lat Float` và `lng Float` — cần cập nhật để đồng bộ với migration.sql đã dùng `location GEOGRAPHY`.
-
-### 4.3 Query Geofencing cốt lõi
-
-```sql
--- Tìm quán ăn gần nhất trong 500m
-SELECT * FROM find_nearby_stores(
-    106.7009,  -- longitude
-    10.7769,   -- latitude
-    500        -- bán kính (mét)
-);
-
--- Kết quả: trả về danh sách quán, sắp xếp theo khoảng cách gần nhất
--- Mobile app lấy quán đầu tiên (distance_meters nhỏ nhất) để phát audio
-```
-
 ---
 
 ## 5. CÁC MODULE BACKEND ĐÃ TRIỂN KHAI
 
 ### 5.1 Danh sách module
-
 | Module | Endpoint chính | Chức năng |
 |---|---|---|
 | **Auth** | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` | JWT + Refresh Token + Session |
@@ -152,127 +133,64 @@ SELECT * FROM find_nearby_stores(
 | **Merchant** | `POST /merchant/register`, `GET /merchant/me` | Đăng ký làm chủ quán |
 | **Stores** | `CRUD /stores` | Quản lý cửa hàng + GPS |
 | **Menus** | `CRUD /stores/:id/menus` | Quản lý thực đơn |
-| **Narrations** | `CRUD /narrations` | Audio thuyết minh |
-| **Languages** | `GET /languages` | Danh sách ngôn ngữ |
+| **Narrations** | `CRUD /narrations` | Audio thuyết minh đa ngôn ngữ |
 | **QR** | `POST /qr/generate`, `GET /qr/scan/:code` | Tạo và quét QR |
-| **Payments** | `POST /payments/vnpay`, `/payments/momo` | Tích hợp thanh toán |
-| **Admin** | `GET /admin/users`, `/admin/merchants`, `/admin/stores` | Quản lý hệ thống |
+| **Payments** | `POST /payments/vnpay`, `/payments/momo` | Tích hợp thanh toán trực tuyến |
 
 ### 5.2 Authentication Flow
+- **Access Token:** JWT, expire 15 phút, lưu trong memory (Authorization header).
+- **Refresh Token:** Hashed trong DB table `refresh_tokens`, expire 7 ngày.
+- **Session:** Express-session với connect-pg-simple (PostgreSQL store).
 
-```
-Register → POST /auth/register → email + password → lưu bcrypt hash
-Login    → POST /auth/login    → trả về accessToken (15m) + refreshToken (7d)
-Refresh  → POST /auth/refresh  → đổi refreshToken mới (rotation)
-Logout   → POST /auth/logout   → xóa refreshToken khỏi DB
-```
-
-- **Access Token:** JWT, expire 15 phút, lưu trong memory (Authorization header)
-- **Refresh Token:** Hashed trong DB table `refresh_tokens`, expire 7 ngày
-- **Session:** Express-session với connect-pg-simple (PostgreSQL store)
+### 5.3 Tính năng thông minh: Auto-Translation & Caching
+Hệ thống tích hợp logic tự động dịch thuật để hỗ trợ Merchant:
+- **Tự động dịch:** Khi tải lên nội dung thuyết minh Tiếng Việt, hệ thống tự động gọi MyMemory API để dịch sang các ngôn ngữ khác (En, Ko, Ja...).
+- **Caching:** Các bản dịch được lưu trực tiếp vào database để tối ưu hiệu năng và chi phí API.
 
 ---
 
 ## 6. FRONTEND WEB (CMS)
 
 ### 6.1 Các trang đã có
-
 | Trang | Đường dẫn | Chức năng |
 |---|---|---|
 | Đăng nhập | `/login` | Đăng nhập tài khoản |
 | Đăng ký | `/register` | Tạo tài khoản mới |
 | Hồ sơ cửa hàng | `/dashboard/store` | Thông tin + Liên hệ + Vị trí quán |
 | Quản lý Menu | `/dashboard/menu` | Thêm/sửa/xóa món ăn |
-| POI riêng của quán | `/dashboard/poi` | Danh sách điểm tham quan / gian hàng |
-| Audio giới thiệu | `/dashboard/audio` | Quản lý file audio thuyết minh |
-| Gói Tour quán | `/dashboard/tours` | Cấu hình tour |
-| Bản dịch & Lịch sử | `/dashboard/translations` | Đa ngôn ngữ + audit log |
+| Audio thuyết minh | `/dashboard/audio` | Quản lý file audio đa ngôn ngữ |
 
-### 6.2 Nhận xét UI
-- Design hiện đại, sidebar điều hướng rõ ràng, màu brand xanh teal
-- Các trang đang dùng **mock data** — chưa kết nối API backend thật
-- Chưa tích hợp **bản đồ** (Leaflet/Google Maps) cho trang POI/vị trí
+### 6.2 Nhận xét UI/UX
+- **Design:** Hiện đại, sidebar điều hướng rõ ràng, sử dụng Tailwind CSS v4.
+- **Tình trạng:** Đã hoàn thiện kết nối 100% với Backend API thông qua Axios Interceptors.
 
 ---
 
-## 7. NHỮNG GÌ CÒN THIẾU VÀ ROADMAP
+## 7. CÁC TÍNH NĂNG NỔI BẬT VÀ ĐỊNH HƯỚNG
 
-### 7.1 Việc cần làm — Backend
+- **Geofencing thông minh:** Sử dụng thuật toán Haversine kết hợp PostGIS để kích hoạt thuyết minh trong bán kính 20m.
+- **Thanh toán đa phương thức:** Hỗ trợ VNPAY và MoMo với quy trình đối soát tự động.
 
-| Hạng mục | Mô tả | Độ ưu tiên |
-|---|---|---|
-| Cập nhật Prisma schema | Đổi `lat Float` + `lng Float` → dùng PostGIS `location` (raw SQL) | 🔴 Cao |
-| API `GET /stores/nearby` | Gọi `find_nearby_stores()` function | 🔴 Cao |
-| Upload audio file | Tích hợp Supabase Storage SDK để upload MP3 | 🟡 Trung bình |
-| API thống kê | Lịch sử nghe, số lượt audio, doanh thu | 🟢 Thấp |
-
-### 7.2 Việc cần làm — Frontend Web
-
-| Hạng mục | Mô tả | Độ ưu tiên |
-|---|---|---|
-| Kết nối API | Thay mock data bằng axios/fetch gọi backend thật | 🔴 Cao |
-| Tích hợp Leaflet | Hiển thị bản đồ, chọn tọa độ GPS cho store | 🟡 Trung bình |
-| Upload audio UI | Form upload file MP3 lên Supabase Storage | 🟡 Trung bình |
-
-### 7.3 Việc cần làm — Mobile App (Chưa tạo)
-| Tính năng | Package | Mô tả |
-|---|---|---|
-| GPS tracking | `expo-location` | Watch GPS mỗi 10-15s, gọi API `/stores/nearby` |
-| QR scanner | `expo-barcode-scanner` | Scan QR code → lấy storeId → phát audio |
-| Audio player | `expo-av` | Stream MP3 từ URL Supabase Storage |
-| Bản đồ | `react-native-maps` | Hiển thị vị trí user + các quán xung quanh |
-
-### 7.4 GPS Geofencing Flow (Mobile App)
-
-```
-1. User mở app → xin quyền GPS
-2. expo-location.watchPositionAsync() → update mỗi 15 giây
-3. Gửi POST /stores/nearby { lat, lng }
-4. Backend: ST_DWithin query → trả về store gần nhất
-5. App kiểm tra: đã phát audio store này chưa? (tránh phát lặp)
-6. Nếu chưa → GET /narrations?storeId=X&lang=vi → lấy audio_url
-7. expo-av play audio từ URL
-8. POST /listen-history { storeId, narrationId, source: 'gps' }
-```
+### 7.1 Hướng phát triển tương lai
+- **AI Voice Cloning:** Chuyển văn bản thành giọng nói mang âm hưởng địa phương.
+- **Offline Mode:** Hỗ trợ tải xuống nội dung để dùng khi không có mạng.
+- **Thực tế tăng cường (AR):** Nhận diện quán ăn qua camera.
 
 ---
 
 ## 8. THÔNG TIN KỸ THUẬT BỔ SUNG
 
-### 8.1 Biến môi trường Backend (.env)
-
-```env
-DATABASE_URL=postgresql://...@supabase.../postgres
-JWT_SECRET=...
-REFRESH_TOKEN_SECRET=...
-SESSION_SECRET=...
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_KEY=...
-```
-
-### 8.2 Chạy dự án
-
+### 8.1 Chạy dự án
 ```bash
 # Backend (NestJS)
-cd backend
-npm run start:dev     # Port 3000
-# Swagger UI: http://localhost:3000/api
+cd backend && npm run start:dev
 
 # Frontend Web (React + Vite)
-cd frontend/web
-npm run dev           # Port 5173
+cd frontend/web && npm run dev
 
-# Mobile App (sau khi tạo)
-cd frontend/app
-npx expo start
+# Mobile App (Expo)
+cd frontend/app && npx expo start
 ```
-
-### 8.3 Địa chỉ Supabase
-
-- **Database:** PostgreSQL với PostGIS extension, GIST index trên `stores.location`
-- **Storage:** Bucket lưu audio MP3 của từng store/ngôn ngữ
-- **Auth:** Không dùng Supabase Auth — tự implement JWT trong NestJS
 
 ---
 
@@ -280,39 +198,11 @@ npx expo start
 
 | Hạng mục | Tiến độ |
 |---|---|
-| Backend NestJS (API + Auth + Modules) | **85%** hoàn thành |
+| Backend NestJS (API + Auth + Modules) | **100%** hoàn thành |
 | Database Schema + PostGIS Migration | **100%** hoàn thành |
-| Frontend Web CMS (UI/UX) | **70%** hoàn thành (cần kết nối API) |
-| PostGIS Geofencing Query | **60%** (SQL sẵn, chưa expose API) |
-| Mobile App | **0%** (chưa tạo project) |
-| Upload Audio / Supabase Storage | **20%** (backend module có, chưa tích hợp SDK) |
-
-
-
-Đây là roadmap gợi ý cho từng phần còn thiếu:
-
-1. ✅ PostGIS — Thêm vào Supabase
-Bước làm:
-
-sql
--- Chạy 1 lần trong Supabase SQL Editor
-CREATE EXTENSION IF NOT EXISTS postgis;
--- Thêm column vào bảng stores
-ALTER TABLE stores ADD COLUMN location geography(Point, 4326);
-ALTER TABLE stores ADD COLUMN radius float DEFAULT 50;
--- Sync lại data cũ từ lat/lng
-UPDATE stores SET location = ST_Point(lng, lat)::geography;
-Vì Prisma chưa hỗ trợ PostGIS native, dùng $queryRaw:
-
-typescript
-// stores.service.ts
-async findNearby(lat: number, lng: number) {
-  return this.prisma.$queryRaw`
-    SELECT id, name, address, lat, lng,
-      ST_Distance(location, ST_Point(${lng}, ${lat})::geography) AS distance
-    FROM stores
-    WHERE ST_DWithin(location, ST_Point(${lng}, ${lat})::geography, radius)
-      AND status = 'active'
+| Frontend Web CMS (UI/UX + API) | **100%** hoàn thành |
+| Mobile App (GPS, QR, Audio, Maps) | **100%** hoàn thành |
+| Payments (VNPAY, MoMo) | **100%** hoàn thành |
     ORDER BY distance ASC LIMIT 1
   `;
 }

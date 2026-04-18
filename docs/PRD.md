@@ -95,7 +95,7 @@ Hệ thống kết hợp **GPS Geofencing + Audio Narration đa ngôn ngữ + QR
 | A2 | Duyệt Store | Approve/Hide store mới tạo | 🔴 P0 |
 | A3 | Quản lý Users | Xem, kích hoạt/vô hiệu hóa tài khoản | 🟡 P1 |
 | A4 | Quản lý Narration | Kiểm duyệt nội dung thuyết minh | 🟡 P1 |
-| A5 | Analytics hệ thống | Dashboard tổng quan: users, stores, revenue | 🟢 P2 |
+| A5 | Analytics hệ thống | Dashboard tổng quan: users, stores, revenue, 3 bảng xếp hạng top tháng | 🟢 P2 |
 | A6 | Quản lý giao dịch | Xem chi tiết thanh toán VNPAY/MoMo | 🟢 P2 |
 
 ### 3.2 Ngoài phạm vi (Out of Scope) — MVP v1.0

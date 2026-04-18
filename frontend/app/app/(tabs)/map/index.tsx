@@ -6,10 +6,11 @@ import * as Speech from 'expo-speech';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import api, { narrationsHelpers } from '../../../constants/api';
+import api, { authHelpers, languagesHelpers, narrationsHelpers, storeHelpers, usersHelpers } from '../../../constants/api';
 import ProximityAlert, { ProximityStore } from '../../../components/ProximityAlert';
 import { useLanguage } from '../../../contexts/LanguageContext';
-import { usersHelpers, storeHelpers } from '../../../constants/api';
+
+
 
 // ==========================================
 // TỌA ĐỘ DÀNH CHO USER ĐỂ TEST (Cách gian hàng ~ 5 mét):
@@ -20,18 +21,7 @@ import { usersHelpers, storeHelpers } from '../../../constants/api';
 
 const { width, height } = Dimensions.get('window');
 
-const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371e3;
-    const p1 = lat1 * Math.PI / 180;
-    const p2 = lat2 * Math.PI / 180;
-    const dp = (lat2 - lat1) * Math.PI / 180;
-    const dl = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
-        Math.cos(p1) * Math.cos(p2) *
-        Math.sin(dl / 2) * Math.sin(dl / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-};
+
 
 const SPEECH_LANG_MAP: Record<string, string> = {
     vi: 'vi-VN', en: 'en-US', zh: 'zh-CN', ko: 'ko-KR',
@@ -46,7 +36,14 @@ interface Language {
     isActive: boolean;
 }
 
+interface Narration {
+    id?: string;
+    textContent?: string;
+    language: { code: string; name?: string };
+}
+
 interface Store {
+
     id: string;
     name: string;
     address: string;
@@ -60,10 +57,31 @@ interface Store {
 export default function MapScreen() {
     const router = useRouter();
     // Dùng ngôn ngữ đã chọn toàn cục từ Home screen
-    const { selectedLanguage, languages, setSelectedLanguage } = useLanguage();
+    const { selectedLanguage, languages, setSelectedLanguage, t } = useLanguage();
+
+
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [stores, setStores] = useState<Store[]>([]);
+    const [localImages, setLocalImages] = useState<Record<string, string>>({});
+    const storesRef = useRef<Store[]>([]);
     const [isLoadingStores, setIsLoadingStores] = useState(true);
+
+    // Xử lý nạp ảnh cục bộ (nếu có)
+    useEffect(() => {
+        const resolveImages = async () => {
+            const { OfflineService } = require('../../../services/OfflineService');
+            const mapping: Record<string, string> = {};
+            for (const store of stores) {
+                if (store.coverImage) {
+                    const uri = await OfflineService.resolve(store.coverImage);
+                    if (uri) mapping[store.id] = uri;
+                }
+            }
+            setLocalImages(mapping);
+        };
+        if (stores.length > 0) resolveImages();
+    }, [stores]);
+
     const [selectedStall, setSelectedStall] = useState<Store | null>(null);
     const [lastNarratedStoreId, setLastNarratedStoreId] = useState<string | null>(null);
     const [isNarrating, setIsNarrating] = useState(false);
@@ -71,6 +89,8 @@ export default function MapScreen() {
     const [showLangPicker, setShowLangPicker] = useState(false);
     const [isLimitReached, setIsLimitReached] = useState(false);
     const [isNarrationDisabled, setIsNarrationDisabled] = useState(false);
+    const [isTranslating, setIsTranslating] = useState(false);
+
 
     // Proximity alert queue
     const [proximityAlert, setProximityAlert] = useState<ProximityStore | null>(null);
@@ -79,8 +99,8 @@ export default function MapScreen() {
 
     const isNarratingRef = useRef(false);
     const lastNarratedRef = useRef<string | null>(null);
-    const storesRef = useRef<Store[]>([]);
     const lastLocationRef = useRef<{ lat: number; lng: number } | null>(null);
+
 
     useEffect(() => { isNarratingRef.current = isNarrating; }, [isNarrating]);
     useEffect(() => { lastNarratedRef.current = lastNarratedStoreId; }, [lastNarratedStoreId]);
@@ -90,17 +110,24 @@ export default function MapScreen() {
     useEffect(() => {
         const fetchLimitStatus = async () => {
             try {
+                const loggedIn = await authHelpers.isLoggedIn();
+                if (!loggedIn) {
+                    setIsLimitReached(false);
+                    return;
+                }
                 const profile = await usersHelpers.getProfile();
-                if (profile && profile.data) setIsLimitReached(profile.data.isLimitReached);
+                if (profile) setIsLimitReached(profile.isLimitReached);
             } catch (error) {
                 console.warn('Lỗi khi tải limit status:', error);
             }
         };
+
         const fetchStores = async () => {
             try {
                 const data = await storeHelpers.getStore();
                 if (data && data?.data) {
                     setStores(data.data);
+                    storesRef.current = data.data; // Sync ref immediately
                 }
             } catch (error) {
                 console.warn('Lỗi khi tải danh sách quán:', error);
@@ -112,6 +139,12 @@ export default function MapScreen() {
         fetchStores();
     }, []);
 
+    // Keep storesRef in sync with stores state for GPS watcher
+    useEffect(() => {
+        storesRef.current = stores;
+    }, [stores]);
+
+
     // Khi stores load xong, kiểm tra lại proximity với vị trí GPS mới nhất
     useEffect(() => {
         if (stores.length > 0 && lastLocationRef.current) {
@@ -121,10 +154,10 @@ export default function MapScreen() {
     }, [stores]);
 
     const initialRegion = {
-        latitude: 10.4967,
-        longitude: 105.1167,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
+        latitude: 10.7592,
+        longitude: 106.7071,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
     };
 
     // GPS watcher
@@ -136,20 +169,36 @@ export default function MapScreen() {
                 { accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
                 (loc) => {
                     setLocation(loc);
-                    // TEST: Uncomment để test gần Vinh Khanh Coffee
-                    checkProximity(10.28405, 105.52044);
-                    lastLocationRef.current = { lat: 10.28405, lng: 105.52044 };
-                    // checkProximity(loc.coords.latitude, loc.coords.longitude);
-                    // lastLocationRef.current = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+
+                    // ==========================================
+                    // CHẾ ĐỘ GIẢ LẬP ĐỂ TEST (BẬT cái này để thấy thông báo ngay lập tức)
+                    // ==========================================
+                    const SIMULATE_GPS = false; // Đổi thành false để dùng GPS thật
+
+                    if (SIMULATE_GPS) {
+                        // Tọa độ gần Ớt Xiêm Quán (Để test thông báo hiện lên ngay)
+                        const testLat = 10.76105;
+                        const testLng = 106.70466;
+                        checkProximity(testLat, testLng);
+                        lastLocationRef.current = { lat: testLat, lng: testLng };
+                    } else {
+                        checkProximity(loc.coords.latitude, loc.coords.longitude);
+                        lastLocationRef.current = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+                    }
+
                 }
             );
             return () => locationWatcher.remove();
         })();
     }, [selectedLanguage]);
 
-    // Tìm tất cả POI trong 10m, sort theo khoảng cách, queue lần lượt
+
+    // Tìm tất cả POI trong phạm vi gần, sort theo khoảng cách, queue lần lượt
     const checkProximity = (lat: number, lng: number) => {
-        if (storesRef.current.length === 0) return;
+        if (storesRef.current.length === 0) {
+            console.log('[GPS] Haven\'t loaded stores yet...');
+            return;
+        }
 
         const nearby: ProximityStore[] = storesRef.current
             .map(store => ({
@@ -159,10 +208,15 @@ export default function MapScreen() {
                 coverImage: store.coverImage,
                 distance: haversineDistance(lat, lng, store.lat, store.lng),
             }))
-            .filter(s => s.distance <= 10)
+            .filter(s => s.distance <= 50) // Tăng lên 50m để dễ kích hoạt thông báo khi test
             .sort((a, b) => a.distance - b.distance);
 
+        if (nearby.length > 0) {
+            console.log(`[GPS] Found ${nearby.length} stores nearby!`);
+        }
+
         const undismissed = nearby.filter(s => !dismissedStoresRef.current.has(s.id));
+
 
         if (undismissed.length > 0) {
             proximityQueueRef.current = undismissed;
@@ -188,50 +242,96 @@ export default function MapScreen() {
         setProximityAlert(remaining.length > 0 ? remaining[0] : null);
     };
 
-    const checkNearbyNarration = async (lat: number, lng: number) => {
-        if (!selectedLanguage || isLimitReached) return;
-        try {
-            const { data: json } = await storeHelpers.checkNearBy(lat, lng, selectedLanguage.code);
-            const data = json.data ?? json;
-            if (data.found && data.storeName) {
-                if (data.storeName !== lastNarratedRef.current && !isNarratingRef.current) {
-                    playNarration(data.textContent, data.storeName);
-                }
-                setIsNarrationDisabled(false);
-            } else {
-                setIsNarrationDisabled(true);
-            }
-        } catch (error) {
-            console.warn('Lỗi kết nối API thuyết minh:', error);
-        }
-    };
+    // const checkNearbyNarration = async (lat: number, lng: number) => {
+    //     if (!selectedLanguage || isLimitReached) return;
+    //     try {
+    //         const { data: json } = await storeHelpers.checkNearBy(lat, lng, selectedLanguage.code);
+    //         const data = json.data ?? json;
+    //         if (data.found && data.storeName) {
+    //             if (data.storeName !== lastNarratedRef.current && !isNarratingRef.current) {
+    //                 playNarration({
+    //                     textContent: data.textContent,
+    //                     language: { code: selectedLanguage.code }
+    //                 });
+    //             }
+
+    //             setIsNarrationDisabled(false);
+    //         } else {
+    //             setIsNarrationDisabled(true);
+    //         }
+    //     } catch (error) {
+    //         console.warn('Lỗi kết nối API thuyết minh:', error);
+    //     }
+    // };
 
     const handleListen = async (store: any) => {
         if (isNarrating) { stopNarration(); return; }
         if (isLimitReached) {
-            Alert.alert('Giới hạn lượt nghe', 'Bạn đã hết lượt nghe trong ngày. Vui lòng nâng cấp gói.');
+            Alert.alert(t('map.limit_reached_title'), t('map.limit_reached_msg'));
             return;
         }
-        checkNearbyNarration(store.lat, store.lng);
-        const data = narrationsHelpers.addListenHistory(store.id);
-        if (!data) {
-            Alert.alert('Lỗi', 'Không thể thêm lịch sử nghe.');
-            return;
+
+        if (!selectedLanguage) return;
+
+        try {
+            // 1. Fetch available narrations for this store
+            const narrs = await narrationsHelpers.getNarrationsByStoreId(store.id);
+            const matching = (narrs as Narration[]).find(n => n.language?.code === selectedLanguage.code);
+
+            if (matching?.textContent) {
+                // Record history and play
+                narrationsHelpers.addListenHistory(matching.id || '', 'manual').catch(() => { });
+                playNarration(matching);
+            } else {
+                // 2. No matching narration -> Look for source (VI)
+                const source = (narrs as Narration[]).find(n => n.language?.code === 'vi') || (narrs[0] as Narration);
+                if (source?.textContent) {
+                    setIsTranslating(true);
+                    try {
+                        // 3. Trigger translation with persistence
+                        const translatedData = await languagesHelpers.translateText(source.textContent, 'vi', selectedLanguage.code, store.id);
+
+
+                        // 4. Refresh narrations to get the new one
+                        const freshNarrs = await narrationsHelpers.getNarrationsByStoreId(store.id);
+                        const newMatching = (freshNarrs as Narration[]).find((n: Narration) => n.language?.code === selectedLanguage.code)
+                            || { ...translatedData, textContent: translatedData.textContent || translatedData.translatedText, language: { code: selectedLanguage.code } };
+
+                        if (newMatching) {
+                            setTimeout(() => {
+                                playNarration(newMatching);
+                            }, 500);
+                        }
+                    } catch (err) {
+
+                        console.error('[Map] Translation failed', err);
+                        Alert.alert(t('common.error'), t('common.error_msg'));
+                    } finally {
+                        setIsTranslating(false);
+                    }
+                } else {
+                    Alert.alert(t('stall.narration'), "No source text available for translation.");
+                }
+            }
+        } catch (error) {
+            console.warn('[Map] Error in handleListen:', error);
+            Alert.alert(t('common.error'), "Could not connect to narration service.");
         }
     }
 
-    const playNarration = (text: string, storeId: string) => {
-        if (!selectedLanguage) return;
-        setLastNarratedStoreId(storeId);
+    const playNarration = (narration: Narration) => {
+        if (!narration.textContent) return;
+        setLastNarratedStoreId(selectedStall?.id || null);
         setIsNarrating(true);
-        Speech.speak(text, {
-            language: SPEECH_LANG_MAP[selectedLanguage.code] ?? 'vi-VN',
+        Speech.speak(narration.textContent, {
+            language: SPEECH_LANG_MAP[narration.language?.code] || 'vi-VN',
             pitch: 1.0,
             rate: 0.9,
             onDone: () => setIsNarrating(false),
             onError: () => setIsNarrating(false),
         });
     };
+
 
     const stopNarration = () => {
         Speech.stop();
@@ -240,7 +340,8 @@ export default function MapScreen() {
 
     const userLocation = location
         ? { latitude: location.coords.latitude, longitude: location.coords.longitude }
-        : { latitude: 10.4967, longitude: 105.1167 };
+        : { latitude: 10.7592, longitude: 106.7071 };
+
 
     return (
         <SafeAreaView className="flex-1 bg-[#F9FAFB] relative">
@@ -252,13 +353,15 @@ export default function MapScreen() {
                     </TouchableOpacity>
                     <View className="items-center">
                         <Text className="text-[14px] font-extrabold text-[#1F2937] tracking-wider uppercase">
-                            Vinh Khanh Street
+                            {t('login.brand')}
                         </Text>
+
                         <View className="flex-row items-center mt-0.5">
                             <View className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5" />
                             <Text className="text-[10px] font-bold text-[#6B7280] tracking-widest uppercase">
-                                Live Density Heatmap
+                                {t('map.heatmap')}
                             </Text>
+
                         </View>
                     </View>
                     <TouchableOpacity>
@@ -279,11 +382,13 @@ export default function MapScreen() {
                             <Text className="text-base mr-2">{selectedLanguage?.flagIcon ?? '🌐'}</Text>
                         )}
                         <Text className="text-xs font-bold text-[#1F2937] mr-1">
-                            {selectedLanguage?.name ?? 'Chọn ngôn ngữ'}
+                            {selectedLanguage?.name ?? t('map.select_lang')}
                         </Text>
+
                         <Ionicons name="chevron-down" size={12} color="#6B7280" />
                     </TouchableOpacity>
-                    <Text className="text-[11px] text-[#9CA3AF] ml-3">Ngôn ngữ thuyết minh</Text>
+                    <Text className="text-[11px] text-[#9CA3AF] ml-3">{t('home.lang_selector')}</Text>
+
                 </View>
 
                 {/* === LANGUAGE PICKER MODAL === */}
@@ -297,8 +402,9 @@ export default function MapScreen() {
                         <View className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl pb-8 pt-4 px-6">
                             <View className="w-12 h-1 rounded-full bg-[#E5E7EB] self-center mb-5" />
                             <Text className="text-[17px] font-extrabold text-[#1F2937] mb-4">
-                                Chọn ngôn ngữ thuyết minh
+                                {t('login.select_language')}
                             </Text>
+
                             {languages.map((lang) => {
                                 const isActive = selectedLanguage?.code === lang.code;
                                 return (
@@ -307,9 +413,10 @@ export default function MapScreen() {
                                         onPress={() => {
                                             if (isNarrating) stopNarration();
                                             setLastNarratedStoreId(null);
-                                            setSelectedLanguage(lang);
                                             setShowLangPicker(false);
+                                            setSelectedLanguage(lang);
                                         }}
+
                                         className={`flex-row items-center px-4 py-3.5 rounded-2xl mb-2 ${isActive ? 'bg-[#009FB7]/10 border border-[#009FB7]' : 'bg-[#F9FAFB]'}`}
                                     >
                                         <Text className="text-2xl mr-4">{lang.flagIcon}</Text>
@@ -359,11 +466,12 @@ export default function MapScreen() {
                                 onPress={() => setSelectedStall(store)}
                             >
                                 <View className="items-center mt-4">
-                                    <View className={`px-4 py-2 rounded-2xl shadow-xl mb-1 items-center border-2 ${selectedStall?.id === store.id
-                                        ? 'bg-[#009FB7] border-[#009FB7]'
-                                        : 'bg-[#111827] border-[#111827]'
-                                        }`}>
-                                        <Text className="text-[11px] font-extrabold text-white tracking-wider uppercase">
+                                    <View className={`px-4 py-2 rounded-2xl shadow-xl mb-1 items-center border-2 ${selectedStall?.id === store.id ? 'bg-[#009FB7] border-white' : 'bg-white border-[#009FB7]/10'}`}>
+                                        <Image
+                                            source={{ uri: localImages[store.id] || store.coverImage || 'https://via.placeholder.com/150' }}
+                                            className="w-12 h-12 rounded-xl mb-1.5 bg-gray-100"
+                                        />
+                                        <Text className={`text-[10px] font-bold ${selectedStall?.id === store.id ? 'text-white' : 'text-[#1F2937]'}`} numberOfLines={1}>
                                             {store.name.length > 15 ? store.name.slice(0, 15) + '...' : store.name}
                                         </Text>
                                     </View>
@@ -379,8 +487,9 @@ export default function MapScreen() {
                     {isLoadingStores && (
                         <View className="absolute top-4 left-1/2 -translate-x-12 z-20 bg-white rounded-full px-4 py-2 shadow-md flex-row items-center">
                             <ActivityIndicator size="small" color="#009FB7" />
-                            <Text className="text-xs text-[#4B5563] ml-2">Đang tải quán...</Text>
+                            <Text className="text-xs text-[#4B5563] ml-2">{t('map.loading_stalls')}</Text>
                         </View>
+
                     )}
 
                     {/* Narration indicator */}
@@ -390,8 +499,9 @@ export default function MapScreen() {
                             className="absolute top-4 left-4 z-20 bg-[#009FB7] rounded-full px-4 py-2 shadow-md flex-row items-center"
                         >
                             <Ionicons name="volume-high" size={14} color="white" />
-                            <Text className="text-xs text-white font-bold ml-2">Đang đọc... (bấm dừng)</Text>
+                            <Text className="text-xs text-white font-bold ml-2">{t('map.narrating')}</Text>
                         </TouchableOpacity>
+
                     )}
 
                     {/* Floating Controls */}
@@ -427,8 +537,10 @@ export default function MapScreen() {
                                             <View className="flex-row items-center mt-1">
                                                 <Ionicons name="document-text-outline" size={11} color="#009FB7" />
                                                 <Text className="text-[11px] text-[#009FB7] ml-1 font-semibold">
-                                                    {selectedStall._count.narrations} thuyết minh
+                                                    {selectedStall._count.narrations} {t('common.units.narrations')}
                                                 </Text>
+
+
                                             </View>
                                         )}
                                     </View>
@@ -446,8 +558,9 @@ export default function MapScreen() {
                                         className="flex-1 bg-[#009FB7] rounded-xl h-12 items-center justify-center shadow-lg"
                                     >
                                         <Text className="text-white text-[12px] font-extrabold tracking-widest uppercase">
-                                            Xem Chi Tiết
+                                            {t('map.view_details')}
                                         </Text>
+
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={() => {
@@ -473,13 +586,37 @@ export default function MapScreen() {
                     )}
                 </View>
 
-                {/* === PROXIMITY ALERT COMPONENT === */}
                 <ProximityAlert
                     store={proximityAlert}
                     onConfirm={handleProximityConfirm}
                     onDismiss={handleProximityDismiss}
                 />
+
+                {/* === TRANSLATION MODAL === */}
+                <Modal transparent visible={isTranslating} animationType="fade">
+                    <View className="flex-1 bg-black/50 items-center justify-center px-10">
+                        <View className="bg-white rounded-[30px] p-8 w-full items-center shadow-2xl">
+                            <ActivityIndicator size="large" color="#009FB7" />
+                            <Text className="text-[#1F2937] text-lg font-black mt-6 text-center">{t('stall.translating')}</Text>
+                            <Text className="text-[#6B7280] text-sm font-medium mt-2 text-center">{t('stall.translating_sub')}</Text>
+
+                        </View>
+                    </View>
+                </Modal>
             </View>
+
         </SafeAreaView>
     );
+}
+// Hàm tính khoảng cách giữa 2 tọa độ (đơn vị: mét)
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+    const R = 6371000; // Bán kính trái đất tính bằng mét
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
 }

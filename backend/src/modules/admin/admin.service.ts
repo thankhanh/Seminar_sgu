@@ -71,8 +71,12 @@ export class AdminService {
         skip,
         take: limit,
         include: {
-          user: { select: { id: true, name: true, email: true, phone: true } },
-          stores: { select: { id: true, name: true, status: true } },
+          user: {
+            select: { id: true, name: true, email: true, phone: true }
+          },
+          _count: {
+            select: { stores: true }
+          }
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -177,6 +181,41 @@ export class AdminService {
       return Math.round(growth * 10) / 10; // 1 decimal place
     };
 
+    // --- Top Rankings ---
+    const topPOIResult = await this.prisma.listenHistory.groupBy({
+      by: ['storeId'],
+      where: { listenedAt: { gte: firstDayCurrentMonth } },
+      _count: { storeId: true },
+      orderBy: { _count: { storeId: 'desc' } },
+      take: 1,
+    });
+    let topPOI = null;
+    if (topPOIResult.length > 0) {
+      const store = await this.prisma.store.findUnique({ where: { id: topPOIResult[0].storeId }, select: { name: true } });
+      topPOI = { name: store?.name || 'Bí ẩn', count: topPOIResult[0]._count.storeId };
+    }
+
+    const topMerchantResult = await this.prisma.merchant.findFirst({
+      orderBy: { stores: { _count: 'desc' } },
+      select: { businessName: true, _count: { select: { stores: true } } },
+    });
+    const topMerchant = topMerchantResult
+      ? { name: topMerchantResult.businessName || 'Chưa rõ', count: topMerchantResult._count.stores }
+      : null;
+
+    const topClientResult = await this.prisma.listenHistory.groupBy({
+      by: ['userId'],
+      where: { listenedAt: { gte: firstDayCurrentMonth } },
+      _count: { userId: true },
+      orderBy: { _count: { userId: 'desc' } },
+      take: 1,
+    });
+    let topClient = null;
+    if (topClientResult.length > 0) {
+      const user = await this.prisma.user.findUnique({ where: { id: topClientResult[0].userId }, select: { name: true } });
+      topClient = { name: user?.name || 'Khách', count: topClientResult[0]._count.userId };
+    }
+
     return {
       userCount,
       merchantCount,
@@ -193,6 +232,9 @@ export class AdminService {
         Number(lastMonthRevenue._sum.amount || 0),
       ),
       monthlyRevenue,
+      topPOI,
+      topMerchant,
+      topClient,
     };
   }
 }

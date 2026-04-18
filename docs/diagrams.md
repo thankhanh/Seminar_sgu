@@ -88,33 +88,26 @@ sequenceDiagram
     participant App as Mobile App
     participant GPS as expo-location
     participant API as NestJS Backend
-    participant PG as PostgreSQL + PostGIS
 
     U->>App: Mở app
+    App->>API: GET /stores (Lấy tất cả quán active)
+    API-->>App: 200 { data: [...] }
+    
     App->>GPS: watchPositionAsync() mỗi 15 giây
     GPS-->>App: { lat: 10.7769, lng: 106.7009 }
     
-    App->>API: GET /stores/nearby?lat=10.7769&lng=106.7009&radius=500
-    API->>PG: SELECT * FROM find_nearby_stores(106.7009, 10.7769, 500)
-    
-    Note over PG: ST_DWithin + ST_Distance<br/>ORDER BY distance ASC
-    
-    PG-->>API: [{id, name, distance: 87.5m}, {id, name, distance: 230m}]
-    API-->>App: 200 { stores: [...] }
+    App->>App: Client-side Haversine Distance
     App->>App: Hiển thị markers trên bản đồ
 
-    Note over U,PG: === GEOFENCE TRIGGER (< 20m) ===
+    Note over U,App: === GEOFENCE TRIGGER (<= 50m) ===
     
     GPS-->>App: { lat: 10.7770, lng: 106.7010 }
-    App->>API: GET /stores/nearby?lat=...&lng=...&radius=20
-    API->>PG: find_nearby_stores(lng, lat, 20)
-    PG-->>API: [{id: "store-uuid", name: "Bún Bò Huế", distance: 12m}]
-    API-->>App: 200 { stores: [Bún Bò Huế] }
+    App->>App: Lọc quán: khoảng cách <= 50m
     
-    App->>App: Kiểm tra: đã trigger store này trong 30 phút chưa?
+    App->>App: Kiểm tra: đã trigger quán này trong phiên hiện tại chưa?
     
     alt Chưa trigger
-        App-->>U: 📍 Popup "Bạn đang gần Bún Bò Huế — Nghe thuyết minh?"
+        App-->>U: 📍 Popup "Bạn đang gần Bún Bò Huế — Nghe chi tiết?"
     else Đã trigger rồi
         App->>App: Bỏ qua (tránh spam)
     end
@@ -131,7 +124,7 @@ sequenceDiagram
     participant App as Mobile App
     participant API as NestJS Backend
     participant DB as PostgreSQL
-    participant S3 as Supabase Storage
+    participant FS as Local Uploads / Cache
 
     U->>App: Nhấn "Nghe thuyết minh" (store_id)
     App->>API: GET /stores/{storeId}/narrations?lang=ko
@@ -140,21 +133,21 @@ sequenceDiagram
     
     alt Có bản narration tiếng Hàn
         DB-->>API: { audioUrl, textContent, duration }
-    else Không có → Fallback sang English
-        API->>DB: SELECT * FROM narrations<br/>WHERE store_id = ? AND language = 'en'
-        DB-->>API: { audioUrl (English), duration }
+    else Không có → Dịch thuật tự động bằng Ai
+        API->>DB: Fallback: Dịch từ 'vi' hoặc Text-To-Speech
+        DB-->>API: { textContent (Translated), duration }
     end
     
-    API-->>App: 200 { narration: { audioUrl, language, duration } }
+    API-->>App: 200 { narration }
     
-    App->>S3: Stream audio từ audioUrl (MP3)
-    S3-->>App: Audio data stream
-    App->>App: expo-av: Play audio
+    App->>FS: Lấy audio/text được render
+    FS-->>App: File stream / Text
+    App->>App: expo-av: Play mp3 / expo-speech: Text-To-Speech
     App-->>U: 🎵 Đang phát thuyết minh...
     
-    U->>App: Điều khiển (Pause / Seek / Speed)
+    U->>App: Điều khiển (Pause / Seek)
     
-    Note over U,S3: === GHI LỊCH SỬ ===
+    Note over U,FS: === GHI LỊCH SỬ ===
     
     App->>API: POST /listen-history<br/>{ storeId, narrationId, source: "gps" }
     API->>DB: INSERT INTO listen_history
@@ -207,38 +200,38 @@ sequenceDiagram
     participant Web as Web Dashboard
     participant API as NestJS Backend
     participant DB as PostgreSQL
-    participant S3 as Supabase Storage
+    participant FS as Local File System (Backend)
 
-    Note over M,S3: === TẠO QUÁN MỚI ===
+    Note over M,FS: === TẠO QUÁN MỚI ===
     M->>Web: Nhấn "Create Store"
-    M->>Web: Nhập tên, địa chỉ, chọn GPS trên bản đồ, upload ảnh
+    M->>Web: Nhập tên, địa chỉ, lat, lng, upload ảnh
     Web->>API: POST /merchant/stores<br/>(multipart: name, address, lat, lng, coverImage)
     
-    API->>S3: Upload cover image
-    S3-->>API: imageUrl
-    API->>DB: INSERT INTO stores<br/>(merchant_id, name, address, location, cover_image, status='pending')
+    API->>FS: Lưu file ảnh cục bộ (/uploads)
+    FS-->>API: imageUrl (domain/uploads/...)
+    API->>DB: INSERT INTO stores<br/>(merchant_id, name, address, lat, lng, cover_image, status='pending')
     DB-->>API: Store created (uuid)
     API-->>Web: 201 { store: { id, status: "pending" } }
     Web-->>M: ✅ Quán đã tạo — đang chờ Admin duyệt
 
-    Note over M,S3: === UPLOAD NARRATION ===
+    Note over M,FS: === UPLOAD NARRATION ===
     M->>Web: Chọn quán → "Add Narration"
     M->>Web: Chọn ngôn ngữ (English) + Upload file audio.mp3
     Web->>API: POST /merchant/stores/{id}/narrations<br/>(multipart: languageId, audio file)
     
-    API->>S3: Upload audio MP3
-    S3-->>API: audioUrl
+    API->>FS: Lưu file audio MP3 cục bộ
+    FS-->>API: audioUrl
     API->>DB: INSERT INTO narrations<br/>(store_id, language_id, audio_url, duration)
     DB-->>API: Narration created
     API-->>Web: 201 { narration }
     Web-->>M: ✅ Thuyết minh tiếng Anh đã upload!
 
-    Note over M,S3: === UPLOAD MENU ===
+    Note over M,FS: === UPLOAD MENU ===
     M->>Web: "Add Menu Item"
     M->>Web: Nhập tên món, giá, upload ảnh
     Web->>API: POST /merchant/stores/{id}/menus<br/>(multipart: name, price, image)
-    API->>S3: Upload menu image
-    S3-->>API: imageUrl
+    API->>FS: Lưu file ảnh cục bộ
+    FS-->>API: imageUrl
     API->>DB: INSERT INTO menus (store_id, name, price, image_url)
     DB-->>API: Menu item created
     API-->>Web: 201 { menu }

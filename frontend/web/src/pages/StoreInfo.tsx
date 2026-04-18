@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Save, MapPin, Info, Loader2, CheckCircle2, QrCode, Download, RefreshCw } from 'lucide-react';
-import { merchantApi, storesApi, qrApi } from '../utils/api';
+import { merchantApi, storesApi, qrApi, uploadApi } from '../utils/api';
 import MapSelector from '../components/MapSelector';
 
 interface StoreForm {
@@ -33,6 +33,31 @@ const StoreInfo: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [coverUploading, setCoverUploading] = useState(false);
+    const coverInputRef = useRef<HTMLInputElement>(null);
+
+    const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !storeForm.id) return;
+
+        setCoverUploading(true);
+        try {
+            const result = await uploadApi.uploadFile(file);
+            const newUrl = result.url;
+
+            // Gọi API update ngay → backend tự xóa file ảnh bìa cũ
+            await storesApi.update(storeForm.id, { coverImage: newUrl });
+
+            setStoreForm(prev => ({ ...prev, coverImage: newUrl }));
+            // Cập nhật lại danh sách stores local
+            setStores(prev => prev.map(s => s.id === storeForm.id ? { ...s, coverImage: newUrl } : s));
+        } catch (err: any) {
+            alert(err.message || 'Lỗi khi thay đổi ảnh bìa');
+        } finally {
+            setCoverUploading(false);
+            if (coverInputRef.current) coverInputRef.current.value = '';
+        }
+    };
 
     // QR Code state
     const [qrCodes, setQrCodes] = useState<QrCodeData[]>([]);
@@ -207,19 +232,35 @@ const StoreInfo: React.FC = () => {
 
             <div className="bg-white rounded-3xl border border-slate-200/60 shadow-xl shadow-slate-200/20 overflow-hidden">
                 {/* Cover Banner */}
-                <div className="h-64 sm:h-80 w-full relative group cursor-pointer bg-slate-100">
+                <div className="h-64 sm:h-80 w-full relative group cursor-pointer bg-slate-100" onClick={() => !coverUploading && coverInputRef.current?.click()}>
                     <img
-                        src={storeForm.coverImage || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&h=400&fit=crop"}
+                        src={storeForm.coverImage ? (storeForm.coverImage.startsWith('http') ? storeForm.coverImage : `http://localhost:3000${storeForm.coverImage}`) : "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1200&h=400&fit=crop"}
                         alt="Store Cover"
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
-                        <div className="bg-white/20 p-3 rounded-full backdrop-blur-md">
-                            <Camera size={32} className="text-white" />
-                        </div>
-                        <span className="ml-3 text-white font-bold text-lg">Thay đổi ảnh bìa</span>
+                    <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity backdrop-blur-sm ${coverUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                        {coverUploading ? (
+                            <>
+                                <Loader2 size={36} className="text-white animate-spin" />
+                                <span className="ml-3 text-white font-bold text-lg">Đang tải lên...</span>
+                            </>
+                        ) : (
+                            <>
+                                <div className="bg-white/20 p-3 rounded-full backdrop-blur-md">
+                                    <Camera size={32} className="text-white" />
+                                </div>
+                                <span className="ml-3 text-white font-bold text-lg">Thay đổi ảnh bìa</span>
+                            </>
+                        )}
                     </div>
+                    <input
+                        type="file"
+                        ref={coverInputRef}
+                        onChange={handleCoverChange}
+                        accept="image/*"
+                        className="hidden"
+                    />
                 </div>
 
                 <div className="px-6 sm:px-10 pb-10 relative">
@@ -344,14 +385,21 @@ const StoreInfo: React.FC = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Link ảnh bìa</label>
-                                    <input
-                                        type="text"
-                                        value={storeForm.coverImage}
-                                        onChange={(e) => setStoreForm(prev => ({ ...prev, coverImage: e.target.value }))}
-                                        className="w-full px-5 py-3 bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 text-slate-900 font-medium transition-all shadow-sm"
-                                        placeholder="https://images.unsplash.com/..."
-                                    />
+                                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider text-xs">Ảnh bìa hiện tại</label>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1 px-5 py-3 bg-slate-50 border border-slate-200/80 rounded-xl text-slate-500 text-sm font-medium truncate">
+                                            {storeForm.coverImage ? storeForm.coverImage.split('/').pop() : 'Chưa có ảnh — Click vào banner phía trên để tải lên'}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => coverInputRef.current?.click()}
+                                            disabled={coverUploading}
+                                            className="px-4 py-3 bg-primary-50 hover:bg-primary-100 text-primary-600 rounded-xl font-bold text-sm transition-colors whitespace-nowrap disabled:opacity-50"
+                                        >
+                                            {coverUploading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-1.5 italic">Click vào ảnh bìa hoặc nút bên cạnh để thay đổi. Ảnh cũ sẽ tự động bị xóa.</p>
                                 </div>
                             </div>
                         </div>

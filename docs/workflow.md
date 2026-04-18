@@ -51,38 +51,38 @@ User mở app
   ↓
 App lấy tọa độ GPS (lat, lng)
   ↓
-Gửi request: GET /stores/nearby?lat=...&lng=...
+Gửi request: GET /stores (Lấy danh sách các quán active)
   ↓
-Backend query PostGIS (tìm quán trong bán kính 50m)
+Backend query DB lấy danh sách các quán
   ↓
-Trả về danh sách quán gần
+Trả về danh sách tất cả các quán
+  ↓
+Client tính khoảng cách Haversine để lọc các quán gần (Bán kính 50m)
   ↓
 Hiển thị trên bản đồ (Map View)
 ```
 
-**Query PostGIS ví dụ:**
+**Query Backend ví dụ (Prisma):**
 
-```sql
-SELECT *
-FROM stores
-WHERE ST_DWithin(
-  location,
-  ST_MakePoint(lng, lat)::geography,
-  50  -- bán kính 50 mét
-);
+```ts
+this.prisma.store.findMany({
+    where: { status: 'active' },
+    select: { id: true, name: true, address: true, lat: true, lng: true }
+});
 ```
 
 ---
 
-### 1.3 Khi user đến gần quán (< 20m)
+### 1.3 Khi user đến gần quán (Cảnh báo Tiệm cận < 50m)
 
 ```
 User đi gần quán
   ↓
-App phát hiện khoảng cách < 20m
+App tính toán khoảng cách (Haversine) tại Client < 50m
   ↓
-Hiển thị popup thông báo
+Hiển thị Proximity Modal (Popup thông báo)
 ```
+
 
 **Popup mẫu:**
 > 📍 *Bạn đang gần quán Bún Bò Huế — Nghe thuyết minh?*
@@ -99,14 +99,15 @@ Hiển thị popup thông báo
 ```
 User nhấn Play
   ↓
-App gọi API: GET /stores/:id/narration?lang=en
+App kiểm tra Offline Cache (Ảnh/Audio máy đã tải trước đó)
   ↓
-Backend tìm bản narration theo ngôn ngữ
+Nếu KHÔNG CÓ cache → Gọi API lấy Audio từ Server
   ↓
-Trả về audio_url
+Nếu Server KHÔNG CÓ Audio theo ngôn ngữ yêu cầu → Tự động gọi API Dịch thuật (VI -> Target Lang)
   ↓
-App phát audio cho user nghe
+Trả về kết quả (Text/Audio) -> App phát thuyết minh (MP3 hoặc TTS)
 ```
+
 
 ---
 
@@ -343,44 +344,46 @@ Approve → stores.status = "active"
 
 ---
 
-## 4. Luồng GPS của hệ thống
+## 4. Luồng GPS và Cảnh báo Tiệm cận
 
-> Đây là **core logic quan trọng nhất** của toàn bộ ứng dụng.
+> Đây là **nghiệp vụ cốt lõi** mang lại trải nghiệm tự động cho người dùng.
 
 ```
 User mở app
   ↓
-App liên tục lấy tọa độ GPS (lat, lng) của user
+App liên tục lấy tọa độ GPS (lat, lng) của user tại Client
   ↓
-Gửi lat/lng lên server theo chu kỳ (hoặc khi di chuyển đáng kể)
+Tính khoảng cách đường chim bay đến danh sách Store đã load (Haversine Algorithm)
   ↓
-Server query PostGIS → tìm store trong bán kính 20-50m
+Nếu khoảng cách < 50m VÀ chưa hiện thông báo cho quán này
   ↓
-Nếu có store gần → trả về thông tin store
-  ↓
-App hiển thị popup thông báo cho user
+Hiển thị Proximity Modal (Mô tả chi tiết quán, nút Play, nút Menu)
 ```
 
-> ⚠️ **Lưu ý:** Cần cân nhắc tần suất gửi GPS để tiết kiệm pin và băng thông.
+> ⚠️ **Lưu ý:** Việc tính toán tại Client giúp App phản ứng tức thời mà không phụ thuộc vào tốc độ mạng (Real-time responsiveness).
+
 
 ---
 
-## 5. Luồng Narration theo ngôn ngữ
+## 5. Luồng Narration và Dịch thuật Tự động
 
-> Hệ thống hỗ trợ đa ngôn ngữ với cơ chế **fallback**.
+> Hệ thống hỗ trợ đa ngôn ngữ với cơ chế **Dịch thuật Tức thời (On-demand Translation)**.
 
 ```
-User có preferred_language = "Korean" (ko)
+User muốn nghe ngôn ngữ = "Korean" (ko)
   ↓
-Backend tìm narration với language = "ko" cho store đó
+App kiểm tra sự tồn tại của bản "ko" cho store đó (trong Device Cache hoặc Database)
   ↓
-┌── Nếu CÓ bản "ko" → Trả audio tiếng Hàn về app
-└── Nếu KHÔNG CÓ → Fallback về English (en)
+┌── Nếu CÓ bản "ko" → Trả audio/text tiếng Hàn về app
+└── Nếu KHÔNG CÓ → Gọi Real-time Translation API (sử dụng AI)
                       ↓
-                   Trả audio tiếng Anh về app
+                   Dịch nội dung từ Tiếng Việt (gốc) sang tiếng Hàn
+                      ↓
+                   Lưu bản dịch vào DB & Trả kết quả về App để phát bằng TTS/MP3
 ```
 
-> 📌 **Fallback chain:** `user_language` → `English (en)` → Thông báo "Chưa có thuyết minh"
+> 📌 **Cơ chế:** Ưu tiên MP3 (đã thu âm) → Nếu không có thì dùng TTS (đọc từ bản dịch máy).
+
 
 ---
 

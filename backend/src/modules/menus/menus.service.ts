@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../../database/prisma.service';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
+import { deleteFile } from '../../common/utils/file.util';
 
 @Injectable()
 export class MenusService {
@@ -49,6 +50,12 @@ export class MenusService {
     const menu = await this.prisma.menu.findUnique({ where: { id } });
     if (!menu) throw new NotFoundException('Menu item không tồn tại');
     await this.verifyStoreOwner(menu.storeId, user);
+
+    // Xóa file ảnh cũ nếu có bản mới thay thế
+    if (dto.imageUrl && menu.imageUrl && dto.imageUrl !== menu.imageUrl) {
+      await deleteFile(menu.imageUrl);
+    }
+
     return this.prisma.menu.update({ where: { id }, data: dto });
   }
 
@@ -56,7 +63,13 @@ export class MenusService {
     const menu = await this.prisma.menu.findUnique({ where: { id } });
     if (!menu) throw new NotFoundException('Menu item không tồn tại');
     await this.verifyStoreOwner(menu.storeId, user);
+    
+    // Xóa file vật lý
+    if (menu.imageUrl) {
+      await deleteFile(menu.imageUrl);
+    }
+
     await this.prisma.menu.delete({ where: { id } });
-    return { success: true, message: 'Đã xóa menu item' };
+    return { success: true, message: 'Đã xóa menu item và file ảnh liên quan' };
   }
 }

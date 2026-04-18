@@ -3,9 +3,13 @@ import { View, Text, Image, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useLanguage } from '../../../contexts/LanguageContext';
+
 
 export default function ProfileScreen() {
     const router = useRouter();
+    const { t } = useLanguage();
+
     return (
         <SafeAreaView className="flex-1 bg-[#F4FBFC]">
             {/* === HEADER === */}
@@ -14,8 +18,9 @@ export default function ProfileScreen() {
                     <Ionicons name="arrow-back" size={26} color="#1F2937" />
                 </TouchableOpacity>
                 <Text className="text-[18px] font-extrabold text-[#111827]">
-                    Profile
+                    {t('profile.header')}
                 </Text>
+
                 <TouchableOpacity>
                     <Ionicons name="settings-outline" size={24} color="#1F2937" />
                 </TouchableOpacity>
@@ -54,13 +59,14 @@ export default function ProfileScreen() {
 
                     <View className="bg-[#F4FBFC] px-4 py-1.5 rounded-full mb-3">
                         <Text className="text-[#009FB7] font-semibold text-[13px]">
-                            Explorer Level: Gold
+                            {t('profile.explorer_level').replace('{level}', 'Gold')}
                         </Text>
                     </View>
 
                     <Text className="text-[#9CA3AF] text-[13px]">
-                        Member since March 2023
+                        {t('profile.member_since').replace('{date}', 'March 2023')}
                     </Text>
+
 
                     {/* --- UPGRADE BANNER --- */}
                     <TouchableOpacity
@@ -71,9 +77,10 @@ export default function ProfileScreen() {
                             <MaterialCommunityIcons name="crown" size={20} color="white" />
                         </View>
                         <View className="ml-3 flex-1">
-                            <Text className="text-white font-extrabold text-sm">Nâng cấp Hội viên</Text>
-                            <Text className="text-white/80 text-[11px]">Mở khóa tính năng đặc quyền</Text>
+                            <Text className="text-white font-extrabold text-sm">{t('profile.upgrade_membership')}</Text>
+                            <Text className="text-white/80 text-[11px]">{t('profile.unlock_perks')}</Text>
                         </View>
+
                         <Ionicons name="chevron-forward" size={18} color="white" />
                     </TouchableOpacity>
                 </View>
@@ -81,8 +88,9 @@ export default function ProfileScreen() {
                 <View className="px-5 pt-6">
                     {/* === ACTIVITY & MARKET === */}
                     <Text className="text-[12px] font-extrabold text-[#9CA3AF] tracking-[1.5px] uppercase mb-4">
-                        ACTIVITY & MARKET
+                        {t('profile.activity_market')}
                     </Text>
+
 
                     <TouchableOpacity className="bg-[#F8FAFC] rounded-2xl p-4 flex-row items-center justify-between mb-3">
                         <View className="flex-row items-center flex-1">
@@ -90,9 +98,10 @@ export default function ProfileScreen() {
                                 <Feather name="heart" size={20} color="#009FB7" />
                             </View>
                             <View>
-                                <Text className="text-[16px] font-bold text-[#1F2937] mb-0.5">My Favorites</Text>
-                                <Text className="text-[12px] text-[#9CA3AF]">12 saved food stalls</Text>
+                                <Text className="text-[16px] font-bold text-[#1F2937] mb-0.5">{t('profile.my_favorites')}</Text>
+                                <Text className="text-[12px] text-[#9CA3AF]">{t('profile.saved_stalls').replace('{count}', '12')}</Text>
                             </View>
+
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </TouchableOpacity>
@@ -106,17 +115,19 @@ export default function ProfileScreen() {
                                 <Feather name="clock" size={20} color="#4B5563" />
                             </View>
                             <View>
-                                <Text className="text-[16px] font-bold text-[#1F2937] mb-0.5">Visited Stalls History</Text>
-                                <Text className="text-[12px] text-[#9CA3AF]">Vinh Khanh Street history</Text>
+                                <Text className="text-[16px] font-bold text-[#1F2937] mb-0.5">{t('profile.visit_history')}</Text>
+                                <Text className="text-[12px] text-[#9CA3AF]">{t('profile.street_history')}</Text>
                             </View>
+
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </TouchableOpacity>
 
                     {/* === PREFERENCES === */}
                     <Text className="text-[12px] font-extrabold text-[#9CA3AF] tracking-[1.5px] uppercase mb-4">
-                        PREFERENCES
+                        {t('profile.preferences')}
                     </Text>
+
 
 
 
@@ -130,7 +141,8 @@ export default function ProfileScreen() {
                         <View className="w-12 h-12 bg-[#FEE2E2] rounded-2xl items-center justify-center mr-4">
                             <Feather name="log-out" size={20} color="#EF4444" />
                         </View>
-                        <Text className="text-[15px] font-bold text-[#EF4444]">Log Out</Text>
+                        <Text className="text-[15px] font-bold text-[#EF4444]">{t('profile.log_out')}</Text>
+
                     </TouchableOpacity>
 
                 </View>

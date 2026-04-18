@@ -82,7 +82,7 @@
 | `user_id`       | `uuid`                                | FK → `users.id`, UNIQUE | Tài khoản liên kết |
 | `business_name` | `varchar(200)`                        | NOT NULL   | Tên doanh nghiệp         |
 | `tax_code`      | `varchar(50)`                         | NULLABLE   | Mã số thuế               |
-| `status`        | `enum('pending','approved','rejected')` | DEFAULT `'pending'` | Trạng thái duyệt |
+| `status`        | `enum('pending','approved','rejected','blocked')` | DEFAULT `'pending'` | Trạng thái duyệt |
 | `reject_reason` | `text`                                | NULLABLE   | Lý do từ chối (nếu có)   |
 | `created_at`    | `timestamptz`                         | DEFAULT NOW() | Ngày đăng ký          |
 
@@ -99,18 +99,14 @@
 | `name`         | `varchar(200)`               | NOT NULL   | Tên quán                        |
 | `description`  | `text`                       | NULLABLE   | Mô tả quán                      |
 | `address`      | `text`                       | NOT NULL   | Địa chỉ văn bản                 |
-| `location`     | `geography(Point, 4326)`     | NOT NULL   | Tọa độ GPS (PostGIS)            |
+| `lat`          | `numeric`                    | NOT NULL   | Vĩ độ (Latitude)                |
+| `lng`          | `numeric`                    | NOT NULL   | Kinh độ (Longitude)             |
 | `open_time`    | `time`                       | NULLABLE   | Giờ mở cửa                      |
 | `close_time`   | `time`                       | NULLABLE   | Giờ đóng cửa                    |
 | `cover_image`  | `text`                       | NULLABLE   | URL ảnh bìa                     |
 | `status`       | `enum('pending','active','hidden')` | DEFAULT `'pending'` | Trạng thái |
 | `created_at`   | `timestamptz`                | DEFAULT NOW() | Ngày tạo                    |
 | `updated_at`   | `timestamptz`                | DEFAULT NOW() | Lần cập nhật cuối           |
-
-> **Index:** Tạo spatial index trên cột `location` để query PostGIS nhanh hơn:
-> ```sql
-> CREATE INDEX idx_stores_location ON stores USING GIST (location);
-> ```
 
 ---
 
@@ -205,10 +201,29 @@
 | `merchant_id` | `uuid`                                  | FK → `merchants.id`  | Merchant đăng ký    |
 | `plan`        | `enum('starter','business','premium')`  | NOT NULL             | Loại gói            |
 | `max_store`   | `int`                                   | NOT NULL             | Số quán tối đa      |
+| `max_poi`     | `int`                                   | DEFAULT `1`          | Số lượng POI tối đa |
 | `start_date`  | `date`                                  | NOT NULL             | Ngày bắt đầu        |
 | `end_date`    | `date`                                  | NOT NULL             | Ngày hết hạn        |
 | `status`      | `enum('active','expired','cancelled')`  | NOT NULL             | Trạng thái          |
 | `created_at`  | `timestamptz`                           | DEFAULT NOW()        | Ngày mua            |
+
+---
+
+## 1.10.b `plan_metadata`
+
+> Thông tin cấu hình chi tiết cho các gói dịch vụ (Plans).
+
+| Column        | Type                                    | Constraint           | Mô tả               |
+|---------------|-----------------------------------------|----------------------|---------------------|
+| `plan_key`    | `varchar(100)`                          | PK                   | Mã gói (VD: starter)|
+| `name`        | `varchar(200)`                          | NOT NULL             | Tên gói hiển thị    |
+| `description` | `text`                                  | NULLABLE             | Mô tả gói           |
+| `price`       | `numeric(15,0)`                         | NOT NULL             | Giá gói             |
+| `max_store`   | `int`                                   | DEFAULT `1`          | Giới hạn store      |
+| `max_poi`     | `int`                                   | DEFAULT `1`          | Giới hạn POI        |
+| `features`    | `jsonb`                                 | NULLABLE             | Tính năng kèm theo  |
+| `created_at`  | `timestamptz`                           | DEFAULT NOW()        | Ngày tạo            |
+| `updated_at`  | `timestamptz`                           | DEFAULT NOW()        | Cập nhật lần cuối   |
 
 ---
 

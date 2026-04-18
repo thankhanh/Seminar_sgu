@@ -7,7 +7,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_URL = 'http://192.168.1.2:3000/api/v1'; // LAN IP for Physical Devices (Hotspot)
+export const API_URL = 'http://192.168.1.6:3000/api/v1'; // LAN IP for Physical Devices (Hotspot)
 // export const API_URL = 'http://10.0.2.2:3000/api/v1'; // For Android Emulator
 export const TOKEN_KEY = 'auth_access_token';
 export const REFRESH_KEY = 'auth_refresh_token';
@@ -19,23 +19,52 @@ const api = axios.create({
     headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor: tự động đính kèm token vào header nếu có
+// Request interceptor: tự động đính kèm token và ngôn ngữ vào header
 api.interceptors.request.use(async (config) => {
+    // 1. Gắn Token
     const token = await AsyncStorage.getItem(TOKEN_KEY);
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // 2. Gắn Ngôn ngữ
+    const langData = await AsyncStorage.getItem('@smart_tour_lang');
+    if (langData) {
+        try {
+            const parsed = JSON.parse(langData);
+            if (parsed && parsed.code) {
+                config.headers['accept-language'] = parsed.code;
+            }
+        } catch (e) {
+            console.warn('[API Interceptor] Lỗi parse ngôn ngữ:', e);
+        }
+    }
+
     return config;
 });
 
-// Response interceptor: log lỗi
+// Response interceptor: xử lý lỗi toàn cục
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
-        console.error('[API Error]', error.config?.url, error.response?.status, error.message);
+    async (error) => {
+        const status = error.response?.status;
+        const originalRequest = error.config;
+
+        if (status === 401) {
+            console.warn('[API 401] Unauthorized. Session expired or missing token.');
+            // Tự động dọn dẹp data nếu bị 401
+            await Promise.all([
+                AsyncStorage.removeItem(TOKEN_KEY),
+                AsyncStorage.removeItem(REFRESH_KEY),
+                AsyncStorage.removeItem(USER_KEY),
+            ]);
+        }
+
+        console.error('[API Error]', originalRequest?.url, status, error.message);
         return Promise.reject(error);
     }
 );
+
 
 // ─── Auth Helpers ─────────────────────────────────────────────────
 export const authHelpers = {
@@ -57,6 +86,17 @@ export const authHelpers = {
         if (data.user) {
             await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
         }
+
+        // --- OFFLINE SYNC ON LOGIN ---
+        try {
+            const langData = await AsyncStorage.getItem('@smart_tour_lang');
+            const langCode = langData ? JSON.parse(langData).code : 'vi';
+            const { OfflineService } = require('../services/OfflineService');
+            OfflineService.syncResources(langCode); // Chạy ngầm
+        } catch (e) {
+            console.warn('[Login] Failed to start offline sync:', e);
+        }
+
         return data;
     },
 
@@ -77,17 +117,36 @@ export const authHelpers = {
         if (data.user) {
             await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
         }
+
+        // --- OFFLINE SYNC ON REGISTER ---
+        try {
+            const langData = await AsyncStorage.getItem('@smart_tour_lang');
+            const langCode = langData ? JSON.parse(langData).code : 'vi';
+            const { OfflineService } = require('../services/OfflineService');
+            OfflineService.syncResources(langCode);
+        } catch (e) {
+            console.warn('[Register] Failed to start offline sync:', e);
+        }
+
         return data;
     },
 
+
     async logout() {
         try { await api.post('/auth/logout'); } catch (_) { }
+        try {
+            const { OfflineService } = require('../services/OfflineService');
+            await OfflineService.clearCache();
+        } catch (err) {
+            console.warn('[Logout] Failed to clear offline cache:', err);
+        }
         await Promise.all([
             AsyncStorage.removeItem(TOKEN_KEY),
             AsyncStorage.removeItem(REFRESH_KEY),
             AsyncStorage.removeItem(USER_KEY),
         ]);
     },
+
 
     async getUser() {
         const raw = await AsyncStorage.getItem(USER_KEY);
@@ -98,6 +157,27 @@ export const authHelpers = {
         const token = await AsyncStorage.getItem(TOKEN_KEY);
         return !!token;
     },
+};
+
+// languages
+export const languagesHelpers = {
+    async getLanguages() {
+        const response = await api.get('/languages');
+        const { success, data, message } = response.data;
+        if (!success) {
+            throw new Error(message || 'Failed to fetch languages');
+        }
+        return data;
+    },
+    async translateText(text: string, fromLang: string, toLang: string, storeId?: string) {
+        const response = await api.post('/languages/translate', { text, fromLang, toLang, storeId });
+        const { success, data, message } = response.data;
+        if (!success) {
+            throw new Error(message || 'Failed to translate text');
+        }
+        return data;
+    },
+
 };
 
 // ─── Users Helpers ─────────────────────────────────────────────────

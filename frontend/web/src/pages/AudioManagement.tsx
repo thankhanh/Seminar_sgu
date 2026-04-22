@@ -1,14 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     CloudUpload, Headphones, Search, 
     Trash2, Globe, Loader2, Play, Plus, 
-    MoreVertical, CheckCircle2
+    MoreVertical, CheckCircle2, Square, Volume2
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 import { narrationsApi, languagesApi, merchantApi, storesApi } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { Narration, Language, Store as StoreType } from '../types';
+
+// Map mã ngôn ngữ sang giọng đọc Web Speech API
+const SPEECH_LANG_MAP: Record<string, string> = {
+    vi: 'vi-VN',
+    en: 'en-US',
+    ja: 'ja-JP',
+    ko: 'ko-KR',
+    zh: 'zh-CN',
+    fr: 'fr-FR',
+    th: 'th-TH',
+};
 
 const AudioManagement: React.FC = () => {
     const { user } = useAuth();
@@ -21,8 +32,8 @@ const AudioManagement: React.FC = () => {
     const limit = 10;
     const [searchQuery, setSearchQuery] = useState('');
     const [isUploadOpen, setIsUploadOpen] = useState(false);
-    const [playingUrl, setPlayingUrl] = useState<string | null>(null);
-    const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
+    const [playingId, setPlayingId] = useState<string | null>(null);
+    const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -79,6 +90,10 @@ const AudioManagement: React.FC = () => {
 
     useEffect(() => {
         if (user) fetchData();
+        // Cleanup speech on unmount
+        return () => {
+            window.speechSynthesis.cancel();
+        };
     }, [user]);
 
     const handleUpload = async () => {
@@ -136,18 +151,45 @@ const AudioManagement: React.FC = () => {
         (audio.textContent || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
     
-    const togglePlay = (url: string) => {
-        if (playingUrl === url) {
-            audioPlayer?.pause();
-            setPlayingUrl(null);
-        } else {
-            if (audioPlayer) audioPlayer.pause();
-            const newPlayer = new Audio(url);
-            newPlayer.play();
-            newPlayer.onended = () => setPlayingUrl(null);
-            setAudioPlayer(newPlayer);
-            setPlayingUrl(url);
+    /**
+     * Phát audio bằng Web Speech API (SpeechSynthesis)
+     * Giống cách mobile dùng expo-speech
+     */
+    const togglePlay = (narration: Narration) => {
+        const synth = window.speechSynthesis;
+
+        if (playingId === narration.id) {
+            // Đang phát → dừng
+            synth.cancel();
+            setPlayingId(null);
+            return;
         }
+
+        // Dừng audio cũ nếu có
+        synth.cancel();
+
+        const text = narration.textContent;
+        if (!text) {
+            alert('Bản thuyết minh này chưa có nội dung văn bản.');
+            return;
+        }
+
+        const langCode = narration.language?.code || 'vi';
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = SPEECH_LANG_MAP[langCode] || 'vi-VN';
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+
+        utterance.onend = () => {
+            setPlayingId(null);
+        };
+        utterance.onerror = () => {
+            setPlayingId(null);
+        };
+
+        utteranceRef.current = utterance;
+        setPlayingId(narration.id);
+        synth.speak(utterance);
     };
 
     return (
@@ -213,10 +255,10 @@ const AudioManagement: React.FC = () => {
                         <div className="p-5 flex-1">
                             <div className="flex justify-between items-start mb-4">
                                 <button 
-                                    onClick={() => file.audioUrl && togglePlay(file.audioUrl)}
-                                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${playingUrl === file.audioUrl ? 'bg-primary-600 text-white shadow-lg shadow-primary-200 animate-pulse' : 'bg-primary-50 text-primary-600 hover:bg-primary-100'}`}
+                                    onClick={() => togglePlay(file)}
+                                    className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${playingId === file.id ? 'bg-primary-600 text-white shadow-lg shadow-primary-200 animate-pulse' : 'bg-primary-50 text-primary-600 hover:bg-primary-100'}`}
                                 >
-                                    {playingUrl === file.audioUrl ? <Loader2 className="animate-spin" size={24} /> : <Play size={24} fill="currentColor" />}
+                                    {playingId === file.id ? <Square size={20} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
                                 </button>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"><MoreVertical size={16} /></button>
@@ -240,6 +282,12 @@ const AudioManagement: React.FC = () => {
                                 </div>
                                 <div className="flex items-center justify-between text-xs">
                                     <span className="text-slate-400 font-medium uppercase tracking-tighter flex items-center gap-1">
+                                        <Volume2 size={12} /> Phương thức
+                                    </span>
+                                    <span className="font-bold text-indigo-600">Web Speech TTS</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-slate-400 font-medium uppercase tracking-tighter flex items-center gap-1">
                                         <CheckCircle2 size={12} /> Trạng thái
                                     </span>
                                     <span className={`font-bold ${file.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>{file.isActive ? 'Sẵn sàng' : 'Chưa kích hoạt'}</span>
@@ -253,10 +301,14 @@ const AudioManagement: React.FC = () => {
                                 {file.isActive ? 'Đang hoạt động' : 'Đã ẩn'}
                             </span>
                             <button 
-                                onClick={() => file.audioUrl && togglePlay(file.audioUrl)}
-                                className="text-primary-600 text-xs font-bold hover:underline"
+                                onClick={() => togglePlay(file)}
+                                className="text-primary-600 text-xs font-bold hover:underline flex items-center gap-1"
                             >
-                                {playingUrl === file.audioUrl ? 'Đang phát...' : 'Phát thử audio'}
+                                {playingId === file.id ? (
+                                    <><Square size={10} fill="currentColor" /> Dừng phát</>
+                                ) : (
+                                    <><Play size={10} fill="currentColor" /> Phát thử audio</>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -340,4 +392,3 @@ const AudioManagement: React.FC = () => {
 };
 
 export default AudioManagement;
-

@@ -17,8 +17,7 @@ async function main() {
         description: 'Mặc định cho mọi cửa hàng.',
         features: ['Tối đa 1 địa điểm (POI)', 'Thuyết minh đa ngôn ngữ', 'Quản lý thực đơn cơ bản'],
         maxPOI: 1,
-        color: 'bg-slate-50',
-        icon: 'Zap',
+        maxStore: 1,
       },
       {
         planKey: 'merchant_business',
@@ -27,8 +26,7 @@ async function main() {
         description: 'Dành cho chuỗi cửa hàng nhỏ.',
         features: ['Tối đa 5 địa điểm (POI)', 'Ưu tiên hiển thị trên bản đồ', 'Phân tích lượt nghe chi tiết'],
         maxPOI: 5,
-        color: 'bg-primary-50',
-        icon: 'Shield',
+        maxStore: 5,
       },
       {
         planKey: 'merchant_premium',
@@ -37,8 +35,7 @@ async function main() {
         description: 'Giải pháp toàn diện cho doanh nghiệp.',
         features: ['Tối đa 10 địa điểm (POI)', 'API tích hợp riêng', 'Tư vấn nội dung thuyết minh'],
         maxPOI: 10,
-        color: 'bg-indigo-50',
-        icon: 'Crown',
+        maxStore: 10,
       },
       {
         planKey: 'customer_free',
@@ -48,8 +45,6 @@ async function main() {
         features: ['Nghe nội dung cơ bản', 'Lưu lịch sử nghe'],
         maxPOI: 0,
         maxStore: 0,
-        color: 'bg-slate-100',
-        icon: 'Zap',
       },
       {
         planKey: 'customer_monthly',
@@ -59,8 +54,6 @@ async function main() {
         features: ['Truy cập cơ bản', 'Hỗ trợ email', 'Lưu trữ 1GB'],
         maxPOI: 0,
         maxStore: 0,
-        color: 'bg-slate-50',
-        icon: 'Zap',
       },
       {
         planKey: 'customer_yearly',
@@ -70,8 +63,6 @@ async function main() {
         features: ['Truy cập đầy đủ', 'Hỗ trợ ưu tiên', 'Lưu trữ 10GB'],
         maxPOI: 0,
         maxStore: 0,
-        color: 'bg-primary-50',
-        icon: 'Shield',
       },
     ];
 
@@ -223,11 +214,12 @@ async function main() {
 
                 const existingQr = await prisma.qrCode.findFirst({ where: { storeId: store.id } });
                 if (!existingQr) {
+                    const qrCode = `QR-${store.id.slice(0, 8)}`;
                     await prisma.qrCode.create({
                         data: {
                             storeId: store.id,
-                            code: `QR-${store.id.slice(0, 8)}`,
-                            qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=TOUR-${store.id}`,
+                            code: qrCode,
+                            qrImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrCode)}`,
                         },
                     });
                 }
@@ -271,56 +263,65 @@ async function main() {
                 email: uData.email,
                 passwordHash,
                 role: 'user' as UserRole,
+                isActive: true,
             },
         });
 
-        // Add Subscription for user
-        await prisma.subscription.create({
-            data: {
-                userId: u.id,
-                plan: 'monthly' as SubscriptionPlan,
-                startDate: new Date(),
-                endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                status: 'active' as SubscriptionStatus,
-            },
-        });
+        // Add Subscription for user (chỉ tạo nếu chưa có)
+        const existingSub = await prisma.subscription.findFirst({ where: { userId: u.id } });
+        if (!existingSub) {
+            await prisma.subscription.create({
+                data: {
+                    userId: u.id,
+                    plan: 'monthly' as SubscriptionPlan,
+                    startDate: new Date(),
+                    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                    status: 'active' as SubscriptionStatus,
+                },
+            });
+        }
 
-        // Add Transactions
-        const txMomo = await prisma.transaction.create({
-            data: {
-                userId: u.id,
-                amount: new Prisma.Decimal(100000),
-                type: 'user_subscription' as TransactionType,
-                paymentMethod: 'momo' as PaymentMethod,
-                status: 'success' as TransactionStatus,
-                description: 'Đăng ký gói đặc biệt (MoMo)',
-            }
-        });
+        // Add Transactions (chỉ tạo nếu chưa có)
+        const existingTx = await prisma.transaction.findFirst({ where: { userId: u.id } });
+        if (!existingTx) {
+            const txMomo = await prisma.transaction.create({
+                data: {
+                    userId: u.id,
+                    amount: new Prisma.Decimal(100000),
+                    type: 'user_subscription' as TransactionType,
+                    paymentMethod: 'momo' as PaymentMethod,
+                    status: 'success' as TransactionStatus,
+                    description: 'Đăng ký gói đặc biệt (MoMo)',
+                }
+            });
 
-        await prisma.paymentMomo.create({
-            data: {
-                transactionId: txMomo.id,
-                orderId: `MOMO-${txMomo.id.slice(0, 8)}`,
-                amount: BigInt(100000),
-                resultCode: 0,
-                message: 'Success',
-            }
-        });
+            await prisma.paymentMomo.create({
+                data: {
+                    transactionId: txMomo.id,
+                    orderId: `MOMO-${txMomo.id.slice(0, 8)}`,
+                    amount: BigInt(100000),
+                    resultCode: 0,
+                    message: 'Success',
+                }
+            });
+        }
 
-
-        // Add Listen History
-        for (let i = 0; i < 3; i++) {
-            const randomStore = stores[Math.floor(Math.random() * stores.length)];
-            const narrations = await prisma.narration.findMany({ where: { storeId: randomStore.id } });
-            if (narrations.length > 0) {
-                await prisma.listenHistory.create({
-                    data: {
-                        userId: u.id,
-                        storeId: randomStore.id,
-                        narrationId: narrations[0].id,
-                        source: 'gps' as ListenSource,
-                    }
-                });
+        // Add Listen History (chỉ tạo nếu chưa có)
+        const existingHistory = await prisma.listenHistory.findFirst({ where: { userId: u.id } });
+        if (!existingHistory) {
+            for (let i = 0; i < 3; i++) {
+                const randomStore = stores[Math.floor(Math.random() * stores.length)];
+                const narrations = await prisma.narration.findMany({ where: { storeId: randomStore.id } });
+                if (narrations.length > 0) {
+                    await prisma.listenHistory.create({
+                        data: {
+                            userId: u.id,
+                            storeId: randomStore.id,
+                            narrationId: narrations[0].id,
+                            source: 'gps' as ListenSource,
+                        }
+                    });
+                }
             }
         }
     }

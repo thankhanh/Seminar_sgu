@@ -10,6 +10,8 @@ import Pagination from '../components/Pagination';
 import { storesApi, merchantApi, adminApi, subscriptionsApi } from '../utils/api';
 import type { Store } from '../types';
 import MapSelector from '../components/MapSelector';
+import QRManagement from '../components/QRManagement';
+import NarrationManagement from '../components/NarrationManagement';
 
 const StoreManagement: React.FC = () => {
     const { user } = useAuth();
@@ -520,6 +522,20 @@ const StoreManagement: React.FC = () => {
                             <span className="font-medium text-slate-900">{selectedStore?.merchant?.businessName || 'N/A'}</span>
                         </div>
                     </div>
+
+                    {/* === QR CODES === */}
+                    {selectedStore && (
+                        <div className="pt-4 border-t border-slate-100">
+                            <QRManagement storeId={selectedStore.id} storeName={selectedStore.name} />
+                        </div>
+                    )}
+
+                    {/* === NARRATIONS === */}
+                    {selectedStore && (
+                        <div className="pt-4 border-t border-slate-100">
+                            <NarrationManagement storeId={selectedStore.id} storeName={selectedStore.name} />
+                        </div>
+                    )}
 
                     <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
                         <button 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Image, TouchableOpacity, Dimensions, StyleSheet, ActivityIndicator, Modal, Pressable } from 'react-native';
+import { View, Text, Image, TouchableOpacity, Dimensions, StyleSheet, ActivityIndicator, Modal, Pressable, Alert } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from '../../../components/MapView';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
@@ -8,7 +8,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import api from '../../../constants/api';
 
+// ==========================================
+// TỌA ĐỘ DÀNH CHO USER ĐỂ TEST (Cách gian hàng ~ 5 mét):
+// Ngày mai để test, bạn hãy nhập các tọa độ này vào phần mềm GIẢ LẬP GPS CỦA USER,
+// app sẽ tưởng bạn đang đi bộ ngang qua quán và báo popup ngay:
+// 1. Gần Vinh Khanh Coffee Flagship: lat: 10.28405  | lng: 105.52044
+// 2. Gần Thanh Khanh Food Express  : lat: 10.28305  | lng: 105.51884
+// 3. Gần Thanh Khanh Food Flagship : lat: 10.28255  | lng: 105.51804
+// ==========================================
+
 const { width, height } = Dimensions.get('window');
+
+// Tính khoảng cách giữa 2 tọa độ (m)
+const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // metres
+    const p1 = lat1 * Math.PI / 180;
+    const p2 = lat2 * Math.PI / 180;
+    const dp = (lat2 - lat1) * Math.PI / 180;
+    const dl = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
+        Math.cos(p1) * Math.cos(p2) *
+        Math.sin(dl / 2) * Math.sin(dl / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+};
 
 // Map code ngôn ngữ sang mã giọng đọc của Speech API
 const SPEECH_LANG_MAP: Record<string, string> = {
@@ -54,17 +79,29 @@ export default function MapScreen() {
     const [languages, setLanguages] = useState<Language[]>([]);
     const [isLoadingLangs, setIsLoadingLangs] = useState(true);
     const [showLangPicker, setShowLangPicker] = useState(false);
+    const [isLimitReached, setIsLimitReached] = useState(false);
     const isNarratingRef = useRef(false);
     const lastNarratedRef = useRef<string | null>(null);
+    const promptedStoresRef = useRef<Set<string>>(new Set());
+    const isAlertShowingRef = useRef(false);
+    const storesRef = useRef<Store[]>([]);
 
     // Đồng bộ ref với state để dùng trong callback
     useEffect(() => { isNarratingRef.current = isNarrating; }, [isNarrating]);
     useEffect(() => { lastNarratedRef.current = lastNarratedStoreId; }, [lastNarratedStoreId]);
+    useEffect(() => { storesRef.current = stores; }, [stores]);
 
-    // Fetch danh sách ngôn ngữ từ Backend
+    // Fetch danh sách ngôn ngữ & Limit status từ Backend
     useEffect(() => {
-        const fetchLanguages = async () => {
+        const fetchInitialData = async () => {
             try {
+                // Fetch limit status
+                const { data: profile } = await api.get('/users/me');
+                if (profile.success) {
+                    setIsLimitReached(profile.data.isLimitReached);
+                }
+
+                // Fetch languages
                 const { data: json } = await api.get('/languages');
                 if (json.success && Array.isArray(json.data)) {
                     const active = json.data.filter((l: Language) => l.isActive);
@@ -73,12 +110,12 @@ export default function MapScreen() {
                     if (vi) setSelectedLanguage(vi);
                 }
             } catch (error) {
-                console.warn('Lỗi khi tải danh sách ngôn ngữ:', error);
+                console.warn('Lỗi khi tải dữ liệu ban đầu:', error);
             } finally {
                 setIsLoadingLangs(false);
             }
         };
-        fetchLanguages();
+        fetchInitialData();
     }, []);
 
     // Fetch danh sách quán từ Backend
@@ -119,15 +156,67 @@ export default function MapScreen() {
                 },
                 (loc) => {
                     setLocation(loc);
-                    checkNearbyNarration(loc.coords.latitude, loc.coords.longitude);
+
+                    // ==========================================
+                    // TEST CODE: Nếu giả lập GPS trên máy khó dùng, bạn có thể 
+                    // BỎ COMMENT dòng dưới đây để ép ứng dụng kiểm tra 
+                    // vị trí cách Vinh Khanh Coffee đúng 5 mét nhé:
+                    //
+                    // checkProximity(10.28405, 105.52044);
+                    // 
+                    // ==========================================
+
+                    // Còn ban đầu ứng dụng sẽ lấy từ GPS thực/giả lập của máy:
+                    checkProximity(loc.coords.latitude, loc.coords.longitude);
                 }
             );
             return () => locationWatcher.remove();
         })();
     }, [selectedLanguage]); // Re-run khi đổi ngôn ngữ
 
+    const checkProximity = (lat: number, lng: number) => {
+        if (isAlertShowingRef.current || storesRef.current.length === 0) return;
+
+        let closestStore: Store | null = null;
+        let minDistance = Infinity;
+
+        // Tìm quán nằm trong phạm vi 10m và gần nhất
+        for (const store of storesRef.current) {
+            const dist = haversineDistance(lat, lng, store.lat, store.lng);
+            if (dist <= 10 && dist < minDistance) {
+                closestStore = store;
+                minDistance = dist;
+            }
+        }
+
+        if (closestStore && !promptedStoresRef.current.has(closestStore.id)) {
+            promptedStoresRef.current.add(closestStore.id);
+            isAlertShowingRef.current = true;
+
+            Alert.alert(
+                'Gian hàng gần bạn',
+                `Bạn có muốn nghe thuyết minh gian hàng phía trước không?\n(${closestStore.name})`,
+                [
+                    {
+                        text: 'Không',
+                        style: 'cancel',
+                        onPress: () => { isAlertShowingRef.current = false; }
+                    },
+                    {
+                        text: 'Có',
+                        onPress: () => {
+                            isAlertShowingRef.current = false;
+                            router.push(`/stall/${closestStore.id}` as any);
+                        }
+                    }
+                ],
+                { cancelable: false }
+            );
+        }
+    };
+
     const checkNearbyNarration = async (lat: number, lng: number) => {
-        if (!selectedLanguage) return;
+        if (!selectedLanguage || isLimitReached) return;
         try {
             const { data: json } = await api.get('/nearby', {
                 params: { lat, lng, lang: selectedLanguage.code },
@@ -386,17 +475,24 @@ export default function MapScreen() {
                                     <TouchableOpacity
                                         onPress={() => {
                                             if (isNarrating) { stopNarration(); return; }
+                                            if (isLimitReached) {
+                                                Alert.alert('Giới hạn lượt nghe', 'Bạn đã hết lượt nghe trong ngày. Vui lòng nâng cấp gói.');
+                                                return;
+                                            }
                                             checkNearbyNarration(selectedStall.lat, selectedStall.lng);
                                         }}
+                                        disabled={isLimitReached && !isNarrating}
                                         className={`w-12 h-12 rounded-xl items-center justify-center border ${isNarrating
                                             ? 'bg-[#009FB7] border-[#009FB7]'
-                                            : 'bg-[#F3F4F6] border-gray-200'
+                                            : isLimitReached 
+                                                ? 'bg-gray-200 border-gray-300'
+                                                : 'bg-[#F3F4F6] border-gray-200'
                                             }`}
                                     >
                                         <Ionicons
                                             name={isNarrating ? 'stop' : 'volume-high-outline'}
                                             size={22}
-                                            color={isNarrating ? 'white' : '#4B5563'}
+                                            color={isNarrating ? 'white' : isLimitReached ? '#9CA3AF' : '#4B5563'}
                                         />
                                     </TouchableOpacity>
                                 </View>

@@ -26,4 +26,10 @@ export class UsersController {
   ) {
     return this.usersService.updateProfile(user.id, dto);
   }
+
+  @Get('listen-history')
+  @ApiOperation({ summary: 'Lấy lịch sử nghe thuyết minh' })
+  getListenHistory(@CurrentUser() user: { id: string }) {
+    return this.usersService.getListenHistory(user.id);
+  }
 }

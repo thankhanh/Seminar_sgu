@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Save, MapPin, Info, Loader2, CheckCircle2 } from 'lucide-react';
-import { merchantApi, storesApi } from '../utils/api';
+import { Camera, Save, MapPin, Info, Loader2, CheckCircle2, QrCode, Download, RefreshCw } from 'lucide-react';
+import { merchantApi, storesApi, qrApi } from '../utils/api';
 import MapSelector from '../components/MapSelector';
 
 interface StoreForm {
@@ -16,6 +16,13 @@ interface StoreForm {
     status: string;
 }
 
+interface QrCodeData {
+    id: string;
+    qrImageUrl: string;
+    isActive: boolean;
+    createdAt: string;
+}
+
 const StoreInfo: React.FC = () => {
     const [stores, setStores] = useState<StoreForm[]>([]);
     const [selectedStoreId, setSelectedStoreId] = useState<string>('');
@@ -26,6 +33,24 @@ const StoreInfo: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+
+    // QR Code state
+    const [qrCodes, setQrCodes] = useState<QrCodeData[]>([]);
+    const [qrLoading, setQrLoading] = useState(false);
+    const [qrGenerating, setQrGenerating] = useState(false);
+
+    const fetchQr = async (storeId: string) => {
+        if (!storeId) return;
+        setQrLoading(true);
+        try {
+            const result = await qrApi.getByStore(storeId);
+            setQrCodes(Array.isArray(result) ? result : []);
+        } catch {
+            setQrCodes([]);
+        } finally {
+            setQrLoading(false);
+        }
+    };
 
     const fetchStores = async () => {
         setLoading(true);
@@ -69,11 +94,38 @@ const StoreInfo: React.FC = () => {
         fetchStores();
     }, []);
 
+    // Load QR khi storeForm.id thay đổi
+    useEffect(() => {
+        if (storeForm.id) fetchQr(storeForm.id);
+    }, [storeForm.id]);
+
+    const handleGenerateQr = async () => {
+        if (!storeForm.id) return;
+        setQrGenerating(true);
+        try {
+            await qrApi.create(storeForm.id);
+            await fetchQr(storeForm.id);
+        } catch (err: any) {
+            alert(err.message || 'Lỗi khi tạo QR code');
+        } finally {
+            setQrGenerating(false);
+        }
+    };
+
+    const handleDownloadQr = (url: string) => {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `qr-${storeForm.name || 'store'}.png`;
+        link.target = '_blank';
+        link.click();
+    };
+
     const handleSelectStore = (id: string) => {
         const store = stores.find(s => s.id === id);
         if (store) {
             setSelectedStoreId(id);
             setStoreForm(store);
+            fetchQr(id);
         }
     };
 
@@ -326,6 +378,92 @@ const StoreInfo: React.FC = () => {
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* === QR CODE CARD === */}
+            <div className="bg-white rounded-3xl border border-slate-200/60 shadow-xl shadow-slate-200/20 overflow-hidden">
+                <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center">
+                            <QrCode size={20} className="text-primary-600" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900">Mã QR Quán</h2>
+                            <p className="text-sm text-slate-500">Khách hàng quét mã để nghe thuyết minh tự động theo ngôn ngữ của họ.</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleGenerateQr}
+                        disabled={qrGenerating || !storeForm.id}
+                        className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm shadow-primary-500/20 disabled:opacity-60 text-sm"
+                    >
+                        {qrGenerating
+                            ? <Loader2 size={16} className="animate-spin" />
+                            : <RefreshCw size={16} />
+                        }
+                        {qrCodes.length > 0 ? 'Tạo QR mới' : 'Tạo mã QR'}
+                    </button>
+                </div>
+
+                <div className="p-8">
+                    {qrLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="animate-spin text-primary-500" size={36} />
+                        </div>
+                    ) : qrCodes.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-14 gap-4">
+                            <div className="w-24 h-24 bg-slate-50 rounded-3xl flex items-center justify-center border-2 border-dashed border-slate-200">
+                                <QrCode size={40} className="text-slate-300" />
+                            </div>
+                            <div className="text-center">
+                                <h3 className="font-bold text-slate-700 text-lg">Chưa có mã QR</h3>
+                                <p className="text-slate-400 text-sm mt-1">Nhấn <strong>"Tạo mã QR"</strong> để tạo mã QR cho quán và chia sẻ với khách hàng.</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex flex-wrap gap-8 justify-center">
+                            {qrCodes.slice(0, 3).map((qr, idx) => (
+                                <div key={qr.id} className="flex flex-col items-center gap-4">
+                                    <div className={`p-3 rounded-2xl border-2 shadow-md ${qr.isActive ? 'border-primary-200 bg-primary-50/30' : 'border-slate-200 bg-slate-50 opacity-60'}`}>
+                                        <img
+                                            src={qr.qrImageUrl}
+                                            alt={`QR Code ${idx + 1}`}
+                                            className="w-48 h-48 rounded-xl"
+                                        />
+                                    </div>
+                                    <div className="text-center">
+                                        <span className={`inline-flex items-center gap-1 text-[11px] font-bold uppercase px-2.5 py-1 rounded-full ${qr.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}`}>
+                                            {qr.isActive ? <CheckCircle2 size={11} /> : null}
+                                            {qr.isActive ? 'Đang hoạt động' : 'Đã vô hiệu hóa'}
+                                        </span>
+                                        <p className="text-xs text-slate-400 mt-1.5">
+                                            {new Date(qr.createdAt).toLocaleDateString('vi-VN')}
+                                        </p>
+                                    </div>
+                                    {qr.isActive && (
+                                        <button
+                                            onClick={() => handleDownloadQr(qr.qrImageUrl)}
+                                            className="flex items-center gap-2 text-sm font-bold text-primary-600 hover:text-primary-700 border border-primary-200 hover:border-primary-400 hover:bg-primary-50 px-4 py-2 rounded-xl transition-all"
+                                        >
+                                            <Download size={15} />
+                                            Tải về / In ấn
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {qrCodes.length > 0 && (
+                        <div className="mt-6 pt-5 border-t border-slate-100 flex items-start gap-3 bg-amber-50 rounded-xl p-4">
+                            <div className="text-amber-500 text-lg">💡</div>
+                            <p className="text-sm text-amber-800">
+                                <strong>Hướng dẫn:</strong> In mã QR này và đặt tại quán. Khách hàng quét bằng ứng dụng
+                                <strong> Smart Tour</strong> → màn hình giới thiệu quán mở ra → thuyết minh <strong>tự động phát</strong> theo ngôn ngữ của khách.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

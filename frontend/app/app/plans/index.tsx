@@ -19,20 +19,46 @@ interface Plan {
 
 export default function PlansScreen() {
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [currentSub, setCurrentSub] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const fetchPlans = async () => {
       try {
-        const { data: json } = await api.get('/plan-metadata');
+        const [plansRes, subRes] = await Promise.all([
+          api.get('/plan-metadata'),
+          api.get('/subscriptions/my').catch(() => ({ data: { success: false, data: null } }))
+        ]);
+        
+        const subJson = subRes.data;
+        let activeSub = null;
+        if (subJson.success && subJson.data) {
+          activeSub = subJson.data;
+          setCurrentSub(activeSub);
+        }
+
+        const json = plansRes.data;
         if (json.success) {
-          // Process features if they are stored as JSON/string
-          const processedPlans = json.data.map((plan: any) => ({
-            ...plan,
-            features: typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || []),
-            price: Number(plan.price)
-          }));
+          const processedPlans = json.data
+            .filter((p: any) => {
+              const isCustomerPlan = p.planKey.startsWith('customer_');
+              if (!isCustomerPlan) return false;
+
+              // Nếu đang có gói Monthly, ẩn gói Monthly để ép lên Yearly
+              if (activeSub && activeSub.plan === 'monthly') {
+                const planType = p.planKey.replace('customer_', '');
+                if (planType === 'monthly') return false;
+              }
+              return true;
+            })
+            .map((plan: any) => ({
+              ...plan,
+              features: typeof plan.features === 'string' ? JSON.parse(plan.features) : (plan.features || []),
+              price: Number(plan.price)
+            }))
+            .sort((a: any, b: any) => a.price - b.price);
+
           setPlans(processedPlans);
         }
       } catch (error) {
@@ -79,17 +105,24 @@ export default function PlansScreen() {
         </View>
 
         {/* Plan Cards */}
-        {plans.map((plan, index) => (
-          <PlanCard 
-            key={plan.planKey} 
-            plan={plan} 
-            isPopular={plan.planKey.includes('business')}
-            onSelect={() => router.push({
-              pathname: '/plans/payment',
-              params: { planKey: plan.planKey, price: plan.price, name: plan.name }
-            } as any)}
-          />
-        ))}
+        {plans.map((plan, index) => {
+          const isCurrent = currentSub 
+            ? currentSub.plan.toLowerCase() === plan.planKey.replace('customer_', '').toLowerCase()
+            : plan.price === 0;
+
+          return (
+            <PlanCard 
+              key={plan.planKey} 
+              plan={plan} 
+              isPopular={plan.planKey.includes('business')}
+              isCurrent={isCurrent}
+              onSelect={() => router.push({
+                pathname: '/plans/payment',
+                params: { planKey: plan.planKey, price: plan.price, name: plan.name }
+              } as any)}
+            />
+          );
+        })}
 
         <View className="h-20" />
       </ScrollView>
@@ -97,7 +130,7 @@ export default function PlansScreen() {
   );
 }
 
-function PlanCard({ plan, isPopular, onSelect }: { plan: Plan, isPopular?: boolean, onSelect: () => void }) {
+function PlanCard({ plan, isPopular, isCurrent, onSelect }: { plan: Plan, isPopular?: boolean, isCurrent: boolean, onSelect: () => void }) {
   return (
     <View 
       className={`bg-white rounded-[32px] p-6 mb-6 border-2 ${isPopular ? 'border-[#009FB7]' : 'border-transparent'} shadow-sm relative overflow-hidden`}
@@ -118,8 +151,8 @@ function PlanCard({ plan, isPopular, onSelect }: { plan: Plan, isPopular?: boole
         </View>
         <View className="ml-4">
           <Text className="text-xl font-extrabold text-[#1F2937]">{plan.name}</Text>
-          <Text className="text-[11px] text-[#9CA3AF] font-bold uppercase tracking-widest">
-            {plan.maxStore} Store | {plan.maxPOI} POI
+          <Text className="text-[11px] text-[#9CA3AF] font-bold uppercase tracking-widest mt-1">
+            Dành cho Người dùng (Khách hàng)
           </Text>
         </View>
       </View>
@@ -142,10 +175,19 @@ function PlanCard({ plan, isPopular, onSelect }: { plan: Plan, isPopular?: boole
 
       <TouchableOpacity 
         onPress={onSelect}
-        className={`w-full py-4 rounded-2xl items-center ${isPopular ? 'bg-[#009FB7]' : 'bg-[#1F2937]'}`}
+        disabled={isCurrent || plan.price === 0}
+        className={`w-full py-4 rounded-2xl items-center ${
+          isCurrent 
+            ? 'bg-emerald-50 border border-emerald-200' 
+            : plan.price === 0
+            ? 'bg-slate-100 border border-slate-200'
+            : isPopular ? 'bg-[#009FB7]' : 'bg-[#1F2937]'
+        }`}
       >
-        <Text className="text-white font-extrabold text-[15px]">
-          {plan.price === 0 ? 'Bắt đầu ngay' : 'Nâng cấp ngay'}
+        <Text className={`font-extrabold text-[15px] ${
+          isCurrent ? 'text-emerald-600' : plan.price === 0 ? 'text-slate-400' : 'text-white'
+        }`}>
+          {isCurrent ? 'Đang sử dụng' : (plan.price === 0 ? 'Gói mặc định' : 'Nâng cấp ngay')}
         </Text>
       </TouchableOpacity>
     </View>

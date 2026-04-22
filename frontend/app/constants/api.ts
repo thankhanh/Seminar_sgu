@@ -7,7 +7,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_URL = 'http://192.168.1.3:3000/api/v1';
+export const API_URL = 'http://192.168.1.9:3000/api/v1';
 export const TOKEN_KEY = 'auth_access_token';
 export const REFRESH_KEY = 'auth_refresh_token';
 export const USER_KEY = 'auth_user';
@@ -97,6 +97,18 @@ export const authHelpers = {
         const token = await AsyncStorage.getItem(TOKEN_KEY);
         return !!token;
     },
+};
+
+// ─── Users Helpers ─────────────────────────────────────────────────
+export const usersHelpers = {
+    async getListenHistory() {
+        const response = await api.get('/users/listen-history');
+        const { success, data, message } = response.data;
+        if (!success) {
+            throw new Error(message || 'Failed to fetch history');
+        }
+        return data;
+    }
 };
 
 export default api;

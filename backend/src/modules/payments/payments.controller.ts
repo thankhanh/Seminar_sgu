@@ -49,6 +49,22 @@ export class PaymentsController {
     return { message: 'Vui lòng kiểm tra kết quả từ IPN', query };
   }
 
+  // ─── Kiểm tra trạng thái ────────────────────────────────────
+
+  @Get('status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Kiểm tra trạng thái giao dịch',
+    description: 'App polling endpoint này để biết kết quả thanh toán MoMo.',
+  })
+  getStatus(
+    @CurrentUser() user: { id: string },
+    @Query('transactionId') transactionId: string,
+  ) {
+    return this.paymentsService.getTransactionStatus(transactionId, user.id);
+  }
+
   // ─── Lịch sử ─────────────────────────────────────────────────
 
   @Get('history')

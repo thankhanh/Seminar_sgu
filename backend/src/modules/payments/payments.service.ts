@@ -62,7 +62,7 @@ export class PaymentsService {
         type: dto.type.startsWith('user') ? 'user_subscription' : 'merchant_subscription',
         paymentMethod: 'vnpay',
         status: 'pending',
-        description: label,
+        description: label + (dto.type ? ` [KEY=${dto.type}]` : ''),
       },
     });
 
@@ -191,7 +191,11 @@ export class PaymentsService {
       if (merchant) {
         // Ưu tiên dùng planKey nếu có
         let plan: MerchantPlan | null = null;
-        const planKey = (tx as any).planKey;
+        
+        let planKey = null;
+        const match = tx.description?.match(/\[KEY=(.+?)\]/);
+        if (match) planKey = match[1];
+
         if (planKey && TYPE_TO_PLAN[planKey]) {
           plan = TYPE_TO_PLAN[planKey];
         } else {
@@ -206,7 +210,10 @@ export class PaymentsService {
         }
       }
     } else if (tx.type === 'user_subscription') {
-      const planKey = (tx as any).planKey;
+      let planKey = null;
+      const match = tx.description?.match(/\[KEY=(.+?)\]/);
+      if (match) planKey = match[1];
+      
       const email = (tx as any).user?.email;
       if (planKey && email) {
         const plan = planKey.replace('user_', '') as any; // monthly, yearly
@@ -243,9 +250,8 @@ export class PaymentsService {
         type: (dto.amount ? 'food_order' : (dto.type?.startsWith('user') ? 'user_subscription' : 'merchant_subscription')) as TransactionType,
         paymentMethod: 'momo',
         status: 'pending',
-        description: label,
-        planKey: dto.type,
-      } as any,
+        description: label + (dto.type ? ` [KEY=${dto.type}]` : ''),
+      },
     });
 
     const partnerCode = this.config.get<string>('MOMO_PARTNER_CODE')!;
@@ -257,7 +263,7 @@ export class PaymentsService {
 
     const requestId = `${partnerCode}-${Date.now()}`;
     const orderId = `VK-${tx.id.replace(/-/g, '').substring(0, 8)}-${Date.now()}`;
-    const requestType = 'payWithMethod';
+    const requestType = 'captureWallet';
     const orderInfo = label;
     const extraData = '';
     const autoCapture = true;
@@ -386,6 +392,15 @@ export class PaymentsService {
     }
 
     return { message: 'IPN processed' };
+  }
+
+  async getTransactionStatus(transactionId: string, userId: string) {
+    const tx = await this.prisma.transaction.findFirst({
+      where: { id: transactionId, userId },
+      select: { id: true, status: true, amount: true, type: true, createdAt: true },
+    });
+    if (!tx) throw new BadRequestException('Không tìm thấy giao dịch');
+    return tx;
   }
 
   async getTransactionHistory(userId: string) {

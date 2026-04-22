@@ -49,22 +49,35 @@ export default function QRScannerScreen() {
         if (scanned) return;
         setScanned(true);
         console.log(`[Scanner] Scanned QR Code: ${data}`);
-        
+
         try {
-            // data can be a full URL or just a code. 
-            // In our system, we expect the code.
+            // ✅ Loại 1: QR mới chứa deeplink smarttour://stall/{storeId}?autoplay=1
+            // Dùng regex vì URL parser hiểu 'stall' là host chứ không phải path
+            const deepLinkMatch = data.match(/(?:smarttour|app):\/\/stall\/([^/?#\s]+)/);
+            if (deepLinkMatch && deepLinkMatch[1]) {
+                const storeId = deepLinkMatch[1];
+                console.log(`[Scanner] Deeplink → storeId: ${storeId}`);
+                router.replace(`/stall/${storeId}?autoplay=1` as any);
+                return;
+            }
+
+            // 🔄 Loại 2: QR cũ chứa UUID thô → gọi API resolve
             const { data: json } = await api.post(`/qr/scan/${data}`);
-            
-            if (json.success && json.data?.storeId) {
-                // Navigate to stall detail
-                router.replace(`/stall/${json.data.storeId}` as any);
+
+            // Backend trả { success: true, data: { storeId, store, ... } }
+            const storeId = json.data?.storeId || json.data?.store?.id;
+            if (json.success && storeId) {
+                router.replace(`/stall/${storeId}?autoplay=1` as any);
             } else {
                 alert('Mã QR không hợp lệ hoặc không tồn tại trong hệ thống.');
+                setScanned(false);
             }
         } catch (error: any) {
             console.warn('[Scanner] Error scanning QR:', error);
-            const errMsg = error.response?.data?.error?.message || 'Có lỗi xảy ra khi kết nối máy chủ.';
+            const errMsg = error?.response?.data?.error?.message
+                || 'Có lỗi xảy ra. Vui lòng thử lại.';
             alert(`Lỗi: ${errMsg}`);
+            setScanned(false);
         }
     };
 

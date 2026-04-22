@@ -3,6 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { haversineDistance } from '../../common/utils/haversine.util';
+import { deleteFile, deleteFiles } from '../../common/utils/file.util';
 
 @Injectable()
 export class StoresService {
@@ -62,7 +63,7 @@ export class StoresService {
     });
   }
 
-  async findAll(page = 1, limit = 20, status?: string, merchantId?: string) {
+  async findAll(page = 1, limit = 20, status?: string, merchantId?: string, keyword?: string) {
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -76,6 +77,12 @@ export class StoresService {
 
     if (merchantId) {
       where.merchantId = merchantId;
+    }
+
+    if (keyword) {
+      where.name = {
+        contains: keyword,
+      };
     }
 
     const [data, total] = await Promise.all([
@@ -93,7 +100,8 @@ export class StoresService {
           closeTime: true,
           coverImage: true,
           status: true,
-          merchant: { select: { businessName: true } },
+          merchantId: true,
+          merchant: { select: { id: true, businessName: true } },
           _count: {
             select: { menus: true, narrations: true }
           }
@@ -105,15 +113,7 @@ export class StoresService {
     return { data, total, page, limit };
   }
 
-  /**
-   * Tìm các stores gần vị trí GPS hiện tại
-   * @param lat - Vĩ độ hiện tại
-   * @param lng - Kinh độ hiện tại
-   * @param radiusKm - Bán kính tìm kiếm (km), mặc định 5km
-   * @param limit - Số lượng kết quả tối đa, mặc định 20
-   */
   async findNearby(lat: number, lng: number, radiusKm = 5, limit = 20) {
-    // Lấy tất cả stores active
     const stores = await this.prisma.store.findMany({
       where: { status: 'active' },
       select: {
@@ -130,7 +130,6 @@ export class StoresService {
       },
     });
 
-    // Tính khoảng cách và lọc trong bán kính
     const nearbyStores = stores
       .map(store => ({
         ...store,
@@ -160,7 +159,7 @@ export class StoresService {
   async update(id: string, user: { id: string; role: string }, dto: UpdateStoreDto) {
     const store = await this.prisma.store.findUnique({
       where: { id },
-      include: { merchant: true },
+      include: { merchant: true, images: true },
     });
     if (!store) throw new NotFoundException('Store không tồn tại');
 
@@ -174,6 +173,19 @@ export class StoresService {
     // For merchant, we filter out the status field to prevent self-approval
     if (user.role !== 'admin') {
       delete (updateData as any).status;
+    }
+
+    // Xử lý dọn dẹp file ảnh bìa cũ nếu upload ảnh mới
+    if (dto.coverImage && store.coverImage && dto.coverImage !== store.coverImage) {
+      await deleteFile(store.coverImage);
+    }
+
+    // Ghi chú: Với gallery images (images array), logic dọn dẹp phức tạp hơn vì nó là bảng quan hệ.
+    // Ở đây ta đơn giản là deleteMany {} rồi createMany {} nên nếu muốn dọn dẹp file cũ,
+    // ta cần so sánh danh sách cũ và mới. Để đơn giản cho MVP, ta sẽ chỉ xóa toàn bộ ảnh cũ khi update gallery mới.
+    if (images && store.images.length > 0) {
+      const oldImageUrls = store.images.map(img => img.imageUrl);
+      await deleteFiles(oldImageUrls);
     }
 
     const updatedStore = await this.prisma.store.update({ 
@@ -198,7 +210,11 @@ export class StoresService {
   async remove(id: string, user: { id: string; role: string }) {
     const store = await this.prisma.store.findUnique({
       where: { id },
-      include: { merchant: true },
+      include: { 
+        merchant: true,
+        images: true,
+        narrations: true
+      },
     });
     if (!store) throw new NotFoundException('Store không tồn tại');
 
@@ -207,7 +223,24 @@ export class StoresService {
       throw new ForbiddenException('Bạn không có quyền xóa store này');
     }
 
+    // 1. Thu thập danh sách file cần xóa
+    const filesToDelete: string[] = [];
+    if (store.coverImage) filesToDelete.push(store.coverImage);
+    
+    store.images.forEach(img => {
+      if (img.imageUrl) filesToDelete.push(img.imageUrl);
+    });
+
+    store.narrations.forEach(nar => {
+      if (nar.audioUrl) filesToDelete.push(nar.audioUrl);
+    });
+
+    // 2. Xóa file vật lý
+    await deleteFiles(filesToDelete);
+
+    // 3. Xóa record trong DB (Cascade sẽ tự động xóa images, narrations, menus liên quan)
     await this.prisma.store.delete({ where: { id } });
-    return { success: true, message: 'Đã xóa store' };
+    
+    return { success: true, message: 'Đã xóa store và toàn bộ dữ liệu liên quan' };
   }
 }

@@ -1,11 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateNarrationDto } from './dto/create-narration.dto';
 import { UpdateNarrationDto } from './dto/update-narration.dto';
-import * as fs from 'fs';
-import * as path from 'path';
-// @ts-ignore
-import { translate as googleTranslate } from '@vitalets/google-translate-api';
+import { deleteFile } from '../../common/utils/file.util';
 
 @Injectable()
 export class NarrationsService {
@@ -74,60 +71,59 @@ export class NarrationsService {
   }
 
   /**
-   * Dịch thuật nội dung sử dụng Google Translate API (miễn phí)
+   * Dịch thuật văn bản bằng MyMemory API (Miễn phí, không cần API Key)
+   * Hỗ trợ: vi, en, ja, ko, zh, fr, th, de, es...
    */
   private async translateText(text: string, sourceLang: string, targetLang: string): Promise<string> {
-    // Sử dụng Google Translate (miễn phí, nhanh, không cần API Key phức tạp)
+    // Nếu cùng ngôn ngữ, trả về luôn
+    if (sourceLang === targetLang) return text;
+
+    // Map mã ngôn ngữ sang format MyMemory (zh-CN thay vì zh)
+    const LANG_MAP: Record<string, string> = {
+      zh: 'zh-CN',
+      'zh-CN': 'zh-CN',
+    };
+    const src = LANG_MAP[sourceLang] ?? sourceLang;
+    const tgt = LANG_MAP[targetLang] ?? targetLang;
+
     try {
-      const result = await googleTranslate(text, { from: sourceLang, to: targetLang });
-      const translatedText = result.text?.trim();
-      
-      if (translatedText) {
-        console.log(`[Google Translate] Dịch ${sourceLang} -> ${targetLang}: "${translatedText.substring(0, 50)}..."`);
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${src}|${tgt}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-        // Ghi log dịch thuật để theo dõi
-        try {
-          const logFilePath = path.join(process.cwd(), 'translations.log');
-          const logMessage = `\n----------------------------------------\n` +
-                             `[${new Date().toISOString()}]\n` +
-                             `[Nguồn - ${sourceLang.toUpperCase()}]: ${text}\n` +
-                             `[Dịch - ${targetLang.toUpperCase()}]: ${translatedText}\n` +
-                             `----------------------------------------\n`;
-          fs.appendFileSync(logFilePath, logMessage, 'utf-8');
-        } catch (_) {}
+      const data = await response.json() as any;
 
-        return translatedText;
+      if (data.responseStatus === 200 && data.responseData?.translatedText) {
+        const translated = data.responseData.translatedText.trim();
+        console.log(`[Translation] ${src} → ${tgt}: "${translated.substring(0, 40)}..."`);
+        return translated;
       }
-    } catch (err: any) {
-      console.error(`[Google Translate] Lỗi khi dịch: ${err.message}`);
-    }
 
-    return text; // Nếu lỗi hoàn toàn thì trả về text gốc
+      console.warn('[Translation] Không dịch được, dùng text gốc:', data.responseDetails);
+      return text;
+    } catch (error) {
+      console.error('[Translation] Lỗi khi gọi MyMemory API:', error);
+      return text; // Fallback: trả về text gốc nếu lỗi mạng
+    }
   }
 
   /**
    * Tìm thuyết minh gần vị trí hiện tại của app (Có tích hợp Tự động dịch thuật và Caching)
    */
   async findNearby(lat: number, lng: number, targetLangCode: string) {
-    // 1. Tìm cửa hàng gần nhất (bán kính 50m)
+    // 1. Tìm cửa hàng gần nhất (bán kính 100m)
     const stores = await this.prisma.store.findMany({
       where: { status: 'active' },
     });
 
-    const radius = 50; // Giới hạn 50m theo yêu cầu mới
-    let nearbyStore = null;
-    let minDistance = radius + 1;
-
-    for (const store of stores) {
+    const radius = 100;
+    const nearbyStore = stores.find(store => {
       const distance = this.calculateDistance(lat, lng, store.lat, store.lng);
-      if (distance <= radius && distance < minDistance) {
-        minDistance = distance;
-        nearbyStore = store;
-      }
-    }
+      return distance <= radius;
+    });
 
     if (!nearbyStore) {
-      return { found: false, message: 'Không tìm thấy địa điểm thuyết minh nào trong phạm vi 50m' };
+      return { found: false, message: 'Không tìm thấy địa điểm thuyết minh nào trong phạm vi 100m' };
     }
 
     // 2. Tìm ngôn ngữ đích trong DB
@@ -264,44 +260,17 @@ export class NarrationsService {
     });
   }
 
-  async translateNarration(id: string, dto: any) {
-    const narration = await this.prisma.narration.findUnique({
-      where: { id },
-      include: { language: true, store: true },
-    });
-    if (!narration) throw new NotFoundException('Narration không tồn tại');
-
-    // Giả sử dto có targetLanguageCode
-    const targetLangCode = dto.targetLanguageCode || 'en';
-    const translatedText = await this.translateText(narration.textContent || '', narration.language.code, targetLangCode);
-
-    if (dto.save) {
-      const targetLang = await this.prisma.language.findUnique({ where: { code: targetLangCode } });
-      if (!targetLang) throw new NotFoundException(`Ngôn ngữ ${targetLangCode} chưa được hỗ trợ`);
-
-      return this.prisma.narration.upsert({
-        where: { storeId_languageId: { storeId: narration.storeId, languageId: targetLang.id } },
-        update: { textContent: translatedText },
-        create: {
-          storeId: narration.storeId,
-          languageId: targetLang.id,
-          textContent: translatedText,
-          isActive: true,
-        },
-      });
-    }
-
-    return {
-      originalId: id,
-      targetLanguage: targetLangCode,
-      translatedText,
-    };
-  }
 
   async update(id: string, user: { id: string; role: string }, dto: UpdateNarrationDto) {
     const narration = await this.prisma.narration.findUnique({ where: { id } });
     if (!narration) throw new NotFoundException('Narration không tồn tại');
     await this.verifyStoreOwner(narration.storeId, user);
+
+    // Xóa file âm thanh cũ nếu có bản mới thay thế
+    if (dto.audioUrl && narration.audioUrl && dto.audioUrl !== narration.audioUrl) {
+      await deleteFile(narration.audioUrl);
+    }
+
     return this.prisma.narration.update({ where: { id }, data: dto });
   }
 
@@ -309,7 +278,13 @@ export class NarrationsService {
     const narration = await this.prisma.narration.findUnique({ where: { id } });
     if (!narration) throw new NotFoundException('Narration không tồn tại');
     await this.verifyStoreOwner(narration.storeId, user);
+    
+    // Xóa file vật lý
+    if (narration.audioUrl) {
+      await deleteFile(narration.audioUrl);
+    }
+
     await this.prisma.narration.delete({ where: { id } });
-    return { success: true, message: 'Đã xóa narration' };
+    return { success: true, message: 'Đã xóa narration và file âm thanh liên quan' };
   }
 }

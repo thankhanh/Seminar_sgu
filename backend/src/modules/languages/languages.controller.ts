@@ -55,4 +55,14 @@ export class LanguagesController {
   remove(@Param('id') id: string) {
     return this.languagesService.remove(id);
   }
+
+  @Post('translate')
+  @ApiOperation({ summary: 'Dịch văn bản thuyết minh và lưu vào DB (Public)' })
+  translate(@Body() body: { text: string; targetLang?: string; toLang?: string; storeId?: string }) {
+    const to = body.toLang || body.targetLang;
+    return this.languagesService.translateText(body.text, to, body.storeId);
+  }
 }
+
+
+

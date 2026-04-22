@@ -12,15 +12,19 @@ import {
     ImageBackground,
     Alert,
     ActivityIndicator,
+    Modal,
+    Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { authHelpers } from '../../constants/api';
 import { API_URL } from '../../constants/api';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function LoginScreen() {
     const router = useRouter();
+    const { t, languages, selectedLanguage, setSelectedLanguage } = useLanguage();
     const [isLogin, setIsLogin] = useState(true);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -29,6 +33,7 @@ export default function LoginScreen() {
     const [isPasswordVisible, setPasswordVisible] = useState(false);
     const [isConfirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showLangModal, setShowLangModal] = useState(false);
 
     const handleAuth = async () => {
         if (isLogin) {
@@ -40,41 +45,43 @@ export default function LoginScreen() {
 
     const handleLogin = async () => {
         if (!email || !password) {
-            Alert.alert('Error', 'Please enter email and password.');
+            Alert.alert(t('common.error'), t('login.enter_email_password', 'Please enter email and password.'));
             return;
         }
         setIsLoading(true);
         try {
             await authHelpers.login(email.trim(), password);
-            Alert.alert('Success', 'Logged in successfully!');
+            Alert.alert(t('common.success'), t('login.login_success', 'Logged in successfully!'));
             router.replace('/(tabs)/home');
         } catch (error: any) {
-            Alert.alert('Login Error', error.message);
+            Alert.alert(t('login.login_error', 'Login Error'), error.message);
         } finally {
             setIsLoading(false);
         }
     };
 
+
     const handleSignUp = async () => {
         if (!name || !email || !password || !confirmPassword) {
-            Alert.alert('Error', 'Please fill in all fields.');
+            Alert.alert(t('common.error'), t('login.fill_all', 'Please fill in all fields.'));
             return;
         }
         if (password !== confirmPassword) {
-            Alert.alert('Error', 'Passwords do not match.');
+            Alert.alert(t('common.error'), t('login.password_mismatch', 'Passwords do not match.'));
             return;
         }
         setIsLoading(true);
         try {
             await authHelpers.register(name.trim(), email.trim(), password);
-            Alert.alert('Success', 'Account created successfully!');
+            Alert.alert(t('common.success'), t('login.signup_success', 'Account created successfully!'));
             router.replace('/(tabs)/home');
         } catch (error: any) {
-            Alert.alert('Sign Up Error', error.message);
+            Alert.alert(t('login.signup_error', 'Sign Up Error'), error.message);
         } finally {
             setIsLoading(false);
         }
     };
+
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -92,10 +99,14 @@ export default function LoginScreen() {
                             <View style={styles.iconCircle}>
                                 <Ionicons name="compass-outline" size={20} color="#009fb7" />
                             </View>
-                            <Text style={styles.headerBrand}>Vinh Khanh Market</Text>
+                            <Text style={styles.headerBrand}>{t('login.brand')}</Text>
                         </View>
-                        <Ionicons name="globe-outline" size={24} color="#888" />
+                        <TouchableOpacity onPress={() => setShowLangModal(true)} style={styles.langButton}>
+                            <Text style={styles.langTagText}>{selectedLanguage?.flagIcon}</Text>
+                            <Ionicons name="globe-outline" size={24} color="#009FB7" />
+                        </TouchableOpacity>
                     </View>
+
 
                     {/* Map / Welcome Card */}
                     <View style={styles.mapCardContainer}>
@@ -111,10 +122,11 @@ export default function LoginScreen() {
                                     <Ionicons name="location-outline" size={16} color="#009FB7" />
                                     <Text style={styles.locationText}>STREET FOOD HUB</Text>
                                 </View>
-                                <Text style={styles.welcomeText}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
+                                <Text style={styles.welcomeText}>{isLogin ? t('login.welcome_back') : t('login.create_account')}</Text>
                                 <Text style={styles.welcomeSubtext}>
-                                    {isLogin ? 'Discover flavors through our GPS audio guides' : 'Join us to explore the best street food'}
+                                    {isLogin ? t('login.subtext_login') : t('login.subtext_signup')}
                                 </Text>
+
                             </View>
                         </ImageBackground>
                     </View>
@@ -124,12 +136,12 @@ export default function LoginScreen() {
                         {/* Name Field (Sign Up Only) */}
                         {!isLogin && (
                             <>
-                                <Text style={styles.label}>Full Name</Text>
+                                <Text style={styles.label}>{t('login.full_name')}</Text>
                                 <View style={styles.inputContainer}>
                                     <Ionicons name="person-outline" size={20} color="#888" style={styles.inputIcon} />
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="Enter your full name"
+                                        placeholder={t('login.enter_name')}
                                         placeholderTextColor="#A0A0A0"
                                         value={name}
                                         onChangeText={setName}
@@ -140,12 +152,12 @@ export default function LoginScreen() {
                         )}
 
                         {/* Email Field */}
-                        <Text style={styles.label}>Email or Phone</Text>
+                        <Text style={styles.label}>{t('login.email_phone')}</Text>
                         <View style={styles.inputContainer}>
                             <Ionicons name="mail-outline" size={20} color="#888" style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Enter your email or phone"
+                                placeholder={t('login.enter_email')}
                                 placeholderTextColor="#A0A0A0"
                                 value={email}
                                 onChangeText={setEmail}
@@ -154,12 +166,13 @@ export default function LoginScreen() {
                             />
                         </View>
 
+
                         {/* Password Field */}
                         <View style={styles.passwordHeader}>
-                            <Text style={styles.label}>Password</Text>
+                            <Text style={styles.label}>{t('login.password')}</Text>
                             {isLogin && (
                                 <TouchableOpacity>
-                                    <Text style={styles.forgotText}>Forgot?</Text>
+                                    <Text style={styles.forgotText}>{t('login.forgot')}</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -172,7 +185,7 @@ export default function LoginScreen() {
                             />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Enter your password"
+                                placeholder={t('login.enter_password')}
                                 placeholderTextColor="#A0A0A0"
                                 value={password}
                                 onChangeText={setPassword}
@@ -193,7 +206,7 @@ export default function LoginScreen() {
                         {/* Confirm Password Field (Sign Up Only) */}
                         {!isLogin && (
                             <>
-                                <Text style={styles.label}>Confirm Password</Text>
+                                <Text style={styles.label}>{t('login.confirm_password')}</Text>
                                 <View style={styles.inputContainer}>
                                     <Ionicons
                                         name="lock-closed-outline"
@@ -203,12 +216,13 @@ export default function LoginScreen() {
                                     />
                                     <TextInput
                                         style={styles.input}
-                                        placeholder="Confirm your password"
+                                        placeholder={t('login.confirm_password')}
                                         placeholderTextColor="#A0A0A0"
                                         value={confirmPassword}
                                         onChangeText={setConfirmPassword}
                                         secureTextEntry={!isConfirmPasswordVisible}
                                     />
+
                                     <TouchableOpacity
                                         onPress={() => setConfirmPasswordVisible(!isConfirmPasswordVisible)}
                                         style={styles.eyeIcon}
@@ -233,7 +247,7 @@ export default function LoginScreen() {
                                 <ActivityIndicator color="#FFF" />
                             ) : (
                                 <>
-                                    <Text style={styles.loginButtonText}>{isLogin ? 'Log In' : 'Sign Up'}</Text>
+                                    <Text style={styles.loginButtonText}>{isLogin ? t('login.log_in') : t('login.sign_up')}</Text>
                                     <Ionicons name={isLogin ? "arrow-forward-outline" : "person-add-outline"} size={20} color="#FFF" style={{ marginLeft: 6 }} />
                                 </>
                             )}
@@ -242,9 +256,10 @@ export default function LoginScreen() {
                         {/* Divider */}
                         <View style={styles.dividerContainer}>
                             <View style={styles.dividerLine} />
-                            <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
+                            <Text style={styles.dividerText}>{t('login.or_continue')}</Text>
                             <View style={styles.dividerLine} />
                         </View>
+
 
                         {/* Social Logins */}
                         <View style={styles.socialContainer}>
@@ -265,24 +280,50 @@ export default function LoginScreen() {
                         {/* Sign Up / Log In Toggle */}
                         <View style={styles.signUpContainer}>
                             <Text style={styles.signUpText}>
-                                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                                {isLogin ? t('login.no_account') : t('login.have_account')}
                             </Text>
                             <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
-                                <Text style={styles.signUpLink}>{isLogin ? 'Sign Up' : 'Log In'}</Text>
+                                <Text style={styles.signUpLink}>{isLogin ? t('login.sign_up') : t('login.log_in')}</Text>
                             </TouchableOpacity>
                         </View>
+
                     </View>
                 </ScrollView>
 
                 {/* Footer Brand */}
                 <View style={styles.footerBrand}>
                     <Ionicons name="restaurant-outline" size={14} color="#C0C0C0" style={{ marginRight: 4 }} />
-                    <Text style={styles.footerBrandText}>TASTE THE STREET</Text>
+                    <Text style={styles.footerBrandText}>{t('login.footer')}</Text>
                 </View>
+
+                {/* --- LANGUAGE MODAL --- */}
+                <Modal visible={showLangModal} transparent animationType="fade" onRequestClose={() => setShowLangModal(false)}>
+                    <Pressable className="flex-1 bg-black/40 justify-end" onPress={() => setShowLangModal(false)}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHandle} />
+                            <Text style={styles.modalTitle}>{t('login.select_language')}</Text>
+                            {languages.map((lang) => {
+                                const isActive = selectedLanguage?.code === lang.code;
+                                return (
+                                    <TouchableOpacity
+                                        key={lang.code}
+                                        onPress={() => { setSelectedLanguage(lang); setShowLangModal(false); }}
+                                        style={[styles.langOption, isActive && styles.langOptionActive]}
+                                    >
+                                        <Text style={styles.langFlag}>{lang.flagIcon}</Text>
+                                        <Text style={[styles.langName, isActive && styles.langNameActive]}>{lang.name}</Text>
+                                        {isActive && <Ionicons name="checkmark-circle" size={22} color="#009FB7" />}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </Pressable>
+                </Modal>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
+
 
 const styles = StyleSheet.create({
     safeArea: {
@@ -322,6 +363,21 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#111827',
     },
+    langButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    langTagText: {
+        fontSize: 16,
+        marginRight: 6,
+    },
+
     mapCardContainer: {
         width: '100%',
         height: 180,
@@ -493,4 +549,55 @@ const styles = StyleSheet.create({
         color: '#C0C0C0',
         letterSpacing: 1,
     },
-});
+    // Modal Styles
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        paddingHorizontal: 24,
+        paddingTop: 16,
+        paddingBottom: 40,
+    },
+    modalHandle: {
+        width: 48,
+        height: 5,
+        borderRadius: 2.5,
+        backgroundColor: '#E5E7EB',
+        alignSelf: 'center',
+        marginBottom: 24,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#111827',
+        marginBottom: 20,
+    },
+    langOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderRadius: 16,
+        marginBottom: 8,
+        backgroundColor: '#F9FAFB',
+    },
+    langOptionActive: {
+        backgroundColor: '#E6F6F8',
+        borderWidth: 1,
+        borderColor: '#009FB7',
+    },
+    langFlag: {
+        fontSize: 24,
+        marginRight: 16,
+    },
+    langName: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1F2937',
+    },
+    langNameActive: {
+        color: '#009FB7',
+        fontWeight: '700',
+    },
+});

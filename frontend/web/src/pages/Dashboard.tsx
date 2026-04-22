@@ -6,7 +6,10 @@ import {
     ShoppingCart,
     ArrowUpRight,
     ArrowDownRight,
-    Loader2
+    Loader2,
+    Crown,
+    Headphones,
+    Medal
 } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -46,12 +49,12 @@ const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    
+
     useEffect(() => {
         if (user?.role === 'merchant') {
             navigate('/store-info', { replace: true });
         }
-        
+
         const fetchStats = async () => {
             if (user?.role === 'admin') {
                 try {
@@ -64,7 +67,7 @@ const Dashboard: React.FC = () => {
                 }
             }
         };
-        
+
         fetchStats();
     }, [user?.role, navigate]);
 
@@ -98,6 +101,47 @@ const Dashboard: React.FC = () => {
                 <div className="text-right">
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Cập nhật lúc</div>
                     <div className="text-sm font-bold text-slate-900">{new Date().toLocaleTimeString('vi-VN')}</div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* POI Ranking */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 relative overflow-hidden">
+                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-50 rounded-full blur-2xl opacity-50"></div>
+                    <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center border border-rose-100 flex-shrink-0 z-10">
+                        <Headphones size={28} />
+                    </div>
+                    <div className="z-10 overflow-hidden">
+                        <div className="text-sm font-bold text-slate-500 mb-1 tracking-wide">POI ĐC NGHE NHIỀU NHẤT THÁNG</div>
+                        <div className="text-lg font-black text-slate-900 truncate" title={stats?.topPOI?.name || 'Chưa có thông tin'}>{stats?.topPOI?.name || 'Chưa có thông tin'}</div>
+                        <div className="text-sm font-bold text-rose-600 mt-1">{stats?.topPOI?.count || 0} lượt nghe</div>
+                    </div>
+                </div>
+
+                {/* Merchant Ranking */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 relative overflow-hidden">
+                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-50 rounded-full blur-2xl opacity-50"></div>
+                    <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center border border-amber-100 flex-shrink-0 z-10">
+                        <Crown size={28} />
+                    </div>
+                    <div className="z-10 overflow-hidden">
+                        <div className="text-sm font-bold text-slate-500 mb-1 tracking-wide">MERCHANT CÓ NHIỀU POI NHẤT</div>
+                        <div className="text-lg font-black text-slate-900 truncate" title={stats?.topMerchant?.name || 'Chưa có thông tin'}>{stats?.topMerchant?.name || 'Chưa có thông tin'}</div>
+                        <div className="text-sm font-bold text-amber-600 mt-1">{stats?.topMerchant?.count || 0} gian hàng</div>
+                    </div>
+                </div>
+
+                {/* Client Ranking */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 relative overflow-hidden">
+                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-50 rounded-full blur-2xl opacity-50"></div>
+                    <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center border border-indigo-100 flex-shrink-0 z-10">
+                        <Medal size={28} />
+                    </div>
+                    <div className="z-10 overflow-hidden">
+                        <div className="text-sm font-bold text-slate-500 mb-1 tracking-wide">KHÁCH NGHE NHIỀU NHẤT THÁNG</div>
+                        <div className="text-lg font-black text-slate-900 truncate" title={stats?.topClient?.name || 'Chưa có thông tin'}>{stats?.topClient?.name || 'Chưa có thông tin'}</div>
+                        <div className="text-sm font-bold text-indigo-600 mt-1">{stats?.topClient?.count || 0} lượt nghe</div>
+                    </div>
                 </div>
             </div>
 
@@ -141,11 +185,11 @@ const Dashboard: React.FC = () => {
                     <div className="flex justify-between items-center mb-8 relative z-10">
                         <h3 className="text-lg font-bold text-slate-900">Biểu đồ tăng trưởng</h3>
                         <div className="flex gap-2">
-                             <span className="px-3 py-1 bg-primary-50 text-primary-700 rounded-lg text-xs font-bold ring-1 ring-primary-100">Dữ liệu thời gian thực</span>
+                            <span className="px-3 py-1 bg-primary-50 text-primary-700 rounded-lg text-xs font-bold ring-1 ring-primary-100">Dữ liệu thời gian thực</span>
                         </div>
                     </div>
                     <div className="h-64 flex items-end justify-between gap-3 px-4 relative z-10">
-                        {(stats?.monthlyRevenue || [0,0,0,0,0,0,0,0,0,0,0,0]).map((revenue: number, i: number) => {
+                        {(stats?.monthlyRevenue || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).map((revenue: number, i: number) => {
                             const maxVal = Math.max(...(stats?.monthlyRevenue || [100]));
                             const height = maxVal > 0 ? (revenue / maxVal) * 100 : 0;
                             return (
@@ -172,17 +216,17 @@ const Dashboard: React.FC = () => {
                     </h3>
                     <div className="space-y-6 flex-1">
                         <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                             <div className="text-sm font-bold text-slate-600 mb-1">Cần phê duyệt</div>
-                             <div className="text-2xl font-black text-amber-600">{stats?.merchantCountPending || 0}</div>
+                            <div className="text-sm font-bold text-slate-600 mb-1">Cần phê duyệt</div>
+                            <div className="text-2xl font-black text-amber-600">{stats?.merchantCountPending || 0}</div>
                         </div>
                         <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                             <div className="text-sm font-bold text-slate-600 mb-1">Cửa hàng đang mở</div>
-                             <div className="text-2xl font-black text-emerald-600">{stats?.storeCountActive || 0}</div>
+                            <div className="text-sm font-bold text-slate-600 mb-1">Cửa hàng đang mở</div>
+                            <div className="text-2xl font-black text-emerald-600">{stats?.storeCountActive || 0}</div>
                         </div>
                     </div>
-                    <button 
-                         onClick={() => navigate('/users')}
-                         className="w-full mt-8 py-3 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all"
+                    <button
+                        onClick={() => navigate('/users')}
+                        className="w-full mt-8 py-3 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all"
                     >
                         Quản lý hệ thống
                     </button>

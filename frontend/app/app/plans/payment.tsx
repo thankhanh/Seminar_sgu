@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
-import api from '../../constants/api';
+import api, { paymentHelpers } from '../../constants/api';
 
 const { width } = Dimensions.get('window');
 const QR_SIZE = width * 0.55;
@@ -57,7 +57,7 @@ export default function PaymentScreen() {
     // Poll every 3 seconds
     pollTimerRef.current = setInterval(async () => {
       try {
-        const { data: json } = await api.get(`/payments/status?transactionId=${transactionId}`);
+        const { data: json } = await paymentHelpers.getPaymentStatus(transactionId);
         const status = json.data?.status || json.status;
 
         if (status === 'success') {
@@ -94,12 +94,7 @@ export default function PaymentScreen() {
 
     setIsProcessing(true);
     try {
-      const { data: json } = await api.post('/payments/create', {
-        method: 'momo',
-        type: planKey,
-        amount: price,
-        orderInfo: `Nâng cấp gói ${planName}`,
-      });
+      const { data: json } = await paymentHelpers.createPayment('momo', planKey, price, `Nâng cấp gói ${planName}`);
 
       if (json.success && json.data) {
         const { paymentUrl, qrCodeUrl, deeplink, orderId, transactionId } = json.data;
@@ -133,7 +128,7 @@ export default function PaymentScreen() {
           Linking.openURL(paymentData.deeplink);
           return;
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     if (paymentData?.paymentUrl) {
       Linking.openURL(paymentData.paymentUrl);
@@ -327,44 +322,44 @@ export default function PaymentScreen() {
 
         {/* Order Summary Card */}
         <View className="bg-[#F9FAFB] rounded-[32px] p-8 mb-8 border border-gray-100">
-           <View className="items-center mb-6">
-             <View className="w-20 h-20 rounded-full bg-[#009FB7]/10 items-center justify-center mb-4">
-                <MaterialCommunityIcons name="wallet-outline" size={40} color="#009FB7" />
-             </View>
-             <Text className="text-[#9CA3AF] text-sm font-bold uppercase tracking-widest mb-1">Tổng cộng</Text>
-             <Text className="text-4xl font-extrabold text-[#1F2937]">{price.toLocaleString('vi-VN')} đ</Text>
-           </View>
+          <View className="items-center mb-6">
+            <View className="w-20 h-20 rounded-full bg-[#009FB7]/10 items-center justify-center mb-4">
+              <MaterialCommunityIcons name="wallet-outline" size={40} color="#009FB7" />
+            </View>
+            <Text className="text-[#9CA3AF] text-sm font-bold uppercase tracking-widest mb-1">Tổng cộng</Text>
+            <Text className="text-4xl font-extrabold text-[#1F2937]">{price.toLocaleString('vi-VN')} đ</Text>
+          </View>
 
-           <View className="h-[1px] w-full bg-gray-200 mb-6" />
+          <View className="h-[1px] w-full bg-gray-200 mb-6" />
 
-           <View className="space-y-4">
-             <View className="flex-row justify-between items-center">
-               <Text className="text-[#6B7280] text-sm">Gói đăng ký</Text>
-               <Text className="text-[#1F2937] font-bold">{planName}</Text>
-             </View>
-             <View className="flex-row justify-between items-center">
-               <Text className="text-[#6B7280] text-sm">Phương thức</Text>
-               <View className="flex-row items-center">
-                  <Image 
-                    source={{ uri: 'https://upload.wikimedia.org/wikipedia/vi/f/fe/MoMo_Logo.png' }}
-                    className="w-5 h-5 mr-2"
-                    resizeMode="contain"
-                  />
-                  <Text className="text-[#1F2937] font-bold">Ví MoMo</Text>
-               </View>
-             </View>
-             <View className="flex-row justify-between items-center">
-               <Text className="text-[#6B7280] text-sm">Thời hạn</Text>
-               <Text className="text-[#1F2937] font-bold">30 Ngày</Text>
-             </View>
-           </View>
+          <View className="space-y-4">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-[#6B7280] text-sm">Gói đăng ký</Text>
+              <Text className="text-[#1F2937] font-bold">{planName}</Text>
+            </View>
+            <View className="flex-row justify-between items-center">
+              <Text className="text-[#6B7280] text-sm">Phương thức</Text>
+              <View className="flex-row items-center">
+                <Image
+                  source={{ uri: 'https://upload.wikimedia.org/wikipedia/vi/f/fe/MoMo_Logo.png' }}
+                  className="w-5 h-5 mr-2"
+                  resizeMode="contain"
+                />
+                <Text className="text-[#1F2937] font-bold">Ví MoMo</Text>
+              </View>
+            </View>
+            <View className="flex-row justify-between items-center">
+              <Text className="text-[#6B7280] text-sm">Thời hạn</Text>
+              <Text className="text-[#1F2937] font-bold">30 Ngày</Text>
+            </View>
+          </View>
         </View>
 
         <Text className="text-[#9CA3AF] text-xs text-center px-8 leading-5 mb-10">
           Bằng việc nhấn "Thanh toán", bạn đồng ý với Điều khoản dịch vụ và Chính sách bảo mật của chúng tôi.
         </Text>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handlePayment}
           disabled={isProcessing}
           className={`w-full h-16 rounded-2xl items-center justify-center flex-row shadow-lg ${isProcessing ? 'bg-gray-400' : 'bg-[#D21469]'}`}

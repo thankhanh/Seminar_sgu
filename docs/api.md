@@ -26,16 +26,14 @@
 
 ---
 
-## Implementation Status (Auto-check 2026-03-23)
+## Implementation Status (Auto-check 2026-04-14)
 
-Trong trạng thái code hiện tại, chỉ có các endpoint sau được triển khai thực sự (có route decorator `@Get/@Post/...`):
-- `GET /api/v1` (Health check)
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout`
+Trong trạng thái code hiện tại, các phân hệ chính đã được kích hoạt:
+- **Auth**: Đầy đủ Register, Login, Refresh, Logout.
+- **Languages**: Bổ sung endpoint **Translate** (xử lý AI).
+- **Stores/Narrations**: Đã có các endpoint lấy danh sách và thông tin chi tiết phục vụ Mobile.
+- **Cảnh báo Tiệm cận**: Đã chuyển sang xử lý Client-side (Haversine 50m).
 
-Các controller còn lại có tồn tại file, nhưng hiện chưa có các method route (`@Get/@Post/...`) nên **các endpoint tương ứng trong tài liệu** (Users, Stores, Narrations, Menus, Listen History, QR Codes, Subscriptions, Payments, Merchant, Admin, Languages và các auth endpoint khác như `forgot-password/reset-password`) **chưa được triển khai trong backend**.
 
 ## Convention
 
@@ -787,39 +785,29 @@ textContent: "Welcome..." ← dùng TTS để generate audio
 #### `GET /admin/transactions/:id`
 > Chi tiết giao dịch + raw response VNPAY / MoMo.
 
-#### `GET /admin/transactions/stats`
-> Thống kê doanh thu.
+#### `GET /admin/stats`
+> Thống kê dữ liệu tổng quan cho Admin Dashboard, bao gồm doanh thu, số lượng người dùng/quán, mức độ tăng trưởng (Growth rate) và 3 bảng xếp hạng (Top POI, Top Merchant, Top Client).
 
 **Response `200`:**
 ```json
 {
   "success": true,
   "data": {
+    "userCount": 5420,
+    "merchantCount": 87,
+    "merchantCountPending": 12,
+    "storeCount": 215,
+    "storeCountActive": 200,
+    "transactionCount": 1500,
     "totalRevenue": 12500000,
-    "byMethod": { "vnpay": 8000000, "momo": 4500000 },
-    "byStatus": { "success": 11, "failed": 2, "pending": 1 }
-  }
-}
-```
-
----
-
-### Analytics Hệ Thống
-
-#### `GET /admin/analytics`
-> Tổng quan toàn hệ thống.
-
-**Response `200`:**
-```json
-{
-  "success": true,
-  "data": {
-    "totalUsers": 5420,
-    "totalMerchants": 87,
-    "totalStores": 215,
-    "totalListens": 34200,
-    "topStores": [ ... ],
-    "newUsersThisMonth": 320
+    "userGrowth": 10.5,
+    "storeGrowth": 5.2,
+    "transactionGrowth": 12.3,
+    "revenueGrowth": 15.0,
+    "monthlyRevenue": [10000, 20000, 30000, 40000, 15000, 25000, 50000, 0, 0, 0, 0, 0],
+    "topPOI": { "name": "Bún Bò Huế Mẹ Ghẻ", "count": 120 },
+    "topMerchant": { "name": "Công ty TNHH Ẩm Thực ABC", "count": 15 },
+    "topClient": { "name": "Nguyễn Văn A", "count": 45 }
   }
 }
 ```
@@ -860,5 +848,31 @@ textContent: "Welcome..." ← dùng TTS để generate audio
 
 ---
 
+### `POST /languages/translate`
+> Dịch văn bản thuyết minh sang ngôn ngữ yêu cầu bằng AI.
+
+**Body:**
+```json
+{
+  "text": "Chào mừng bạn đến với nhà hàng...",
+  "targetLang": "ko"
+}
+```
+
+**Response `200`:**
+```json
+{
+  "success": true,
+  "data": {
+    "translatedText": "환영합니다...",
+    "sourceLang": "vi",
+    "targetLang": "ko"
+  }
+}
+```
+
+---
+
 *Tài liệu này được duy trì bởi nhóm phát triển dự án Seminar SGU.*
-*Cập nhật lần cuối: 2026-03-16*
+*Cập nhật lần cuối: 2026-04-14*
+

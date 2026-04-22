@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, ImageBackg
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import api from '../../constants/api';
+import api, { planMetadataHelpers, subscriptionsHelpers } from '../../constants/api';
 
 const { width } = Dimensions.get('window');
 
@@ -27,20 +27,17 @@ export default function PlansScreen() {
     const fetchPlans = async () => {
       try {
         const [plansRes, subRes] = await Promise.all([
-          api.get('/plan-metadata'),
-          api.get('/subscriptions/my').catch(() => ({ data: { success: false, data: null } }))
+          planMetadataHelpers.getMetadata(),
+          subscriptionsHelpers.getMySubscriptions().catch(() => null)
         ]);
-        
-        const subJson = subRes.data;
-        let activeSub = null;
-        if (subJson.success && subJson.data) {
-          activeSub = subJson.data;
+
+        let activeSub = subRes;
+        if (activeSub) {
           setCurrentSub(activeSub);
         }
 
-        const json = plansRes.data;
-        if (json.success) {
-          const processedPlans = json.data
+        if (plansRes) {
+          const processedPlans = plansRes
             .filter((p: any) => {
               const isCustomerPlan = p.planKey.startsWith('customer_');
               if (!isCustomerPlan) return false;
@@ -97,7 +94,7 @@ export default function PlansScreen() {
             <Text className="text-[#009FB7] text-[11px] font-bold uppercase tracking-widest">Premium Experience</Text>
           </View>
           <Text className="text-3xl font-extrabold text-[#1F2937] text-center mb-3">
-             Mở khóa toàn bộ{"\n"}Tính năng đặc quyền
+            Mở khóa toàn bộ{"\n"}Tính năng đặc quyền
           </Text>
           <Text className="text-[#6B7280] text-center text-sm leading-5 px-6">
             Chọn gói hội viên phù hợp để trải nghiệm audio tour không giới hạn và hỗ trợ gian hàng của bạn.
@@ -106,14 +103,14 @@ export default function PlansScreen() {
 
         {/* Plan Cards */}
         {plans.map((plan, index) => {
-          const isCurrent = currentSub 
+          const isCurrent = currentSub
             ? currentSub.plan.toLowerCase() === plan.planKey.replace('customer_', '').toLowerCase()
             : plan.price === 0;
 
           return (
-            <PlanCard 
-              key={plan.planKey} 
-              plan={plan} 
+            <PlanCard
+              key={plan.planKey}
+              plan={plan}
               isPopular={plan.planKey.includes('business')}
               isCurrent={isCurrent}
               onSelect={() => router.push({
@@ -132,7 +129,7 @@ export default function PlansScreen() {
 
 function PlanCard({ plan, isPopular, isCurrent, onSelect }: { plan: Plan, isPopular?: boolean, isCurrent: boolean, onSelect: () => void }) {
   return (
-    <View 
+    <View
       className={`bg-white rounded-[32px] p-6 mb-6 border-2 ${isPopular ? 'border-[#009FB7]' : 'border-transparent'} shadow-sm relative overflow-hidden`}
     >
       {isPopular && (
@@ -143,10 +140,10 @@ function PlanCard({ plan, isPopular, isCurrent, onSelect }: { plan: Plan, isPopu
 
       <View className="flex-row items-center mb-4">
         <View className={`w-12 h-12 rounded-2xl items-center justify-center ${isPopular ? 'bg-[#009FB7]' : 'bg-[#F3F4F6]'}`}>
-          <MaterialCommunityIcons 
-            name={isPopular ? "rocket-launch" : "star-outline"} 
-            size={24} 
-            color={isPopular ? "white" : "#009FB7"} 
+          <MaterialCommunityIcons
+            name={isPopular ? "rocket-launch" : "star-outline"}
+            size={24}
+            color={isPopular ? "white" : "#009FB7"}
           />
         </View>
         <View className="ml-4">
@@ -173,20 +170,18 @@ function PlanCard({ plan, isPopular, isCurrent, onSelect }: { plan: Plan, isPopu
         ))}
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={onSelect}
         disabled={isCurrent || plan.price === 0}
-        className={`w-full py-4 rounded-2xl items-center ${
-          isCurrent 
-            ? 'bg-emerald-50 border border-emerald-200' 
-            : plan.price === 0
+        className={`w-full py-4 rounded-2xl items-center ${isCurrent
+          ? 'bg-emerald-50 border border-emerald-200'
+          : plan.price === 0
             ? 'bg-slate-100 border border-slate-200'
             : isPopular ? 'bg-[#009FB7]' : 'bg-[#1F2937]'
-        }`}
+          }`}
       >
-        <Text className={`font-extrabold text-[15px] ${
-          isCurrent ? 'text-emerald-600' : plan.price === 0 ? 'text-slate-400' : 'text-white'
-        }`}>
+        <Text className={`font-extrabold text-[15px] ${isCurrent ? 'text-emerald-600' : plan.price === 0 ? 'text-slate-400' : 'text-white'
+          }`}>
           {isCurrent ? 'Đang sử dụng' : (plan.price === 0 ? 'Gói mặc định' : 'Nâng cấp ngay')}
         </Text>
       </TouchableOpacity>

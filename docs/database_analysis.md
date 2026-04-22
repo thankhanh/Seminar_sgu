@@ -326,9 +326,9 @@ erDiagram
 - [ ] Đăng nhập Admin (tài khoản nội bộ)
 
 #### 📊 Tổng quan hệ thống
-- [ ] Dashboard: tổng users, merchants, stores, lượt nghe
-- [ ] Biểu đồ tăng trưởng theo thời gian
-- [ ] Top quán được nghe nhiều nhất
+- [x] Dashboard: tổng users, merchants, stores, lượt nghe
+- [x] Biểu đồ tăng trưởng theo thời gian
+- [x] Top quán được nghe nhiều nhất (Top POI, Top Merchant, Top Khách Hàng)
 
 #### 👥 Quản lý User
 - [ ] Danh sách users (tìm kiếm, lọc theo role)

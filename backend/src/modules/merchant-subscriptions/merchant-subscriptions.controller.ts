@@ -28,6 +28,12 @@ export class MerchantSubscriptionsController {
     return this.subscriptionsService.findAll(+page || 1, +limit || 10);
   }
 
+  @Patch(':id')
+  @Roles('admin')
+  async updatePlan(@Param('id') id: string, @Body('plan') plan: string) {
+    return this.subscriptionsService.updatePlan(id, plan as any);
+  }
+
   @Patch(':id/cancel')
   @Roles('admin', 'merchant')
   async cancel(@Param('id') id: string) {

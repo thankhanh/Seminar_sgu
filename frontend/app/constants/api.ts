@@ -7,7 +7,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_URL = 'http://192.168.1.6:3000/api/v1'; // LAN IP for Physical Devices (Hotspot)
+export const API_URL = 'http://192.168.1.10:3000/api/v1'; // LAN IP for Physical Devices (Hotspot)
 // export const API_URL = 'http://10.0.2.2:3000/api/v1'; // For Android Emulator
 export const TOKEN_KEY = 'auth_access_token';
 export const REFRESH_KEY = 'auth_refresh_token';

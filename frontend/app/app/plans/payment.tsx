@@ -102,7 +102,7 @@ export default function PaymentScreen() {
       }
 
       // Nếu cần thanh toán, tiếp tục với MoMo
-      const { data: json } = await paymentHelpers.createPayment('momo', planKey, price, `Nâng cấp gói ${planName}`);
+      const json = await paymentHelpers.createPayment('momo', planKey, price, `Nâng cấp gói ${planName}`);
 
       if (json.success && json.data) {
         const { paymentUrl, qrCodeUrl, deeplink, orderId, transactionId } = json.data;

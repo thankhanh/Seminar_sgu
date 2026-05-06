@@ -4,7 +4,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -30,6 +30,12 @@ export class UsersService {
       ...user,
       ...limitStatus,
     };
+  }
+
+  async countOnlineUsers() {
+    return this.prisma.user.count({
+      where: { isOnline: true },
+    });
   }
 
   async getNarrationLimitStatus(userId: string) {

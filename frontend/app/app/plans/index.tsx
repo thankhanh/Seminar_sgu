@@ -102,12 +102,27 @@ export default function PlansScreen() {
             ? currentSub.plan.toLowerCase() === plan.planKey.replace('customer_', '').toLowerCase()
             : plan.price === 0;
 
+          const getCustomerPlanLevel = (key: string) => {
+            const k = key.replace('customer_', '').toLowerCase();
+            if (k === 'free') return 0;
+            if (k === 'monthly') return 1;
+            if (k === 'yearly') return 2;
+            return -1;
+          };
+
+          const currentLevel = currentSub
+            ? getCustomerPlanLevel(currentSub.plan)
+            : 0;
+          const planLevel = getCustomerPlanLevel(plan.planKey);
+          const isLower = planLevel < currentLevel;
+
           return (
             <PlanCard
               key={plan.planKey}
               plan={plan}
               isPopular={plan.planKey.includes('business')}
               isCurrent={isCurrent}
+              isLower={isLower}
               onSelect={() => router.push({
                 pathname: '/plans/payment',
                 params: { planKey: plan.planKey, price: plan.price, name: plan.name }
@@ -122,7 +137,7 @@ export default function PlansScreen() {
   );
 }
 
-function PlanCard({ plan, isPopular, isCurrent, onSelect }: { plan: Plan, isPopular?: boolean, isCurrent: boolean, onSelect: () => void }) {
+function PlanCard({ plan, isPopular, isCurrent, isLower, onSelect }: { plan: Plan, isPopular?: boolean, isCurrent: boolean, isLower: boolean, onSelect: () => void }) {
   return (
     <View
       className={`bg-white rounded-[32px] p-6 mb-6 border-2 ${isPopular ? 'border-[#009FB7]' : 'border-transparent'} shadow-sm relative overflow-hidden`}
@@ -153,7 +168,7 @@ function PlanCard({ plan, isPopular, isCurrent, onSelect }: { plan: Plan, isPopu
         <Text className="text-3xl font-extrabold text-[#1F2937]">
           {plan.price === 0 ? 'Miễn phí' : plan.price.toLocaleString('vi-VN') + 'đ'}
         </Text>
-        {plan.price > 0 && <Text className="text-[#9CA3AF] text-sm font-bold ml-1">/tháng</Text>}
+        {plan.price > 0 && <Text className="text-[#9CA3AF] text-sm font-bold ml-1"></Text>}
       </View>
 
       {plan.description ? (
@@ -171,17 +186,19 @@ function PlanCard({ plan, isPopular, isCurrent, onSelect }: { plan: Plan, isPopu
 
       <TouchableOpacity
         onPress={onSelect}
-        disabled={isCurrent}
+        disabled={isCurrent || isLower}
         className={`w-full py-4 rounded-2xl items-center ${isCurrent
           ? 'bg-emerald-50 border border-emerald-200'
-          : plan.price === 0
-            ? 'bg-slate-900 border border-slate-900'
-            : isPopular ? 'bg-[#009FB7]' : 'bg-[#1F2937]'
+          : isLower
+            ? 'bg-[#F3F4F6] border border-[#E5E7EB]'
+            : plan.price === 0
+              ? 'bg-slate-900 border border-slate-900'
+              : isPopular ? 'bg-[#009FB7]' : 'bg-[#1F2937]'
           }`}
       >
-        <Text className={`font-extrabold text-[15px] ${isCurrent ? 'text-emerald-600' : 'text-white'
+        <Text className={`font-extrabold text-[15px] ${isCurrent ? 'text-emerald-600' : isLower ? 'text-[#9CA3AF]' : 'text-white'
           }`}>
-          {isCurrent ? 'Đang sử dụng' : (plan.price === 0 ? 'Chuyển về gói Miễn phí' : 'Nâng cấp ngay')}
+          {isCurrent ? 'Đang sử dụng' : isLower ? 'Gói thấp hơn' : (plan.price === 0 ? 'Chuyển về gói Miễn phí' : 'Nâng cấp ngay')}
         </Text>
       </TouchableOpacity>
     </View>

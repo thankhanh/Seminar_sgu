@@ -120,6 +120,7 @@ export const subscriptionsApi = {
     grantMerchantPlan: (dto: { email: string, plan: string }) => unwrapData(apiClient.post('/merchant-subscriptions/admin/grant', dto)),
     grantUserPlan: (dto: { email: string, plan: string }) => unwrapData(apiClient.post('/subscriptions/admin/grant', dto)),
     updateUserSub: (id: string, plan: string) => unwrapData(apiClient.patch(`/subscriptions/${id}`, { plan })),
+    updateMerchantSub: (id: string, plan: string) => unwrapData(apiClient.patch(`/merchant-subscriptions/${id}`, { plan })),
 };
 
 // --- Plan Metadata ---

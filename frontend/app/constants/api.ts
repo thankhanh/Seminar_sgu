@@ -326,13 +326,13 @@ export const paymentHelpers = {
             amount,
             orderInfo,
         });
-        
+
         // Backend /payments/create doesn't use standard {success, data} wrapper
         // It returns { paymentUrl, qrCodeUrl, ... } directly
         if (response.data && response.data.paymentUrl) {
             return { success: true, data: response.data };
         }
-        
+
         const { success, data, message } = response.data;
         if (success === false) {
             throw new Error(message || 'Failed to create payment');
@@ -341,11 +341,11 @@ export const paymentHelpers = {
     },
     async getPaymentStatus(transactionId: string) {
         const response = await api.get(`/payments/status?transactionId=${transactionId}`);
-        
+
         if (response.data && response.data.status) {
             return response.data;
         }
-        
+
         const { success, data, message } = response.data;
         if (success === false) {
             throw new Error(message || 'Failed to get payment status');

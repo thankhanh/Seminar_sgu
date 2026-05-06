@@ -58,22 +58,13 @@ const SubscriptionManagement: React.FC = () => {
         }
     };
 
-    const handlePlanClick = async (plan: any) => {
-        setIsSubmitting(true);
-        try {
-            const planKey = plan.planKey.replace('merchant_', '').replace('customer_', '').toLowerCase();
-            const res = await subscriptionsApi.create({ plan: planKey });
-            if (!res.requiresPayment) {
-                alert('Chuyển gói thành công!');
-                initData();
-            } else {
-                setSelectedPlan(plan);
-                setShowPaymentModal(true);
-            }
-        } catch (err: any) {
-            alert(err.message || 'Lỗi khi kiểm tra gói');
-        } finally {
-            setIsSubmitting(false);
+    const handlePlanClick = (plan: any) => {
+        // If it's the free plan, subscribe directly
+        if (Number(plan.price) === 0) {
+            handleSubscribe(plan.planKey);
+        } else {
+            setSelectedPlan(plan);
+            setShowPaymentModal(true);
         }
     };
 
@@ -168,11 +159,15 @@ const SubscriptionManagement: React.FC = () => {
         if (!editingSub || !editSubPlan) return;
         setIsSubmitting(true);
         try {
-            await subscriptionsApi.updateUserSub(editingSub.id, editSubPlan);
+            if (activeTab === 'merchant') {
+                await subscriptionsApi.updateMerchantSub(editingSub.id, editSubPlan);
+            } else {
+                await subscriptionsApi.updateUserSub(editingSub.id, editSubPlan);
+            }
             setShowEditSubModal(false);
             setEditingSub(null);
             initData();
-            alert('Cập nhật gói người dùng thành công!');
+            alert('Cập nhật gói thành công!');
         } catch (err: any) {
             alert(err.message || 'Lỗi cập nhật gói');
         } finally {
@@ -338,7 +333,7 @@ const SubscriptionManagement: React.FC = () => {
                                     <th className="px-6 py-4">Ngày bắt đầu</th>
                                     <th className="px-6 py-4">Ngày hết hạn</th>
                                     <th className="px-6 py-4">Trạng thái</th>
-                                    {activeTab === 'user' && <th className="px-6 py-4">Thao tác</th>}
+                                    <th className="px-6 py-4">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -365,22 +360,20 @@ const SubscriptionManagement: React.FC = () => {
                                                 {sub.status === 'active' ? 'Hoạt động' : 'Đã hủy/Hết hạn'}
                                             </span>
                                         </td>
-                                        {activeTab === 'user' && (
-                                            <td className="px-6 py-4">
-                                                <button
-                                                    onClick={() => handleEditSub(sub)}
-                                                    className="p-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
-                                                    title="Sửa gói"
-                                                >
-                                                    <Edit2 size={16} />
-                                                </button>
-                                            </td>
-                                        )}
+                                        <td className="px-6 py-4">
+                                            <button
+                                                onClick={() => handleEditSub(sub)}
+                                                className="p-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
+                                                title="Sửa gói"
+                                            >
+                                                <Edit2 size={16} />
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                                 {(activeTab === 'merchant' ? merchantSubs : userSubs).length === 0 && (
                                     <tr>
-                                        <td colSpan={activeTab === 'user' ? 6 : 5} className="px-6 py-8 text-center text-slate-500 font-medium">Chưa có ai đăng ký gói này.</td>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-slate-500 font-medium">Chưa có ai đăng ký gói này.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -480,9 +473,9 @@ const SubscriptionManagement: React.FC = () => {
                             <button onClick={() => setShowEditSubModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors">
                                 <X size={24} />
                             </button>
-                            <h2 className="text-2xl font-bold text-slate-900 mb-2">Sửa gói người dùng</h2>
+                            <h2 className="text-2xl font-bold text-slate-900 mb-2">Sửa gói {activeTab === 'merchant' ? 'chủ quán' : 'người dùng'}</h2>
                             <p className="text-slate-500 mb-6">
-                                Tài khoản: <span className="font-bold text-slate-700">{editingSub.user?.name}</span> ({editingSub.user?.email})
+                                Tài khoản: <span className="font-bold text-slate-700">{activeTab === 'merchant' ? (editingSub.merchant?.businessName || 'Không xác định') : (editingSub.user?.name || 'Không xác định')}</span> ({activeTab === 'merchant' ? editingSub.merchant?.user?.email : editingSub.user?.email})
                             </p>
 
                             <div className="space-y-6">
@@ -499,9 +492,19 @@ const SubscriptionManagement: React.FC = () => {
                                         onChange={e => setEditSubPlan(e.target.value)}
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 transition-all font-medium appearance-none"
                                     >
-                                        <option value="free">Free (Miễn phí)</option>
-                                        <option value="monthly">Monthly (Hàng tháng)</option>
-                                        <option value="yearly">Yearly (Hàng năm)</option>
+                                        {activeTab === 'merchant' ? (
+                                            <>
+                                                <option value="starter">Starter (Miễn phí)</option>
+                                                <option value="business">Business</option>
+                                                <option value="premium">Premium</option>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="free">Free (Miễn phí)</option>
+                                                <option value="monthly">Monthly (Hàng tháng)</option>
+                                                <option value="yearly">Yearly (Hàng năm)</option>
+                                            </>
+                                        )}
                                     </select>
                                 </div>
                             </div>
@@ -540,11 +543,25 @@ const SubscriptionManagement: React.FC = () => {
 
     const isCurrentPlan = (plan: any) => {
         if (!currentSub) {
-            // If no explicit sub, they are on the 0đ plan implicitly
             return Number(plan.price) === 0;
         }
         const normalized = plan.planKey.replace('merchant_', '').replace('customer_', '').toLowerCase();
         return currentSub.plan.toLowerCase() === normalized;
+    };
+
+    const getMerchantPlanLevel = (planKey: string) => {
+        const key = planKey.replace('merchant_', '').toLowerCase();
+        if (key === 'starter') return 0;
+        if (key === 'business') return 1;
+        if (key === 'premium') return 2;
+        return -1;
+    };
+
+    const isLowerPlan = (plan: any) => {
+        if (!currentSub) return false;
+        const currentLevel = getMerchantPlanLevel(currentSub.plan);
+        const planLevel = getMerchantPlanLevel(plan.planKey);
+        return planLevel < currentLevel;
     };
 
     return (
@@ -629,14 +646,18 @@ const SubscriptionManagement: React.FC = () => {
 
                         <button
                             onClick={() => handlePlanClick(plan)}
-                            disabled={isSubmitting || isCurrentPlan(plan)}
+                            disabled={isSubmitting || isCurrentPlan(plan) || isLowerPlan(plan)}
                             className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${isCurrentPlan(plan)
                                 ? 'bg-emerald-50 text-emerald-600 cursor-default shadow-none border border-emerald-100'
-                                : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200 active:scale-95'
+                                : isLowerPlan(plan)
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none border border-slate-100'
+                                    : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200 active:scale-95'
                                 }`}
                         >
                             {isCurrentPlan(plan) ? (
                                 <>Đang sử dụng <Check size={18} /></>
+                            ) : isLowerPlan(plan) ? (
+                                <>Gói thấp hơn</>
                             ) : Number(plan.price) === 0 ? (
                                 <>Sử dụng miễn phí <ArrowRight size={18} /></>
                             ) : (

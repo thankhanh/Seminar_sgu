@@ -49,10 +49,10 @@ export class AuthService {
       });
     }
 
-    return { 
-      user, 
+    return {
+      user,
       ...tokens,
-      message: user.role === 'merchant' ? 'Tài khoản đang chờ duyệt. Vui lòng đăng nhập sau khi được phê duyệt.' : undefined 
+      message: user.role === 'merchant' ? 'Tài khoản đang chờ duyệt. Vui lòng đăng nhập sau khi được phê duyệt.' : undefined
     };
   }
 
@@ -67,6 +67,11 @@ export class AuthService {
 
     const { passwordHash, ...safeUser } = user;
     const tokens = await this.generateTokens(user.id, user.email, user.role);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { isOnline: true },
+    });
     return { user: safeUser, ...tokens };
   }
 
@@ -122,7 +127,16 @@ export class AuthService {
   }
 
   // ─── Logout ───────────────────────────────────────────────────
-  async logout(refreshToken?: string) {
+  async logout(refreshToken?: string, accessToken?: string) {
+    let userIdToOffline: string | undefined;
+
+    if (accessToken) {
+      try {
+        const payload = this.jwtService.decode(accessToken) as any;
+        if (payload?.sub) userIdToOffline = payload.sub;
+      } catch {}
+    }
+
     if (refreshToken) {
       // Xóa đúng refresh token đã dùng
       const storedTokens = await this.prisma.refreshToken.findMany({
@@ -131,11 +145,24 @@ export class AuthService {
         take: 100,
         orderBy: { createdAt: 'desc' },
       });
+
       for (const t of storedTokens) {
         if (await bcrypt.compare(refreshToken, t.tokenHash)) {
+          userIdToOffline = t.userId;
           await this.prisma.refreshToken.delete({ where: { id: t.id } });
           break;
         }
+      }
+    }
+
+    if (userIdToOffline) {
+      try {
+        await this.prisma.user.update({
+          where: { id: userIdToOffline },
+          data: { isOnline: false },
+        });
+      } catch (e) {
+        // Ignore errors if user not found
       }
     }
   }

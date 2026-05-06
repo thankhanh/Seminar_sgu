@@ -9,7 +9,8 @@ import {
     Loader2,
     Crown,
     Headphones,
-    Medal
+    Medal,
+    RulerDimensionLine
 } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -59,6 +60,7 @@ const Dashboard: React.FC = () => {
             if (user?.role === 'admin') {
                 try {
                     const data = await adminApi.getStats();
+                    console.log("stats: ", data)
                     setStats(data);
                 } catch (err) {
                     console.error('Lỗi khi lấy thống kê:', err);
@@ -105,6 +107,17 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 relative overflow-hidden">
+                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-50 rounded-full blur-2xl opacity-50"></div>
+                    <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center border border-rose-100 flex-shrink-0 z-10">
+                        <RulerDimensionLine size={28} />
+                    </div>
+                    <div className="z-10 overflow-hidden">
+                        <div className="text-sm font-bold text-slate-500 mb-1 tracking-wide">Số người dùng đang online</div>
+                        <div className="text-lg font-black text-slate-900 truncate" title={stats?.onlineUserCount || 'Chưa có thông tin'}>{stats?.onlineUserCount || 'Chưa có thông tin'}</div>
+                        {/* <div className="text-sm font-bold text-rose-600 mt-1">{stats?.topPOI?.count || 0} lượt nghe</div> */}
+                    </div>
+                </div>
                 {/* POI Ranking */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 relative overflow-hidden">
                     <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-50 rounded-full blur-2xl opacity-50"></div>
@@ -112,7 +125,7 @@ const Dashboard: React.FC = () => {
                         <Headphones size={28} />
                     </div>
                     <div className="z-10 overflow-hidden">
-                        <div className="text-sm font-bold text-slate-500 mb-1 tracking-wide">POI ĐC NGHE NHIỀU NHẤT THÁNG</div>
+                        <div className="text-sm font-bold text-slate-500 mb-1 tracking-wide">POI ĐƯỢC NGHE NHIỀU NHẤT THÁNG</div>
                         <div className="text-lg font-black text-slate-900 truncate" title={stats?.topPOI?.name || 'Chưa có thông tin'}>{stats?.topPOI?.name || 'Chưa có thông tin'}</div>
                         <div className="text-sm font-bold text-rose-600 mt-1">{stats?.topPOI?.count || 0} lượt nghe</div>
                     </div>

@@ -13,12 +13,17 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Get('me')
   @ApiOperation({ summary: 'Xem thông tin profile của mình' })
   getProfile(@CurrentUser() user: { id: string }) {
     return this.usersService.getProfile(user.id);
+  }
+  @Get('online-count')
+  @ApiOperation({ summary: 'Đếm số người dùng đang online' })
+  countOnlineUsers() {
+    return this.usersService.countOnlineUsers();
   }
 
   @Patch('me')

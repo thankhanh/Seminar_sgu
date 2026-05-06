@@ -9,7 +9,7 @@ export class MerchantSubscriptionsService {
   constructor(
     private prisma: PrismaService,
     private planMetadataService: PlanMetadataService,
-  ) {}
+  ) { }
 
   /**
    * Kích hoạt gói cho Merchant (Dùng cho cả gói Free và sau khi thanh toán thành công)
@@ -77,11 +77,11 @@ export class MerchantSubscriptionsService {
 
     // Nếu là gói trả phí, trả về thông tin để Frontend chuyển hướng sang trang thanh toán
     const metadata = await this.planMetadataService.findByKey(`merchant_${dto.plan.toLowerCase()}`);
-    
-    return { 
-      requiresPayment: true, 
+
+    return {
+      requiresPayment: true,
       plan: dto.plan,
-      price: metadata?.price || 0 
+      price: metadata?.price || 0
     };
   }
 
@@ -106,8 +106,10 @@ export class MerchantSubscriptionsService {
     const [data, total] = await Promise.all([
       this.prisma.merchantSubscription.findMany({
         where: {
-          plan: { not: MerchantPlan.starter }
+          plan: { not: MerchantPlan.starter },
+          status: SubscriptionStatus.active,
         },
+        distinct: ['merchantId'],
         skip,
         take: limit,
         include: {
@@ -119,14 +121,43 @@ export class MerchantSubscriptionsService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.merchantSubscription.count({
+      this.prisma.merchantSubscription.groupBy({
+        by: ['merchantId'],
         where: {
-          plan: { not: MerchantPlan.starter }
-        }
-      }),
+          plan: { not: MerchantPlan.starter },
+          status: SubscriptionStatus.active,
+        },
+      }).then(groups => groups.length),
     ]);
 
     return { data, total, page, limit };
+  }
+
+  async updatePlan(id: string, plan: MerchantPlan) {
+    const existing = await this.prisma.merchantSubscription.findUnique({
+      where: { id },
+    });
+    if (!existing) {
+      throw new NotFoundException('Không tìm thấy gói đăng ký này');
+    }
+    const metadata = await this.planMetadataService.findByKey(`merchant_${plan.toLowerCase()}`);
+    const maxStore = metadata?.maxStore ?? 1;
+    const maxPOI = metadata?.maxPOI ?? 1;
+    const endDate = new Date(existing.startDate);
+    if (plan === MerchantPlan.starter) {
+      endDate.setFullYear(endDate.getFullYear() + 100);
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
+    return this.prisma.merchantSubscription.update({
+      where: { id },
+      data: { plan, maxStore, maxPOI, endDate, status: SubscriptionStatus.active },
+      include: {
+        merchant: {
+          include: { user: { select: { name: true, email: true } } },
+        },
+      },
+    });
   }
 
   async cancel(id: string) {

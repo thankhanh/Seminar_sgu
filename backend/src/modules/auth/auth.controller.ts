@@ -91,7 +91,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Đăng xuất, xóa token session/cookies và blacklist refresh token' })
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies?.refresh_token;
-    await this.authService.logout(refreshToken); // xóa token khỏi DB
+    const accessToken = req.cookies?.access_token;
+    await this.authService.logout(refreshToken, accessToken); // xóa token khỏi DB và cập nhật isOnline
     this.clearCookies(res);
     return { success: true, message: 'Đăng xuất thành công' };
   }

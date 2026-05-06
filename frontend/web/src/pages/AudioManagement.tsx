@@ -29,11 +29,13 @@ const AudioManagement: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [totalNarrations, setTotalNarrations] = useState(0);
-    const limit = 10;
+    const limit = 9;
     const [searchQuery, setSearchQuery] = useState('');
+    const [languageFilter, setLanguageFilter] = useState('');
     const [isUploadOpen, setIsUploadOpen] = useState(false);
     const [playingId, setPlayingId] = useState<string | null>(null);
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -45,7 +47,7 @@ const AudioManagement: React.FC = () => {
         duration: '',
     });
 
-    const fetchData = async (pageNum = page) => {
+    const fetchData = async (pageNum = page, search = searchQuery, lang = languageFilter) => {
         setLoading(true);
         try {
             // 1. Luôn lấy danh sách ngôn ngữ
@@ -55,7 +57,7 @@ const AudioManagement: React.FC = () => {
             if (user?.role === 'admin') {
                 // 2a. Đối với Admin: Lấy tất cả narrations và tất cả stores cho dropdown
                 const [narrRes, storeRes] = (await Promise.all([
-                    narrationsApi.getAll(pageNum, limit),
+                    narrationsApi.getAll(pageNum, limit, undefined, search, lang),
                     storesApi.getAll(1, 100)
                 ])) as any[];
                 setNarrations(narrRes.data || []);
@@ -72,7 +74,7 @@ const AudioManagement: React.FC = () => {
                 setMyStores(uniqueStores);
 
                 if (merchantRes.id) {
-                    const narrRes = (await narrationsApi.getAll(pageNum, limit, merchantRes.id)) as any;
+                    const narrRes = (await narrationsApi.getAll(pageNum, limit, merchantRes.id, search, lang)) as any;
                     setNarrations(narrRes.data || []);
                     setTotalNarrations(narrRes.total || 0);
                 }
@@ -86,16 +88,22 @@ const AudioManagement: React.FC = () => {
 
     const handlePageChange = (newPage: number) => {
         setPage(newPage);
-        fetchData(newPage);
     };
 
     useEffect(() => {
-        if (user) fetchData();
-        // Cleanup speech on unmount
         return () => {
             window.speechSynthesis.cancel();
         };
-    }, [user]);
+    }, []);
+
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (user) {
+                fetchData(page, searchQuery, languageFilter);
+            }
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [user, page, searchQuery, languageFilter]);
 
     const handleUpload = async () => {
         let selectedLangId = formData.languageId;
@@ -119,6 +127,7 @@ const AudioManagement: React.FC = () => {
         // Đã gỡ bỏ kiểm tra trùng lặp ở frontend để cho phép Upsert ở backend
 
         try {
+            setIsSaving(true);
             await storesApi.createNarration(formData.storeId, {
                 languageId: selectedLangId,
                 textContent: formData.textContent,
@@ -127,9 +136,12 @@ const AudioManagement: React.FC = () => {
             });
             setIsUploadOpen(false);
             setFormData({ id: '', storeId: '', languageId: '', textContent: '', audioUrl: '', duration: '' });
-            fetchData();
+            setPage(1);
+            fetchData(1, searchQuery, languageFilter);
         } catch (err: any) {
             alert(err.message || 'Lỗi khi lưu thuyết minh');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -156,9 +168,6 @@ const AudioManagement: React.FC = () => {
     };
 
     const filteredAudio = [...narrations]
-        .filter((audio: Narration) =>
-            (audio.textContent || '').toLowerCase().includes(searchQuery.toLowerCase())
-        )
         .sort((a, b) => {
             // Ưu tiên tiếng Việt lên đầu
             if (a.language?.code === 'vi' && b.language?.code !== 'vi') return -1;
@@ -250,13 +259,29 @@ const AudioManagement: React.FC = () => {
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="w-full sm:w-48">
+                    <select
+                        value={languageFilter}
+                        onChange={(e) => {
+                            setLanguageFilter(e.target.value);
+                            setPage(1);
+                        }}
+                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-slate-700"
+                    >
+                        <option value="">Tất cả ngôn ngữ</option>
+                        {languages.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                </div>
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                     <input
                         type="text"
                         placeholder="Tìm kiếm nội dung audio, địa điểm..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setPage(1);
+                        }}
                         className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                 </div>
@@ -408,10 +433,15 @@ const AudioManagement: React.FC = () => {
                         </button>
                         <button
                             onClick={handleUpload}
-                            className="bg-primary-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/30 flex items-center gap-2"
+                            disabled={isSaving}
+                            className={`px-8 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-primary-500/30 ${
+                                isSaving
+                                    ? 'bg-primary-400 text-white cursor-not-allowed'
+                                    : 'bg-primary-600 text-white hover:bg-primary-700'
+                            }`}
                         >
-                            <CloudUpload size={20} />
-                            Lưu thuyết minh
+                            {isSaving ? <Loader2 size={20} className="animate-spin" /> : <CloudUpload size={20} />}
+                            {isSaving ? 'Đang tạo nội dung...' : 'Lưu thuyết minh'}
                         </button>
                     </div>
                 </div>

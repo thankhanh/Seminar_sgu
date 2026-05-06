@@ -88,8 +88,8 @@ export const storesApi = {
 
 // --- Narrations (Global) ---
 export const narrationsApi = {
-    getAll: (page = 1, limit = 20, merchantId?: string) =>
-        unwrapData(apiClient.get(`/narrations`, { params: { page, limit, merchantId } })),
+    getAll: (page = 1, limit = 20, merchantId?: string, search?: string, languageId?: string) =>
+        unwrapData(apiClient.get(`/narrations`, { params: { page, limit, merchantId, search, languageId } })),
     update: (id: string, dto: any) => unwrapData(apiClient.patch(`/narrations/${id}`, dto)),
     remove: (id: string) => unwrapData(apiClient.delete(`/narrations/${id}`)),
 };

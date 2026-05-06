@@ -100,8 +100,10 @@ export class SubscriptionsService {
     const [data, total] = await Promise.all([
       this.prisma.subscription.findMany({
         where: {
-          plan: { not: SubscriptionPlan.free }
+          plan: { not: SubscriptionPlan.free },
+          status: SubscriptionStatus.active,
         },
+        distinct: ['userId'],
         skip,
         take: limit,
         include: {
@@ -109,11 +111,13 @@ export class SubscriptionsService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.subscription.count({
+      this.prisma.subscription.groupBy({
+        by: ['userId'],
         where: {
-          plan: { not: SubscriptionPlan.free }
-        }
-      }),
+          plan: { not: SubscriptionPlan.free },
+          status: SubscriptionStatus.active,
+        },
+      }).then(groups => groups.length),
     ]);
 
     return { data, total, page, limit };

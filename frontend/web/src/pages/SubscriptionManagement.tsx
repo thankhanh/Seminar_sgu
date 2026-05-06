@@ -646,20 +646,11 @@ const SubscriptionManagement: React.FC = () => {
                         <p className="text-slate-500 text-sm mb-6 leading-relaxed">{plan.description}</p>
 
                         <div className="space-y-4 mb-8 flex-1">
-                            {/* Hiển thị maxPOI trực tiếp từ admin (giống app) */}
+                            {/* Hiển thị maxPOI trực tiếp từ admin quản lý */}
                             <div className="flex items-start gap-3 text-sm font-medium text-slate-700">
-                                <Check className="text-emerald-500 shrink-0 mt-0.5" size={16} />
-                                <span className="font-bold">Tối đa {plan.maxPOI} địa điểm (POI)</span>
+                                <Store className="text-primary-500 shrink-0 mt-0.5" size={16} />
+                                <span className="font-bold">Địa điểm tối đa {plan.maxPOI} (POI)</span>
                             </div>
-                            {/* Hiển thị features từ admin metadata */}
-                            {(plan.features || [])
-                                .filter((f: string) => !f.toLowerCase().includes('tối đa') && !f.toLowerCase().includes('địa điểm'))
-                                .map((f: string, i: number) => (
-                                <div key={i} className="flex items-start gap-3 text-sm font-medium text-slate-600">
-                                    <Check className="text-emerald-500 shrink-0 mt-0.5" size={16} />
-                                    {f}
-                                </div>
-                            ))}
                         </div>
 
                         <button

@@ -26,13 +26,21 @@ export class NarrationsService {
   async create(storeId: string, user: { id: string; role: string }, dto: CreateNarrationDto) {
     await this.verifyStoreOwner(storeId, user);
 
-    const existing = await this.prisma.narration.findUnique({
-      where: { storeId_languageId: { storeId, languageId: dto.languageId } },
-    });
-    if (existing) throw new ConflictException('Narration cho ngôn ngữ này đã tồn tại');
-
-    return this.prisma.narration.create({
-      data: {
+    // Sử dụng upsert để: Nếu đã có thì cập nhật, nếu chưa có thì tạo mới
+    const narration = await this.prisma.narration.upsert({
+      where: { 
+        storeId_languageId: { 
+          storeId, 
+          languageId: dto.languageId 
+        } 
+      },
+      update: {
+        audioUrl: dto.audioUrl,
+        textContent: dto.textContent,
+        duration: dto.duration,
+        isActive: dto.isActive ?? true,
+      },
+      create: {
         storeId,
         languageId: dto.languageId,
         audioUrl: dto.audioUrl,
@@ -42,6 +50,59 @@ export class NarrationsService {
       },
       include: { language: true },
     });
+
+    // Nếu là tiếng Việt (vi), tự động dịch và đồng bộ ra các ngôn ngữ khác
+    if (narration.language.code === 'vi') {
+      this.syncTranslations(storeId, dto.textContent);
+    }
+
+    return narration;
+  }
+
+  /**
+   * Tự động dịch và đồng bộ tất cả các ngôn ngữ khác dựa trên bản gốc
+   */
+  private async syncTranslations(storeId: string, sourceText: string) {
+    console.log(`[Sync] Bắt đầu đồng bộ bản dịch cho store ${storeId}...`);
+    
+    // 1. Lấy tất cả ngôn ngữ đang hoạt động (trừ tiếng Việt)
+    const activeLanguages = await this.prisma.language.findMany({
+      where: { 
+        isActive: true,
+        code: { not: 'vi' }
+      }
+    });
+
+    const viLanguage = await this.prisma.language.findUnique({ where: { code: 'vi' } });
+
+    // 2. Lặp qua từng ngôn ngữ để dịch và upsert
+    for (const lang of activeLanguages) {
+      try {
+        const translatedText = await this.translateText(sourceText, 'vi', lang.code);
+        
+        await this.prisma.narration.upsert({
+          where: {
+            storeId_languageId: {
+              storeId,
+              languageId: lang.id
+            }
+          },
+          update: {
+            textContent: translatedText,
+            isActive: true
+          },
+          create: {
+            storeId,
+            languageId: lang.id,
+            textContent: translatedText,
+            isActive: true
+          }
+        });
+      } catch (error) {
+        console.error(`[Sync] Lỗi khi dịch sang ${lang.code}:`, error);
+      }
+    }
+    console.log(`[Sync] Hoàn tất đồng bộ bản dịch cho store ${storeId}`);
   }
 
   async findByStore(storeId: string) {
@@ -262,7 +323,10 @@ export class NarrationsService {
 
 
   async update(id: string, user: { id: string; role: string }, dto: UpdateNarrationDto) {
-    const narration = await this.prisma.narration.findUnique({ where: { id } });
+    const narration = await this.prisma.narration.findUnique({ 
+      where: { id },
+      include: { language: true }
+    });
     if (!narration) throw new NotFoundException('Narration không tồn tại');
     await this.verifyStoreOwner(narration.storeId, user);
 
@@ -271,7 +335,18 @@ export class NarrationsService {
       await deleteFile(narration.audioUrl);
     }
 
-    return this.prisma.narration.update({ where: { id }, data: dto });
+    const updated = await this.prisma.narration.update({ 
+      where: { id }, 
+      data: dto,
+      include: { language: true }
+    });
+
+    // Nếu cập nhật bản tiếng Việt, đồng bộ lại các bản dịch khác
+    if (updated.language.code === 'vi' && dto.textContent) {
+      this.syncTranslations(updated.storeId, updated.textContent);
+    }
+
+    return updated;
   }
 
   async remove(id: string, user: { id: string; role: string }) {

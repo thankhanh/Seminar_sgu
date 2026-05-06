@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     CloudUpload, Headphones, Search,
     Trash2, Globe, Loader2, Play, Plus,
-    MoreVertical, CheckCircle2, Square, Volume2
+    MoreVertical, CheckCircle2, Square, Volume2, Edit
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
@@ -37,6 +37,7 @@ const AudioManagement: React.FC = () => {
 
     // Form state
     const [formData, setFormData] = useState({
+        id: '', // Thêm id để biết là đang edit
         storeId: '',
         languageId: '',
         textContent: '',
@@ -115,12 +116,7 @@ const AudioManagement: React.FC = () => {
             return;
         }
 
-        // Kiểm tra trùng lặp (chỉ check bản VI gốc)
-        const isDuplicate = narrations.some(n => n.storeId === formData.storeId && n.languageId === selectedLangId);
-        if (isDuplicate) {
-            alert('Cửa hàng này đã có bản thuyết minh gốc.');
-            return;
-        }
+        // Đã gỡ bỏ kiểm tra trùng lặp ở frontend để cho phép Upsert ở backend
 
         try {
             await storesApi.createNarration(formData.storeId, {
@@ -130,11 +126,23 @@ const AudioManagement: React.FC = () => {
                 duration: undefined,
             });
             setIsUploadOpen(false);
-            setFormData({ storeId: '', languageId: '', textContent: '', audioUrl: '', duration: '' });
+            setFormData({ id: '', storeId: '', languageId: '', textContent: '', audioUrl: '', duration: '' });
             fetchData();
         } catch (err: any) {
             alert(err.message || 'Lỗi khi lưu thuyết minh');
         }
+    };
+
+    const handleEdit = (narration: Narration) => {
+        setFormData({
+            id: narration.id,
+            storeId: narration.storeId,
+            languageId: narration.languageId,
+            textContent: narration.textContent || '',
+            audioUrl: narration.audioUrl || '',
+            duration: narration.duration?.toString() || '',
+        });
+        setIsUploadOpen(true);
     };
 
     const handleDelete = async (id: string) => {
@@ -147,9 +155,19 @@ const AudioManagement: React.FC = () => {
         }
     };
 
-    const filteredAudio = narrations.filter((audio: Narration) =>
-        (audio.textContent || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredAudio = [...narrations]
+        .filter((audio: Narration) =>
+            (audio.textContent || '').toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .sort((a, b) => {
+            // Ưu tiên tiếng Việt lên đầu
+            if (a.language?.code === 'vi' && b.language?.code !== 'vi') return -1;
+            if (a.language?.code !== 'vi' && b.language?.code === 'vi') return 1;
+            // Nếu cùng là tiếng Việt hoặc cùng không phải tiếng Việt thì gom theo storeId
+            if (a.storeId < b.storeId) return -1;
+            if (a.storeId > b.storeId) return 1;
+            return 0;
+        });
 
     /**
      * Phát audio bằng Web Speech API (SpeechSynthesis)
@@ -260,10 +278,18 @@ const AudioManagement: React.FC = () => {
                                 >
                                     {playingId === file.id ? <Square size={20} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
                                 </button>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"><MoreVertical size={16} /></button>
-                                    <button onClick={() => handleDelete(file.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><Trash2 size={16} /></button>
-                                </div>
+                                {file.language?.code === 'vi' && (
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button 
+                                            onClick={() => handleEdit(file)}
+                                            className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"
+                                            title="Chỉnh sửa"
+                                        >
+                                            <Edit size={16} />
+                                        </button>
+                                        <button onClick={() => handleDelete(file.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg" title="Xóa"><Trash2 size={16} /></button>
+                                    </div>
+                                )}
                             </div>
 
                             <h3 className="font-bold text-slate-900 text-lg mb-2 line-clamp-1">
@@ -336,8 +362,11 @@ const AudioManagement: React.FC = () => {
             {/* Upload Audio Modal */}
             <Modal
                 isOpen={isUploadOpen}
-                onClose={() => setIsUploadOpen(false)}
-                title="Tạo bản thuyết minh mới"
+                onClose={() => {
+                    setIsUploadOpen(false);
+                    setFormData({ id: '', storeId: '', languageId: '', textContent: '', audioUrl: '', duration: '' });
+                }}
+                title={formData.id ? "Cập nhật bản thuyết minh" : "Tạo bản thuyết minh mới"}
                 maxWidth="max-w-2xl"
             >
                 <div className="space-y-5">

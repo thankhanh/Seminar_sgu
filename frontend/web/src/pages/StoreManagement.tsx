@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
 
-import { storesApi, merchantApi, adminApi, subscriptionsApi } from '../utils/api';
+import { storesApi, merchantApi, adminApi, subscriptionsApi, planMetadataApi } from '../utils/api';
 import MapSelector from '../components/MapSelector';
 import ImageUpload from '../components/ImageUpload';
 import QRManagement from '../components/QRManagement';
@@ -56,11 +56,21 @@ const StoreManagement: React.FC = () => {
                 setTotalStores(storeRes.total || 0);
                 setMerchants(merchantRes.data || []);
             } else {
-                const [response, subRes] = (await Promise.all([
+                const [response, subRes, allMetadata] = (await Promise.all([
                     merchantApi.getMe(),
-                    subscriptionsApi.getMy()
+                    subscriptionsApi.getMy().catch(() => null),
+                    planMetadataApi.getAll().catch(() => [])
                 ])) as any[];
                 
+                // Lấy maxStore/maxPOI từ plan metadata (nguồn admin quản lý)
+                if (subRes) {
+                    const planKey = `merchant_${subRes.plan?.toLowerCase()}`;
+                    const metadata = allMetadata?.find?.((m: any) => m.planKey === planKey);
+                    if (metadata) {
+                        subRes.maxPOI = metadata.maxPOI;
+                        subRes.maxStore = metadata.maxStore;
+                    }
+                }
                 setSubscription(subRes);
                 // Merchant gets all their stores for now (local pagination if needed)
                 const myStores = response.stores || [];

@@ -41,11 +41,13 @@ const SubscriptionManagement: React.FC = () => {
         try {
             const [plansData, subData, mSubsData, uSubsData] = await Promise.all([
                 planMetadataApi.getAll(),
-                !isAdmin ? subscriptionsApi.getMy() : Promise.resolve(null),
+                !isAdmin ? subscriptionsApi.getMy().catch(() => null) : Promise.resolve(null),
                 isAdmin ? subscriptionsApi.getAll(1, 100).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
                 isAdmin ? subscriptionsApi.getAllUser(1, 100).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
             ]);
-            setAllPlans(plansData);
+            console.log('[SubscriptionManagement] plansData from API:', JSON.stringify(plansData));
+            console.log('[SubscriptionManagement] subData:', subData);
+            setAllPlans(plansData || []);
             if (!isAdmin) setCurrentSub(subData);
             if (isAdmin) {
                 setMerchantSubs(mSubsData?.data || []);
@@ -183,8 +185,20 @@ const SubscriptionManagement: React.FC = () => {
         );
     }
 
-    const merchantPlans = allPlans.filter(p => p.planKey.startsWith('merchant_')).sort((a, b) => Number(a.price) - Number(b.price));
-    const userPlans = allPlans.filter(p => p.planKey.startsWith('customer_')).sort((a, b) => Number(a.price) - Number(b.price));
+    const processPlan = (p: any) => ({
+        ...p,
+        features: typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || []),
+        price: Number(p.price),
+    });
+
+    const merchantPlans = allPlans
+        .filter(p => p.planKey.startsWith('merchant_'))
+        .map(processPlan)
+        .sort((a, b) => a.price - b.price);
+    const userPlans = allPlans
+        .filter(p => p.planKey.startsWith('customer_'))
+        .map(processPlan)
+        .sort((a, b) => a.price - b.price);
 
     const defaultMerchantPlan = merchantPlans.find(p => Number(p.price) === 0);
 
@@ -619,24 +633,28 @@ const SubscriptionManagement: React.FC = () => {
                             : 'border-slate-100'
                             }`}
                     >
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${Number(plan.price) === 0 ? 'bg-slate-100' : plan.planKey.includes('business') ? 'bg-primary-50' : 'bg-indigo-50'}`}>
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${plan.price === 0 ? 'bg-slate-100' : plan.planKey.includes('business') ? 'bg-primary-50' : 'bg-indigo-50'}`}>
                             {getPlanIcon(plan.planKey)}
                         </div>
                         <h3 className="text-xl font-bold text-slate-900 mb-2">{plan.name}</h3>
                         <div className="flex items-baseline gap-1 mb-4">
                             <span className="text-2xl font-black text-slate-900">
-                                {Number(plan.price) === 0 ? 'Miễn phí' : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(plan.price))}
+                                {plan.price === 0 ? 'Miễn phí' : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(plan.price)}
                             </span>
-                            {Number(plan.price) > 0 && <span className="text-slate-400 text-sm">/tháng</span>}
+                            {plan.price > 0 && <span className="text-slate-400 text-sm">/tháng</span>}
                         </div>
                         <p className="text-slate-500 text-sm mb-6 leading-relaxed">{plan.description}</p>
 
                         <div className="space-y-4 mb-8 flex-1">
-                            <div className="flex items-start gap-3 text-sm font-medium text-slate-600">
+                            {/* Hiển thị maxPOI trực tiếp từ admin (giống app) */}
+                            <div className="flex items-start gap-3 text-sm font-medium text-slate-700">
                                 <Check className="text-emerald-500 shrink-0 mt-0.5" size={16} />
-                                Quản lý tối đa {plan.maxPOI} địa điểm thuyết minh (POI)
+                                <span className="font-bold">Tối đa {plan.maxPOI} địa điểm (POI)</span>
                             </div>
-                            {plan.features?.map((f: string, i: number) => (
+                            {/* Hiển thị features từ admin metadata */}
+                            {(plan.features || [])
+                                .filter((f: string) => !f.toLowerCase().includes('tối đa') && !f.toLowerCase().includes('địa điểm'))
+                                .map((f: string, i: number) => (
                                 <div key={i} className="flex items-start gap-3 text-sm font-medium text-slate-600">
                                     <Check className="text-emerald-500 shrink-0 mt-0.5" size={16} />
                                     {f}

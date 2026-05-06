@@ -92,13 +92,28 @@ export class MerchantSubscriptionsService {
 
     if (!merchant) return null;
 
-    return this.prisma.merchantSubscription.findFirst({
+    const sub = await this.prisma.merchantSubscription.findFirst({
       where: {
         merchantId: merchant.id,
         status: SubscriptionStatus.active,
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    if (!sub) return null;
+
+    // Đồng bộ maxPOI/maxStore từ metadata hiện tại
+    const metadata = await this.planMetadataService.findByKey(`merchant_${sub.plan.toLowerCase()}`);
+    if (metadata && (sub.maxPOI !== metadata.maxPOI || sub.maxStore !== metadata.maxStore)) {
+      await this.prisma.merchantSubscription.update({
+        where: { id: sub.id },
+        data: { maxPOI: metadata.maxPOI, maxStore: metadata.maxStore },
+      });
+      sub.maxPOI = metadata.maxPOI;
+      sub.maxStore = metadata.maxStore;
+    }
+
+    return sub;
   }
 
   async findAll(page = 1, limit = 10) {

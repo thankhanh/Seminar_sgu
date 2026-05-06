@@ -4,10 +4,14 @@ import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { haversineDistance } from '../../common/utils/haversine.util';
 import { deleteFile, deleteFiles } from '../../common/utils/file.util';
+import { PlanMetadataService } from '../plan-metadata/plan-metadata.service';
 
 @Injectable()
 export class StoresService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private planMetadataService: PlanMetadataService,
+  ) {}
 
   async create(user: { id: string; role: string }, dto: CreateStoreDto) {
     let merchantId: string;
@@ -28,14 +32,20 @@ export class StoresService {
       this.prisma.store.count({ where: { merchantId } }),
       this.prisma.merchantSubscription.findFirst({
         where: { merchantId, status: 'active' },
+        orderBy: { createdAt: 'desc' },
       }),
     ]);
 
-    const maxStore = activeSub ? activeSub.maxStore : 1; // Mặc định 1 POI nếu chưa có gói
+    // Lấy maxPOI từ plan metadata (nguồn admin quản lý) thay vì subscription record cũ
+    let maxPOI = 1;
+    if (activeSub) {
+      const metadata = await this.planMetadataService.findByKey(`merchant_${activeSub.plan.toLowerCase()}`);
+      maxPOI = metadata?.maxPOI ?? activeSub.maxPOI ?? 1;
+    }
 
-    if (currentCount >= maxStore) {
+    if (currentCount >= maxPOI) {
       throw new ForbiddenException(
-        `Bạn đã đạt giới hạn tối đa ${maxStore} cửa hàng cho gói hiện tại. Vui lòng nâng cấp gói dịch vụ để thêm mới.`
+        `Bạn đã đạt giới hạn tối đa ${maxPOI} vị trí (POI) cho gói hiện tại. Vui lòng nâng cấp gói dịch vụ để thêm mới.`
       );
     }
 

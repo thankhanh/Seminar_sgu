@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
-import { storesApi, merchantApi, adminApi, subscriptionsApi } from '../utils/api';
+import { storesApi, merchantApi, adminApi, subscriptionsApi, planMetadataApi } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { Store } from '../types';
 import MapSelector from '../components/MapSelector';
@@ -45,12 +45,32 @@ const POIManagement: React.FC = () => {
                 setMerchants(merchantRes.data || []);
             } else {
                 // If merchant, get their ID from their profile then fetch their stores with pagination
-                const [merchantProfile, subRes] = (await Promise.all([
-                    merchantApi.getMe(),
-                    subscriptionsApi.getMy()
-                ])) as any[];
-                
-                setSubscription(subRes);
+                let merchantProfile: any = null;
+                let subRes: any = null;
+                let allMetadata: any[] = [];
+
+                try {
+                    [merchantProfile, subRes, allMetadata] = await Promise.all([
+                        merchantApi.getMe(),
+                        subscriptionsApi.getMy().catch((e: any) => { console.warn('getMy error:', e); return null; }),
+                        planMetadataApi.getAll().catch(() => [])
+                    ]);
+                } catch (e) {
+                    console.error('Fetch error:', e);
+                }
+
+                // Xác định maxPOI từ plan metadata (nguồn admin quản lý)
+                let maxPOI = 1;
+                if (subRes && subRes.plan) {
+                    const planKey = `merchant_${subRes.plan.toLowerCase()}`;
+                    const metadata = (allMetadata || []).find((m: any) => m.planKey === planKey);
+                    maxPOI = metadata?.maxPOI ?? subRes.maxPOI ?? 1;
+                } else {
+                    // Nếu không có subscription, lấy gói starter mặc định
+                    const starterMeta = (allMetadata || []).find((m: any) => m.planKey === 'merchant_starter');
+                    maxPOI = starterMeta?.maxPOI ?? 1;
+                }
+                setSubscription({ ...(subRes || {}), maxPOI });
 
                 if (merchantProfile && merchantProfile.id) {
                     const storeRes = (await storesApi.getAll(pageNum, limit, 'all', merchantProfile.id)) as any;

@@ -42,11 +42,6 @@ export default function PlansScreen() {
               const isCustomerPlan = p.planKey.startsWith('customer_');
               if (!isCustomerPlan) return false;
 
-              // Nếu đang có gói Monthly, ẩn gói Monthly để ép lên Yearly
-              if (activeSub && activeSub.plan === 'monthly') {
-                const planType = p.planKey.replace('customer_', '');
-                if (planType === 'monthly') return false;
-              }
               return true;
             })
             .map((plan: any) => ({
@@ -161,28 +156,32 @@ function PlanCard({ plan, isPopular, isCurrent, onSelect }: { plan: Plan, isPopu
         {plan.price > 0 && <Text className="text-[#9CA3AF] text-sm font-bold ml-1">/tháng</Text>}
       </View>
 
+      {plan.description ? (
+        <Text className="text-[#6B7280] text-sm mb-4 leading-5">{plan.description}</Text>
+      ) : null}
+
       <View className="space-y-3 mb-8">
-        {(plan.features.length > 0 ? plan.features : ['Tính năng cơ bản', 'Nghe thuyết minh GPS']).map((feature, i) => (
-          <View key={i} className="flex-row items-center">
-            <Ionicons name="checkmark-circle" size={18} color="#009FB7" />
-            <Text className="text-[#4B5563] text-sm ml-3 font-medium">{feature}</Text>
-          </View>
-        ))}
+        <View className="flex-row items-center">
+          <Ionicons name="headset" size={18} color="#009FB7" />
+          <Text className="text-[#4B5563] text-sm ml-3 font-bold">
+            {plan.maxPOI === 0 ? 'Nghe không giới hạn' : `Nghe ${plan.maxPOI} bài/ngày`}
+          </Text>
+        </View>
       </View>
 
       <TouchableOpacity
         onPress={onSelect}
-        disabled={isCurrent || plan.price === 0}
+        disabled={isCurrent}
         className={`w-full py-4 rounded-2xl items-center ${isCurrent
           ? 'bg-emerald-50 border border-emerald-200'
           : plan.price === 0
-            ? 'bg-slate-100 border border-slate-200'
+            ? 'bg-slate-900 border border-slate-900'
             : isPopular ? 'bg-[#009FB7]' : 'bg-[#1F2937]'
           }`}
       >
-        <Text className={`font-extrabold text-[15px] ${isCurrent ? 'text-emerald-600' : plan.price === 0 ? 'text-slate-400' : 'text-white'
+        <Text className={`font-extrabold text-[15px] ${isCurrent ? 'text-emerald-600' : 'text-white'
           }`}>
-          {isCurrent ? 'Đang sử dụng' : (plan.price === 0 ? 'Gói mặc định' : 'Nâng cấp ngay')}
+          {isCurrent ? 'Đang sử dụng' : (plan.price === 0 ? 'Chuyển về gói Miễn phí' : 'Nâng cấp ngay')}
         </Text>
       </TouchableOpacity>
     </View>

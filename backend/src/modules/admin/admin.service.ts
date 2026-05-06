@@ -10,7 +10,7 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private merchantSubscriptionsService: MerchantSubscriptionsService,
-  ) {}
+  ) { }
 
   async createUser(dto: CreateUserDto) {
     const existingUser = await this.prisma.user.findUnique({
@@ -88,7 +88,7 @@ export class AdminService {
   async approveMerchant(id: string) {
     const merchant = await this.prisma.merchant.findUnique({ where: { id } });
     if (!merchant) return null;
-    
+
     await this.prisma.user.update({
       where: { id: merchant.userId },
       data: { isActive: true }
@@ -127,6 +127,7 @@ export class AdminService {
 
     const [
       userCount,
+      onlineUserCount,
       merchantCount,
       merchantCountPending,
       storeCount,
@@ -139,6 +140,7 @@ export class AdminService {
       lastMonthRevenue,
     ] = await Promise.all([
       this.prisma.user.count({ where: { role: 'user' } }),
+      this.prisma.user.count({ where: { isOnline: true } }),
       this.prisma.merchant.count(),
       this.prisma.merchant.count({ where: { status: 'pending' } }),
       this.prisma.store.count(),
@@ -218,6 +220,7 @@ export class AdminService {
 
     return {
       userCount,
+      onlineUserCount,
       merchantCount,
       merchantCountPending,
       storeCount,

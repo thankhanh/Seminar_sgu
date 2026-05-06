@@ -543,11 +543,25 @@ const SubscriptionManagement: React.FC = () => {
 
     const isCurrentPlan = (plan: any) => {
         if (!currentSub) {
-            // If no explicit sub, they are on the 0đ plan implicitly
             return Number(plan.price) === 0;
         }
         const normalized = plan.planKey.replace('merchant_', '').replace('customer_', '').toLowerCase();
         return currentSub.plan.toLowerCase() === normalized;
+    };
+
+    const getMerchantPlanLevel = (planKey: string) => {
+        const key = planKey.replace('merchant_', '').toLowerCase();
+        if (key === 'starter') return 0;
+        if (key === 'business') return 1;
+        if (key === 'premium') return 2;
+        return -1;
+    };
+
+    const isLowerPlan = (plan: any) => {
+        if (!currentSub) return false;
+        const currentLevel = getMerchantPlanLevel(currentSub.plan);
+        const planLevel = getMerchantPlanLevel(plan.planKey);
+        return planLevel < currentLevel;
     };
 
     return (
@@ -632,14 +646,18 @@ const SubscriptionManagement: React.FC = () => {
 
                         <button
                             onClick={() => handlePlanClick(plan)}
-                            disabled={isSubmitting || isCurrentPlan(plan)}
+                            disabled={isSubmitting || isCurrentPlan(plan) || isLowerPlan(plan)}
                             className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${isCurrentPlan(plan)
                                 ? 'bg-emerald-50 text-emerald-600 cursor-default shadow-none border border-emerald-100'
-                                : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200 active:scale-95'
+                                : isLowerPlan(plan)
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none border border-slate-100'
+                                    : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200 active:scale-95'
                                 }`}
                         >
                             {isCurrentPlan(plan) ? (
                                 <>Đang sử dụng <Check size={18} /></>
+                            ) : isLowerPlan(plan) ? (
+                                <>Gói thấp hơn</>
                             ) : Number(plan.price) === 0 ? (
                                 <>Sử dụng miễn phí <ArrowRight size={18} /></>
                             ) : (

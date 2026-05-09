@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("PROJECT_DB_URL")
 }
 
 model User {
@@ -17,6 +17,7 @@ model User {
   preferredLanguage String          @default("vi") @map("preferred_language") @db.VarChar(10)
   avatarUrl         String?         @map("avatar_url")
   isActive          Boolean         @default(true) @map("is_active")
+  isOnline          Boolean         @default(false) @map("is_online")
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
   listenHistory     ListenHistory[]

@@ -22,6 +22,12 @@ export class SubscriptionsController {
     return this.subscriptionsService.create(dto);
   }
 
+  @Post('switch')
+  @Roles('user')
+  async switchPlan(@Request() req, @Body('plan') plan: string) {
+    return this.subscriptionsService.switchPlan(req.user.id, plan as any);
+  }
+
   @Get('my')
   @Roles('user', 'merchant', 'admin')
   async getMy(@Request() req) {
@@ -32,6 +38,12 @@ export class SubscriptionsController {
   @Roles('admin')
   async findAll(@Query('page') page: string, @Query('limit') limit: string) {
     return this.subscriptionsService.findAll(+page || 1, +limit || 10);
+  }
+
+  @Patch(':id')
+  @Roles('admin')
+  async updatePlan(@Param('id') id: string, @Body('plan') plan: string) {
+    return this.subscriptionsService.updatePlan(id, plan as any);
   }
 
   @Patch(':id/cancel')

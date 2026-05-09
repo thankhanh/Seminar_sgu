@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     CloudUpload, Headphones, Search,
     Trash2, Globe, Loader2, Play, Plus,
-    MoreVertical, CheckCircle2, Square, Volume2
+    MoreVertical, CheckCircle2, Square, Volume2, Edit
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import Pagination from '../components/Pagination';
@@ -29,14 +29,17 @@ const AudioManagement: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [totalNarrations, setTotalNarrations] = useState(0);
-    const limit = 10;
+    const limit = 9;
     const [searchQuery, setSearchQuery] = useState('');
+    const [languageFilter, setLanguageFilter] = useState('');
     const [isUploadOpen, setIsUploadOpen] = useState(false);
     const [playingId, setPlayingId] = useState<string | null>(null);
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
+        id: '', // Thêm id để biết là đang edit
         storeId: '',
         languageId: '',
         textContent: '',
@@ -44,7 +47,7 @@ const AudioManagement: React.FC = () => {
         duration: '',
     });
 
-    const fetchData = async (pageNum = page) => {
+    const fetchData = async (pageNum = page, search = searchQuery, lang = languageFilter) => {
         setLoading(true);
         try {
             // 1. Luôn lấy danh sách ngôn ngữ
@@ -54,7 +57,7 @@ const AudioManagement: React.FC = () => {
             if (user?.role === 'admin') {
                 // 2a. Đối với Admin: Lấy tất cả narrations và tất cả stores cho dropdown
                 const [narrRes, storeRes] = (await Promise.all([
-                    narrationsApi.getAll(pageNum, limit),
+                    narrationsApi.getAll(pageNum, limit, undefined, search, lang),
                     storesApi.getAll(1, 100)
                 ])) as any[];
                 setNarrations(narrRes.data || []);
@@ -71,7 +74,7 @@ const AudioManagement: React.FC = () => {
                 setMyStores(uniqueStores);
 
                 if (merchantRes.id) {
-                    const narrRes = (await narrationsApi.getAll(pageNum, limit, merchantRes.id)) as any;
+                    const narrRes = (await narrationsApi.getAll(pageNum, limit, merchantRes.id, search, lang)) as any;
                     setNarrations(narrRes.data || []);
                     setTotalNarrations(narrRes.total || 0);
                 }
@@ -85,16 +88,22 @@ const AudioManagement: React.FC = () => {
 
     const handlePageChange = (newPage: number) => {
         setPage(newPage);
-        fetchData(newPage);
     };
 
     useEffect(() => {
-        if (user) fetchData();
-        // Cleanup speech on unmount
         return () => {
             window.speechSynthesis.cancel();
         };
-    }, [user]);
+    }, []);
+
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (user) {
+                fetchData(page, searchQuery, languageFilter);
+            }
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [user, page, searchQuery, languageFilter]);
 
     const handleUpload = async () => {
         let selectedLangId = formData.languageId;
@@ -115,14 +124,10 @@ const AudioManagement: React.FC = () => {
             return;
         }
 
-        // Kiểm tra trùng lặp (chỉ check bản VI gốc)
-        const isDuplicate = narrations.some(n => n.storeId === formData.storeId && n.languageId === selectedLangId);
-        if (isDuplicate) {
-            alert('Cửa hàng này đã có bản thuyết minh gốc.');
-            return;
-        }
+        // Đã gỡ bỏ kiểm tra trùng lặp ở frontend để cho phép Upsert ở backend
 
         try {
+            setIsSaving(true);
             await storesApi.createNarration(formData.storeId, {
                 languageId: selectedLangId,
                 textContent: formData.textContent,
@@ -130,11 +135,26 @@ const AudioManagement: React.FC = () => {
                 duration: undefined,
             });
             setIsUploadOpen(false);
-            setFormData({ storeId: '', languageId: '', textContent: '', audioUrl: '', duration: '' });
-            fetchData();
+            setFormData({ id: '', storeId: '', languageId: '', textContent: '', audioUrl: '', duration: '' });
+            setPage(1);
+            fetchData(1, searchQuery, languageFilter);
         } catch (err: any) {
             alert(err.message || 'Lỗi khi lưu thuyết minh');
+        } finally {
+            setIsSaving(false);
         }
+    };
+
+    const handleEdit = (narration: Narration) => {
+        setFormData({
+            id: narration.id,
+            storeId: narration.storeId,
+            languageId: narration.languageId,
+            textContent: narration.textContent || '',
+            audioUrl: narration.audioUrl || '',
+            duration: narration.duration?.toString() || '',
+        });
+        setIsUploadOpen(true);
     };
 
     const handleDelete = async (id: string) => {
@@ -147,9 +167,16 @@ const AudioManagement: React.FC = () => {
         }
     };
 
-    const filteredAudio = narrations.filter((audio: Narration) =>
-        (audio.textContent || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredAudio = [...narrations]
+        .sort((a, b) => {
+            // Ưu tiên tiếng Việt lên đầu
+            if (a.language?.code === 'vi' && b.language?.code !== 'vi') return -1;
+            if (a.language?.code !== 'vi' && b.language?.code === 'vi') return 1;
+            // Nếu cùng là tiếng Việt hoặc cùng không phải tiếng Việt thì gom theo storeId
+            if (a.storeId < b.storeId) return -1;
+            if (a.storeId > b.storeId) return 1;
+            return 0;
+        });
 
     /**
      * Phát audio bằng Web Speech API (SpeechSynthesis)
@@ -232,13 +259,29 @@ const AudioManagement: React.FC = () => {
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="w-full sm:w-48">
+                    <select
+                        value={languageFilter}
+                        onChange={(e) => {
+                            setLanguageFilter(e.target.value);
+                            setPage(1);
+                        }}
+                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-slate-700"
+                    >
+                        <option value="">Tất cả ngôn ngữ</option>
+                        {languages.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                </div>
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                     <input
                         type="text"
                         placeholder="Tìm kiếm nội dung audio, địa điểm..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setPage(1);
+                        }}
                         className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                 </div>
@@ -260,10 +303,18 @@ const AudioManagement: React.FC = () => {
                                 >
                                     {playingId === file.id ? <Square size={20} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
                                 </button>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"><MoreVertical size={16} /></button>
-                                    <button onClick={() => handleDelete(file.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><Trash2 size={16} /></button>
-                                </div>
+                                {file.language?.code === 'vi' && (
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button 
+                                            onClick={() => handleEdit(file)}
+                                            className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"
+                                            title="Chỉnh sửa"
+                                        >
+                                            <Edit size={16} />
+                                        </button>
+                                        <button onClick={() => handleDelete(file.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg" title="Xóa"><Trash2 size={16} /></button>
+                                    </div>
+                                )}
                             </div>
 
                             <h3 className="font-bold text-slate-900 text-lg mb-2 line-clamp-1">
@@ -336,8 +387,11 @@ const AudioManagement: React.FC = () => {
             {/* Upload Audio Modal */}
             <Modal
                 isOpen={isUploadOpen}
-                onClose={() => setIsUploadOpen(false)}
-                title="Tạo bản thuyết minh mới"
+                onClose={() => {
+                    setIsUploadOpen(false);
+                    setFormData({ id: '', storeId: '', languageId: '', textContent: '', audioUrl: '', duration: '' });
+                }}
+                title={formData.id ? "Cập nhật bản thuyết minh" : "Tạo bản thuyết minh mới"}
                 maxWidth="max-w-2xl"
             >
                 <div className="space-y-5">
@@ -379,10 +433,15 @@ const AudioManagement: React.FC = () => {
                         </button>
                         <button
                             onClick={handleUpload}
-                            className="bg-primary-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-500/30 flex items-center gap-2"
+                            disabled={isSaving}
+                            className={`px-8 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-primary-500/30 ${
+                                isSaving
+                                    ? 'bg-primary-400 text-white cursor-not-allowed'
+                                    : 'bg-primary-600 text-white hover:bg-primary-700'
+                            }`}
                         >
-                            <CloudUpload size={20} />
-                            Lưu thuyết minh
+                            {isSaving ? <Loader2 size={20} className="animate-spin" /> : <CloudUpload size={20} />}
+                            {isSaving ? 'Đang tạo nội dung...' : 'Lưu thuyết minh'}
                         </button>
                     </div>
                 </div>

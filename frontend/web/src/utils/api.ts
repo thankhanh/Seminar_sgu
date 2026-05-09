@@ -88,8 +88,8 @@ export const storesApi = {
 
 // --- Narrations (Global) ---
 export const narrationsApi = {
-    getAll: (page = 1, limit = 20, merchantId?: string) =>
-        unwrapData(apiClient.get(`/narrations`, { params: { page, limit, merchantId } })),
+    getAll: (page = 1, limit = 20, merchantId?: string, search?: string, languageId?: string) =>
+        unwrapData(apiClient.get(`/narrations`, { params: { page, limit, merchantId, search, languageId } })),
     update: (id: string, dto: any) => unwrapData(apiClient.patch(`/narrations/${id}`, dto)),
     remove: (id: string) => unwrapData(apiClient.delete(`/narrations/${id}`)),
 };
@@ -119,6 +119,8 @@ export const subscriptionsApi = {
     cancel: (id: string) => unwrapData(apiClient.patch(`/merchant-subscriptions/${id}/cancel`)),
     grantMerchantPlan: (dto: { email: string, plan: string }) => unwrapData(apiClient.post('/merchant-subscriptions/admin/grant', dto)),
     grantUserPlan: (dto: { email: string, plan: string }) => unwrapData(apiClient.post('/subscriptions/admin/grant', dto)),
+    updateUserSub: (id: string, plan: string) => unwrapData(apiClient.patch(`/subscriptions/${id}`, { plan })),
+    updateMerchantSub: (id: string, plan: string) => unwrapData(apiClient.patch(`/merchant-subscriptions/${id}`, { plan })),
 };
 
 // --- Plan Metadata ---

@@ -7,7 +7,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const API_URL = 'http://192.168.1.10:3000/api/v1'; // LAN IP for Physical Devices (Hotspot)
+export const API_URL = 'http://10.101.147.81:3000/api/v1'; // LAN IP for Physical Devices (Hotspot)
 // export const API_URL = 'http://10.0.2.2:3000/api/v1'; // For Android Emulator
 export const TOKEN_KEY = 'auth_access_token';
 export const REFRESH_KEY = 'auth_refresh_token';
@@ -307,6 +307,14 @@ export const subscriptionsHelpers = {
             throw new Error(message || 'Failed to fetch subscriptions');
         }
         return data;
+    },
+    async switchPlan(plan: string) {
+        const response = await api.post('/subscriptions/switch', { plan });
+        const { success, data, message } = response.data;
+        if (!success) {
+            throw new Error(message || 'Failed to switch plan');
+        }
+        return data;
     }
 };
 // payment
@@ -318,19 +326,31 @@ export const paymentHelpers = {
             amount,
             orderInfo,
         });
+
+        // Backend /payments/create doesn't use standard {success, data} wrapper
+        // It returns { paymentUrl, qrCodeUrl, ... } directly
+        if (response.data && response.data.paymentUrl) {
+            return { success: true, data: response.data };
+        }
+
         const { success, data, message } = response.data;
-        if (!success) {
+        if (success === false) {
             throw new Error(message || 'Failed to create payment');
         }
-        return data;
+        return response.data;
     },
     async getPaymentStatus(transactionId: string) {
         const response = await api.get(`/payments/status?transactionId=${transactionId}`);
+
+        if (response.data && response.data.status) {
+            return response.data;
+        }
+
         const { success, data, message } = response.data;
-        if (!success) {
+        if (success === false) {
             throw new Error(message || 'Failed to get payment status');
         }
-        return data;
+        return response.data;
     }
 };
 // scanner

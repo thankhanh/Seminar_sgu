@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
-import api, { paymentHelpers } from '../../constants/api';
+import api, { paymentHelpers, subscriptionsHelpers } from '../../constants/api';
 
 const { width } = Dimensions.get('window');
 const QR_SIZE = width * 0.55;
@@ -87,14 +87,22 @@ export default function PaymentScreen() {
   };
 
   const handlePayment = async () => {
-    if (price === 0) {
-      alert('Gói miễn phí không cần thanh toán.');
-      return;
-    }
-
     setIsProcessing(true);
     try {
-      const { data: json } = await paymentHelpers.createPayment('momo', planKey, price, `Nâng cấp gói ${planName}`);
+      // Thử chuyển đổi gói trước (nếu gói miễn phí hoặc đã thanh toán trước đó và chưa hết hạn)
+      const planNameWithoutPrefix = planKey.replace('customer_', '').toLowerCase();
+      const switchRes = await subscriptionsHelpers.switchPlan(planNameWithoutPrefix);
+
+      if (!switchRes.requiresPayment) {
+        setPaymentStatus('success');
+        setTimeout(() => {
+          router.replace('/(tabs)/home' as any);
+        }, 2000);
+        return;
+      }
+
+      // Nếu cần thanh toán, tiếp tục với MoMo
+      const json = await paymentHelpers.createPayment('momo', planKey, price, `Nâng cấp gói ${planName}`);
 
       if (json.success && json.data) {
         const { paymentUrl, qrCodeUrl, deeplink, orderId, transactionId } = json.data;
@@ -368,7 +376,7 @@ export default function PaymentScreen() {
             <ActivityIndicator color="white" />
           ) : (
             <>
-              <Text className="text-white font-extrabold text-base mr-2">Thanh toán với MoMo</Text>
+              <Text className="text-white font-extrabold text-base mr-2">{price === 0 ? 'Xác nhận chuyển gói' : 'Thanh toán với MoMo'}</Text>
               <Ionicons name="arrow-forward" size={18} color="white" />
             </>
           )}

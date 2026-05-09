@@ -57,8 +57,10 @@ export class NarrationsController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('merchantId') merchantId?: string,
+    @Query('search') search?: string,
+    @Query('languageId') languageId?: string,
   ) {
-    return this.narrService.findAll(Number(page) || 1, Number(limit) || 20, merchantId);
+    return this.narrService.findAll(Number(page) || 1, Number(limit) || 20, merchantId, search, languageId);
   }
 
   @Post('listen/:narrationId')

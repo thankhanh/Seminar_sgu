@@ -16,7 +16,7 @@ const SubscriptionManagement: React.FC = () => {
     const [allPlans, setAllPlans] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     // Merchant specific
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
@@ -28,6 +28,9 @@ const SubscriptionManagement: React.FC = () => {
     const [grantForm, setGrantForm] = useState({ email: '', planKey: '' });
     const [merchantSubs, setMerchantSubs] = useState<any[]>([]);
     const [userSubs, setUserSubs] = useState<any[]>([]);
+    const [showEditSubModal, setShowEditSubModal] = useState(false);
+    const [editingSub, setEditingSub] = useState<any>(null);
+    const [editSubPlan, setEditSubPlan] = useState('');
 
     useEffect(() => {
         initData();
@@ -38,11 +41,13 @@ const SubscriptionManagement: React.FC = () => {
         try {
             const [plansData, subData, mSubsData, uSubsData] = await Promise.all([
                 planMetadataApi.getAll(),
-                !isAdmin ? subscriptionsApi.getMy() : Promise.resolve(null),
+                !isAdmin ? subscriptionsApi.getMy().catch(() => null) : Promise.resolve(null),
                 isAdmin ? subscriptionsApi.getAll(1, 100).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
                 isAdmin ? subscriptionsApi.getAllUser(1, 100).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
             ]);
-            setAllPlans(plansData);
+            console.log('[SubscriptionManagement] plansData from API:', JSON.stringify(plansData));
+            console.log('[SubscriptionManagement] subData:', subData);
+            setAllPlans(plansData || []);
             if (!isAdmin) setCurrentSub(subData);
             if (isAdmin) {
                 setMerchantSubs(mSubsData?.data || []);
@@ -127,7 +132,7 @@ const SubscriptionManagement: React.FC = () => {
     const handleGrantPlan = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!grantForm.email || !grantForm.planKey) return;
-        
+
         setIsSubmitting(true);
         try {
             if (activeTab === 'merchant') {
@@ -146,6 +151,32 @@ const SubscriptionManagement: React.FC = () => {
         }
     };
 
+    const handleEditSub = (sub: any) => {
+        setEditingSub(sub);
+        setEditSubPlan(sub.plan);
+        setShowEditSubModal(true);
+    };
+
+    const handleSaveSub = async () => {
+        if (!editingSub || !editSubPlan) return;
+        setIsSubmitting(true);
+        try {
+            if (activeTab === 'merchant') {
+                await subscriptionsApi.updateMerchantSub(editingSub.id, editSubPlan);
+            } else {
+                await subscriptionsApi.updateUserSub(editingSub.id, editSubPlan);
+            }
+            setShowEditSubModal(false);
+            setEditingSub(null);
+            initData();
+            alert('Cập nhật gói thành công!');
+        } catch (err: any) {
+            alert(err.message || 'Lỗi cập nhật gói');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -154,8 +185,20 @@ const SubscriptionManagement: React.FC = () => {
         );
     }
 
-    const merchantPlans = allPlans.filter(p => p.planKey.startsWith('merchant_')).sort((a, b) => Number(a.price) - Number(b.price));
-    const userPlans = allPlans.filter(p => p.planKey.startsWith('customer_')).sort((a, b) => Number(a.price) - Number(b.price));
+    const processPlan = (p: any) => ({
+        ...p,
+        features: typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || []),
+        price: Number(p.price),
+    });
+
+    const merchantPlans = allPlans
+        .filter(p => p.planKey.startsWith('merchant_'))
+        .map(processPlan)
+        .sort((a, b) => a.price - b.price);
+    const userPlans = allPlans
+        .filter(p => p.planKey.startsWith('customer_'))
+        .map(processPlan)
+        .sort((a, b) => a.price - b.price);
 
     const defaultMerchantPlan = merchantPlans.find(p => Number(p.price) === 0);
 
@@ -219,6 +262,11 @@ const SubscriptionManagement: React.FC = () => {
                                                 {activeTab === 'merchant' && (
                                                     <div className="text-slate-400 text-sm flex items-center gap-1">
                                                         <Store size={14} /> Tối đa {plan.maxPOI} POIs
+                                                    </div>
+                                                )}
+                                                {activeTab === 'user' && (
+                                                    <div className="text-slate-400 text-sm flex items-center gap-1">
+                                                        🎧 {plan.maxPOI === 0 ? 'Không giới hạn' : `${plan.maxPOI} bài/ngày`}
                                                     </div>
                                                 )}
                                             </div>
@@ -299,6 +347,7 @@ const SubscriptionManagement: React.FC = () => {
                                     <th className="px-6 py-4">Ngày bắt đầu</th>
                                     <th className="px-6 py-4">Ngày hết hạn</th>
                                     <th className="px-6 py-4">Trạng thái</th>
+                                    <th className="px-6 py-4">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -325,11 +374,20 @@ const SubscriptionManagement: React.FC = () => {
                                                 {sub.status === 'active' ? 'Hoạt động' : 'Đã hủy/Hết hạn'}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-4">
+                                            <button
+                                                onClick={() => handleEditSub(sub)}
+                                                className="p-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
+                                                title="Sửa gói"
+                                            >
+                                                <Edit2 size={16} />
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                                 {(activeTab === 'merchant' ? merchantSubs : userSubs).length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-8 text-center text-slate-500 font-medium">Chưa có ai đăng ký gói này.</td>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-slate-500 font-medium">Chưa có ai đăng ký gói này.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -345,7 +403,7 @@ const SubscriptionManagement: React.FC = () => {
                                 <X size={24} />
                             </button>
                             <h2 className="text-2xl font-bold text-slate-900 mb-6">Chỉnh sửa {editingPlan.name}</h2>
-                            
+
                             <div className="space-y-6">
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-2">Tên hiển thị</label>
@@ -378,6 +436,19 @@ const SubscriptionManagement: React.FC = () => {
                                         </div>
                                     </div>
                                 )}
+                                {activeTab === 'user' && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Số bài nghe / ngày</label>
+                                        <p className="text-xs text-slate-400 mb-2">Đặt 0 = không giới hạn</p>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            value={editingPlan.maxPOI}
+                                            onChange={e => setEditingPlan({ ...editingPlan, maxPOI: e.target.value })}
+                                            className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 transition-all font-medium"
+                                        />
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-2">Mô tả ngắn</label>
                                     <textarea
@@ -408,6 +479,69 @@ const SubscriptionManagement: React.FC = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Edit User Subscription Modal */}
+                {showEditSubModal && editingSub && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white rounded-3xl w-full max-w-lg p-8 shadow-2xl animate-in zoom-in-95 duration-300 relative">
+                            <button onClick={() => setShowEditSubModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors">
+                                <X size={24} />
+                            </button>
+                            <h2 className="text-2xl font-bold text-slate-900 mb-2">Sửa gói {activeTab === 'merchant' ? 'chủ quán' : 'người dùng'}</h2>
+                            <p className="text-slate-500 mb-6">
+                                Tài khoản: <span className="font-bold text-slate-700">{activeTab === 'merchant' ? (editingSub.merchant?.businessName || 'Không xác định') : (editingSub.user?.name || 'Không xác định')}</span> ({activeTab === 'merchant' ? editingSub.merchant?.user?.email : editingSub.user?.email})
+                            </p>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Gói hiện tại</label>
+                                    <div className="px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-600 font-bold uppercase">
+                                        {editingSub.plan}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Đổi sang gói</label>
+                                    <select
+                                        value={editSubPlan}
+                                        onChange={e => setEditSubPlan(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 transition-all font-medium appearance-none"
+                                    >
+                                        {activeTab === 'merchant' ? (
+                                            <>
+                                                <option value="starter">Starter (Miễn phí)</option>
+                                                <option value="business">Business</option>
+                                                <option value="premium">Premium</option>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="free">Free (Miễn phí)</option>
+                                                <option value="monthly">Monthly (Hàng tháng)</option>
+                                                <option value="yearly">Yearly (Hàng năm)</option>
+                                            </>
+                                        )}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 mt-8">
+                                <button
+                                    onClick={() => setShowEditSubModal(false)}
+                                    className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200"
+                                >
+                                    Hủy bỏ
+                                </button>
+                                <button
+                                    onClick={handleSaveSub}
+                                    disabled={isSubmitting || editSubPlan === editingSub.plan}
+                                    className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-900/20 disabled:opacity-50"
+                                >
+                                    {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                                    Lưu thay đổi
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -423,11 +557,25 @@ const SubscriptionManagement: React.FC = () => {
 
     const isCurrentPlan = (plan: any) => {
         if (!currentSub) {
-            // If no explicit sub, they are on the 0đ plan implicitly
             return Number(plan.price) === 0;
         }
         const normalized = plan.planKey.replace('merchant_', '').replace('customer_', '').toLowerCase();
         return currentSub.plan.toLowerCase() === normalized;
+    };
+
+    const getMerchantPlanLevel = (planKey: string) => {
+        const key = planKey.replace('merchant_', '').toLowerCase();
+        if (key === 'starter') return 0;
+        if (key === 'business') return 1;
+        if (key === 'premium') return 2;
+        return -1;
+    };
+
+    const isLowerPlan = (plan: any) => {
+        if (!currentSub) return false;
+        const currentLevel = getMerchantPlanLevel(currentSub.plan);
+        const planLevel = getMerchantPlanLevel(plan.planKey);
+        return planLevel < currentLevel;
     };
 
     return (
@@ -480,46 +628,47 @@ const SubscriptionManagement: React.FC = () => {
                 {merchantPlans.map((plan) => (
                     <div
                         key={plan.planKey}
-                        className={`bg-white rounded-3xl border-2 p-8 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 flex flex-col ${isCurrentPlan(plan) 
-                            ? 'border-emerald-500 ring-4 ring-emerald-500/10 shadow-lg' 
+                        className={`bg-white rounded-3xl border-2 p-8 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 flex flex-col ${isCurrentPlan(plan)
+                            ? 'border-emerald-500 ring-4 ring-emerald-500/10 shadow-lg'
                             : 'border-slate-100'
-                        }`}
+                            }`}
                     >
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${Number(plan.price) === 0 ? 'bg-slate-100' : plan.planKey.includes('business') ? 'bg-primary-50' : 'bg-indigo-50'}`}>
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${plan.price === 0 ? 'bg-slate-100' : plan.planKey.includes('business') ? 'bg-primary-50' : 'bg-indigo-50'}`}>
                             {getPlanIcon(plan.planKey)}
                         </div>
                         <h3 className="text-xl font-bold text-slate-900 mb-2">{plan.name}</h3>
                         <div className="flex items-baseline gap-1 mb-4">
                             <span className="text-2xl font-black text-slate-900">
-                                {Number(plan.price) === 0 ? 'Miễn phí' : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(plan.price))}
+                                {plan.price === 0 ? 'Miễn phí' : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(plan.price)}
                             </span>
-                            {Number(plan.price) > 0 && <span className="text-slate-400 text-sm">/tháng</span>}
+                            {plan.price > 0 && <span className="text-slate-400 text-sm">/tháng</span>}
                         </div>
                         <p className="text-slate-500 text-sm mb-6 leading-relaxed">{plan.description}</p>
 
                         <div className="space-y-4 mb-8 flex-1">
-                            <div className="flex items-start gap-3 text-sm font-medium text-slate-600">
-                                <Check className="text-emerald-500 shrink-0 mt-0.5" size={16} />
-                                Quản lý tối đa {plan.maxPOI} địa điểm thuyết minh (POI)
+                            {/* Hiển thị maxPOI trực tiếp từ admin quản lý */}
+                            <div className="flex items-start gap-3 text-sm font-medium text-slate-700">
+                                <Store className="text-primary-500 shrink-0 mt-0.5" size={16} />
+                                <span className="font-bold">Địa điểm tối đa {plan.maxPOI} (POI)</span>
                             </div>
-                            {plan.features?.map((f: string, i: number) => (
-                                <div key={i} className="flex items-start gap-3 text-sm font-medium text-slate-600">
-                                    <Check className="text-emerald-500 shrink-0 mt-0.5" size={16} />
-                                    {f}
-                                </div>
-                            ))}
                         </div>
 
                         <button
                             onClick={() => handlePlanClick(plan)}
-                            disabled={isSubmitting || isCurrentPlan(plan)}
+                            disabled={isSubmitting || isCurrentPlan(plan) || isLowerPlan(plan)}
                             className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${isCurrentPlan(plan)
                                 ? 'bg-emerald-50 text-emerald-600 cursor-default shadow-none border border-emerald-100'
-                                : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200 active:scale-95'
-                            }`}
+                                : isLowerPlan(plan)
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none border border-slate-100'
+                                    : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-200 active:scale-95'
+                                }`}
                         >
                             {isCurrentPlan(plan) ? (
                                 <>Đang sử dụng <Check size={18} /></>
+                            ) : isLowerPlan(plan) ? (
+                                <>Gói thấp hơn</>
+                            ) : Number(plan.price) === 0 ? (
+                                <>Sử dụng miễn phí <ArrowRight size={18} /></>
                             ) : (
                                 <>Nâng cấp <ArrowRight size={18} /></>
                             )}

@@ -6,7 +6,7 @@ import { deleteFile } from '../../common/utils/file.util';
 
 @Injectable()
 export class NarrationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private async verifyStoreOwner(storeId: string, user: { id: string; role: string }) {
     const store = await this.prisma.store.findUnique({
@@ -26,13 +26,21 @@ export class NarrationsService {
   async create(storeId: string, user: { id: string; role: string }, dto: CreateNarrationDto) {
     await this.verifyStoreOwner(storeId, user);
 
-    const existing = await this.prisma.narration.findUnique({
-      where: { storeId_languageId: { storeId, languageId: dto.languageId } },
-    });
-    if (existing) throw new ConflictException('Narration cho ngôn ngữ này đã tồn tại');
-
-    return this.prisma.narration.create({
-      data: {
+    // Sử dụng upsert để: Nếu đã có thì cập nhật, nếu chưa có thì tạo mới
+    const narration = await this.prisma.narration.upsert({
+      where: {
+        storeId_languageId: {
+          storeId,
+          languageId: dto.languageId
+        }
+      },
+      update: {
+        audioUrl: dto.audioUrl,
+        textContent: dto.textContent,
+        duration: dto.duration,
+        isActive: dto.isActive ?? true,
+      },
+      create: {
         storeId,
         languageId: dto.languageId,
         audioUrl: dto.audioUrl,
@@ -42,15 +50,74 @@ export class NarrationsService {
       },
       include: { language: true },
     });
+
+    // Nếu là tiếng Việt (vi), tự động dịch và đồng bộ ra các ngôn ngữ khác
+    if (narration.language.code === 'vi') {
+      await this.syncTranslations(storeId, dto.textContent);
+    }
+
+    return narration;
+  }
+
+  /**
+   * Tự động dịch và đồng bộ tất cả các ngôn ngữ khác dựa trên bản gốc
+   */
+  private async syncTranslations(storeId: string, sourceText: string) {
+    console.log(`[Sync] Bắt đầu đồng bộ bản dịch cho store ${storeId}...`);
+
+    // 1. Lấy tất cả ngôn ngữ đang hoạt động (trừ tiếng Việt)
+    const activeLanguages = await this.prisma.language.findMany({
+      where: {
+        isActive: true,
+        code: { not: 'vi' }
+      }
+    });
+
+    const viLanguage = await this.prisma.language.findUnique({ where: { code: 'vi' } });
+
+    // 2. Lặp qua từng ngôn ngữ để dịch và upsert
+    for (const lang of activeLanguages) {
+      try {
+        const translatedText = await this.translateText(sourceText, 'vi', lang.code);
+
+        await this.prisma.narration.upsert({
+          where: {
+            storeId_languageId: {
+              storeId,
+              languageId: lang.id
+            }
+          },
+          update: {
+            textContent: translatedText,
+            isActive: true
+          },
+          create: {
+            storeId,
+            languageId: lang.id,
+            textContent: translatedText,
+            isActive: true
+          }
+        });
+      } catch (error) {
+        console.error(`[Sync] Lỗi khi dịch sang ${lang.code}:`, error);
+      }
+    }
+    console.log(`[Sync] Hoàn tất đồng bộ bản dịch cho store ${storeId}`);
   }
 
   async findByStore(storeId: string) {
     const store = await this.prisma.store.findUnique({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Store không tồn tại');
-    return this.prisma.narration.findMany({
+    const narrations = await this.prisma.narration.findMany({
       where: { storeId, isActive: true },
       include: { language: true },
-      orderBy: { createdAt: 'desc' },
+    });
+
+    return narrations.sort((a, b) => {
+      const aIsVi = a.language?.code === 'vi' ? -1 : 1;
+      const bIsVi = b.language?.code === 'vi' ? -1 : 1;
+      if (aIsVi !== bIsVi) return aIsVi - bIsVi;
+      return b.createdAt.getTime() - a.createdAt.getTime();
     });
   }
 
@@ -136,11 +203,11 @@ export class NarrationsService {
 
     // 3. Kiểm tra xem đã CÓ BẢN DỊCH sẵn trong DB chưa (Để tránh dịch lại tốn tiền API)
     let narration = await this.prisma.narration.findUnique({
-      where: { 
-        storeId_languageId: { 
-          storeId: nearbyStore.id, 
-          languageId: targetLanguage.id 
-        } 
+      where: {
+        storeId_languageId: {
+          storeId: nearbyStore.id,
+          languageId: targetLanguage.id
+        }
       }
     });
 
@@ -149,11 +216,11 @@ export class NarrationsService {
       // 4.1. Lấy bản gốc (VI)
       const viLanguage = await this.prisma.language.findUnique({ where: { code: 'vi' } });
       const originalNarration = await this.prisma.narration.findUnique({
-        where: { 
-          storeId_languageId: { 
-            storeId: nearbyStore.id, 
-            languageId: viLanguage.id 
-          } 
+        where: {
+          storeId_languageId: {
+            storeId: nearbyStore.id,
+            languageId: viLanguage.id
+          }
         }
       });
 
@@ -185,26 +252,39 @@ export class NarrationsService {
     };
   }
 
-  async findAll(page = 1, limit = 20, merchantId?: string) {
+  async findAll(page = 1, limit = 20, merchantId?: string, search?: string, languageId?: string) {
     const skip = (page - 1) * limit;
     const where: any = {};
     if (merchantId) {
       where.store = { merchantId };
     }
+    if (search) {
+      where.OR = [
+        { textContent: { contains: search, mode: 'insensitive' } },
+        { store: { name: { contains: search, mode: 'insensitive' } } }
+      ];
+    }
+    if (languageId) {
+      where.languageId = languageId;
+    }
 
-    const [data, total] = await Promise.all([
-      this.prisma.narration.findMany({
-        skip,
-        take: limit,
-        where,
-        include: { 
-          language: true,
-          store: { select: { name: true } }
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.narration.count(),
-    ]);
+    const allNarrations = await this.prisma.narration.findMany({
+      where,
+      include: {
+        language: true,
+        store: { select: { name: true } }
+      },
+    });
+
+    allNarrations.sort((a, b) => {
+      const aIsVi = a.language?.code === 'vi' ? -1 : 1;
+      const bIsVi = b.language?.code === 'vi' ? -1 : 1;
+      if (aIsVi !== bIsVi) return aIsVi - bIsVi;
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
+
+    const total = allNarrations.length;
+    const data = allNarrations.slice(skip, skip + limit);
     return { data, total, page, limit };
   }
 
@@ -262,7 +342,10 @@ export class NarrationsService {
 
 
   async update(id: string, user: { id: string; role: string }, dto: UpdateNarrationDto) {
-    const narration = await this.prisma.narration.findUnique({ where: { id } });
+    const narration = await this.prisma.narration.findUnique({
+      where: { id },
+      include: { language: true }
+    });
     if (!narration) throw new NotFoundException('Narration không tồn tại');
     await this.verifyStoreOwner(narration.storeId, user);
 
@@ -271,14 +354,25 @@ export class NarrationsService {
       await deleteFile(narration.audioUrl);
     }
 
-    return this.prisma.narration.update({ where: { id }, data: dto });
+    const updated = await this.prisma.narration.update({
+      where: { id },
+      data: dto,
+      include: { language: true }
+    });
+
+    // Nếu cập nhật bản tiếng Việt, đồng bộ lại các bản dịch khác
+    if (updated.language.code === 'vi' && dto.textContent) {
+      await this.syncTranslations(updated.storeId, updated.textContent);
+    }
+
+    return updated;
   }
 
   async remove(id: string, user: { id: string; role: string }) {
     const narration = await this.prisma.narration.findUnique({ where: { id } });
     if (!narration) throw new NotFoundException('Narration không tồn tại');
     await this.verifyStoreOwner(narration.storeId, user);
-    
+
     // Xóa file vật lý
     if (narration.audioUrl) {
       await deleteFile(narration.audioUrl);

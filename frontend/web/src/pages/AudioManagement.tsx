@@ -168,6 +168,9 @@ const AudioManagement: React.FC = () => {
     };
 
     const filteredAudio = [...narrations]
+        .filter((audio: Narration) =>
+            (audio.textContent || '').toLowerCase().includes(searchQuery.toLowerCase())
+        )
         .sort((a, b) => {
             // Ưu tiên tiếng Việt lên đầu
             if (a.language?.code === 'vi' && b.language?.code !== 'vi') return -1;

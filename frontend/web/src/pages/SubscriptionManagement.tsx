@@ -351,7 +351,11 @@ const SubscriptionManagement: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {(activeTab === 'merchant' ? merchantSubs : userSubs).map((sub: any) => (
+                                {(activeTab === 'merchant' ? merchantSubs : userSubs)
+                                    .filter((obj: any, index: number, arr: any[]) => 
+                                        arr.findIndex(item => activeTab === 'merchant' ? item.merchantId === obj.merchantId : item.userId === obj.userId) === index
+                                    )
+                                    .map((sub: any) => (
                                     <tr key={sub.id} className="hover:bg-slate-50 transition-colors">
                                         <td className="px-6 py-4 text-sm font-bold text-slate-900">
                                             {activeTab === 'merchant' ? (

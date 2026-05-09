@@ -140,7 +140,7 @@ export class AdminService {
       lastMonthRevenue,
     ] = await Promise.all([
       this.prisma.user.count({ where: { role: 'user' } }),
-      this.prisma.user.count({ where: { isOnline: true } }),
+      this.prisma.user.count({ where: { isOnline: true, role: 'user' } }),
       this.prisma.merchant.count(),
       this.prisma.merchant.count({ where: { status: 'pending' } }),
       this.prisma.store.count(),

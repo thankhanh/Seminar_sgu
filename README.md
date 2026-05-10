@@ -105,7 +105,7 @@ Khách du lịch nước ngoài gặp rào cản ngôn ngữ khi tìm hiểu v�
 | GPS / Location | **expo-location** (watchPositionAsync) |
 | Maps | **react-native-maps** |
 | TTS / Audio | **expo-speech** (Text-to-Speech) |
-| QR Scanner | **expo-barcode-scanner** |
+| QR Scanner | **expo-camera** (barcode scanning) |
 | Styling | **NativeWind** (TailwindCSS cho RN) |
 | State | React Context (LanguageContext, AuthContext) |
 
@@ -141,7 +141,7 @@ Seminar_sgu/
 │   │       ├── languages/            # Quản lý ngôn ngữ hỗ trợ
 │   │       └── upload/               # File upload endpoint
 │   └── prisma/
-│       └── schema.prisma             # 14 models
+│       └── schema.prisma             # 15 models
 │
 ├── frontend/
 │   ├── app/                          # React Native (Expo)
@@ -356,7 +356,7 @@ AWS_REGION=ap-southeast-1
 
 ---
 
-## 🗄️ Database — 14 Models
+## 🗄️ Database — 15 Models
 
 | Model | Mô tả |
 |-------|-------|
@@ -372,9 +372,11 @@ AWS_REGION=ap-southeast-1
 | `Subscription` | Gói user (free/monthly/yearly), queue khi mua yearly khi đang monthly |
 | `MerchantSubscription` | Gói merchant (starter/business/premium, maxPOI) |
 | `PlanMetadata` | Bảng cấu hình giá gói (admin quản lý, features JSON) |
-| `Transaction` | Giao dịch (type: user_sub/merchant_sub/food_order) |
-| `PaymentVnpay` / `PaymentMomo` | Chi tiết thanh toán raw response |
+| `Transaction` | Giao dịch (type: user_subscription/merchant_subscription/food_order) |
+| `PaymentVnpay` | Chi tiết thanh toán VNPAY (raw response) |
+| `PaymentMomo` | Chi tiết thanh toán MoMo (raw response) |
 | `RefreshToken` | Token rotation store (max 5/user) |
+
 
 ---
 
@@ -401,4 +403,4 @@ AWS_REGION=ap-southeast-1
 ---
 
 *Dự án Seminar SGU — Vĩnh Khánh Digital Audio Guide*  
-*Cập nhật lần cuối: 2026-05-09*
+*Cập nhật lần cuối: 2026-05-10*

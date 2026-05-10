@@ -4,3 +4,6 @@ dist/
 *.js.map
 coverage/
 prisma/migrations/
+
+# TypeScript build cache
+*.tsbuildinfo

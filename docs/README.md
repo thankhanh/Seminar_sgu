@@ -1,6 +1,7 @@
-# 🍜 Restaurant Audio Guide — Seminar SGU
+# 🍜 Vĩnh Khánh Digital Audio Guide — Seminar SGU
 
-> Ứng dụng **thuyết minh ẩm thực đa ngôn ngữ** dành cho khách du lịch. Khi khách đến gần quán ăn, GPS tự động kích hoạt và phát audio thuyết minh về quán bằng ngôn ngữ của họ.
+> Ứng dụng **thuyết minh ẩm thực tự động theo vị trí GPS**, đa ngôn ngữ với AI dịch thuật tự động.  
+> Khi khách đến gần quán ăn, GPS Geofencing tự động kích hoạt và phát thuyết minh bằng ngôn ngữ của họ.
 
 ---
 
@@ -8,34 +9,47 @@
 
 | | |
 |---|---|
-| **Tên dự án** | Restaurant Audio Guide |
+| **Tên dự án** | Vĩnh Khánh Digital Audio Guide |
 | **Nhóm** | Seminar SGU |
-| **Phiên bản** | v1.1.0 |
-| **Cập nhật** | 2026-04-17 |
+| **Phiên bản** | v1.0.0 |
+| **Kiến trúc** | Monolithic (NestJS + PostgreSQL) |
+| **Cập nhật** | 2026-05-10 |
 
 ### Vấn đề giải quyết
-Khách du lịch nước ngoài thường gặp khó khăn khi tìm hiểu về quán ăn địa phương do rào cản ngôn ngữ. Ứng dụng này tự động phát thuyết minh bằng tiếng mẹ đẻ của khách khi họ đến gần quán.
+Khách du lịch nước ngoài thường gặp khó khăn khi tìm hiểu về quán ăn địa phương do rào cản ngôn ngữ. Ứng dụng này tự động:
+- 📍 Nhận diện vị trí qua GPS (Geofencing) trong bán kính **50m**
+- 🎵 Phát thuyết minh text-to-speech bằng ngôn ngữ của khách
+- 🌐 Tự động dịch (MyMemory API) và cache bản dịch vào DB
 
 ---
 
 ## 🏗️ Kiến trúc hệ thống
 
 ```
-┌─── Mobile App (React Native) ──────────────────────────────────┐
-│  Khách du lịch: GPS detect → Narration audio → QR scanner      │
+┌─── Mobile App (React Native + Expo) ───────────────────────────┐
+│  GPS Geofencing (50m) → Proximity Alert → Stall Detail         │
+│  Map Screen (react-native-maps) → Language Picker → TTS        │
+│  QR Scanner (expo-camera) → Stall Narration                    │
 └─────────────────────────────────────────────────────────────────┘
-                        │ REST API (HTTPS/JWT)
-┌─── Backend API (Node.js / NestJS) ─────────────────────────────┐
-│  Auth │ Store │ Narration │ Payment (VNPAY, MoMo) │ Analytics  │
+                        │ REST API (HTTPS / JWT Bearer)
+┌─── Backend API (NestJS 10 + TypeScript) ───────────────────────┐
+│  /api/v1/auth         — Register, Login, Refresh, Logout       │
+│  /api/v1/stores       — CRUD + findNearby (Haversine)          │
+│  /api/v1/narrations   — Audio + Text + Auto-Translate (AI)     │
+│  /api/v1/qr           — Generate, Scan, Resolve QR             │
+│  /api/v1/payments     — VNPAY + MoMo IPN                       │
+│  /api/v1/admin        — Dashboard, Approve, Stats              │
+│  /api/v1/merchant     — Profile, Subscription                  │
+│  /api/v1/upload       — File upload (image/audio) → /uploads   │
 └─────────────────────────────────────────────────────────────────┘
                         │
-┌─── PostgreSQL + PostGIS ───────────┐  ┌─── Cloud Storage ──────┐
-│  14 bảng, spatial index GPS        │  │  Audio files, Images   │
-└────────────────────────────────────┘  └───────────────────────-┘
+┌─── PostgreSQL (Supabase hosted) ───┐  ┌─── Local File Storage ─┐
+│  15 models, Haversine GPS distance │  │  /uploads/ (image/mp3) │
+└────────────────────────────────────┘  └────────────────────────┘
 
-┌─── Web Dashboard (React) ──────────────────────────────────────┐
-│  Merchant: quản lý quán, menu, narration, analytics            │
-│  Admin: duyệt merchant/store, quản lý hệ thống                 │
+┌─── Web Dashboard (React 18 + Vite + TailwindCSS) ──────────────┐
+│  Merchant: POI CRUD, Audio/Menu, QR, Analytics, Subscription   │
+│  Admin: Duyệt merchant/store, Users, Transactions, System Stats│
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -45,9 +59,9 @@ Khách du lịch nước ngoài thường gặp khó khăn khi tìm hiểu về 
 
 | Role | Nền tảng | Mô tả |
 |------|----------|-------|
-| **User** | Mobile App | Khách du lịch — nghe thuyết minh, mua Premium |
-| **Merchant** | Web Dashboard | Chủ quán — tạo quán, upload narration, xem analytics |
-| **Admin** | Web Dashboard | Quản trị viên — duyệt merchant/store, quản lý hệ thống |
+| **User** | Mobile App (React Native) | Khách du lịch — nghe thuyết minh, xem bản đồ, mua Premium |
+| **Merchant** | Web Dashboard (React) | Chủ quán — tạo POI, upload narration, xem analytics, mua gói |
+| **Admin** | Web Dashboard (React) | Quản trị viên — duyệt merchant/store, quản lý hệ thống |
 
 ---
 
@@ -57,34 +71,39 @@ Khách du lịch nước ngoài thường gặp khó khăn khi tìm hiểu về 
 | Thành phần | Công nghệ |
 |-----------|-----------|
 | Runtime | Node.js 20+ |
-| Framework | NestJS (hoặc Express) |
-| Database | PostgreSQL 15 + PostGIS |
-| ORM | TypeORM / Prisma |
-| Auth | JWT (Access + Refresh Token) |
-| File Storage | AWS S3 / Cloudinary |
-| Payment | VNPAY SDK, MoMo OpenAPI v2 |
-| Cache | Redis (optional) |
-| API Docs | Swagger / OpenAPI |
-
-### Frontend — Mobile App
-| Thành phần | Công nghệ |
-|-----------|-----------|
-| Framework | React Native (Expo) |
-| Maps | react-native-maps |
-| GPS | expo-location |
-| QR Scanner | expo-barcode-scanner |
-| Audio | expo-av |
-| State | Redux Toolkit / Zustand |
+| Framework | **NestJS 10** |
+| Language | **TypeScript 5** |
+| Architecture | Monolith |
+| ORM | **Prisma 5** |
+| Database | **PostgreSQL 15** (Supabase) |
+| Auth | JWT Access Token (15m) + Refresh Token (7d, Rotation) |
+| Validation | class-validator + class-transformer |
+| File Storage | Local disk (`/uploads/`) |
+| Payment | VNPAY (SHA-512) + MoMo OpenAPI v2 (HMAC-SHA256) |
+| Translation | MyMemory API (miễn phí, không cần key) |
+| AI | Google Gemini API (`@google/generative-ai`) |
+| API Docs | Swagger / OpenAPI (`/api`) |
+| Security | Helmet, bcryptjs (rounds=12), cookie-parser, Throttler |
 
 ### Frontend — Web Dashboard
 | Thành phần | Công nghệ |
 |-----------|-----------|
-| Framework | React 18 |
-| Build tool | Vite |
-| UI Library | Ant Design / MUI |
-| Charts | Recharts / Chart.js |
-| Maps | Leaflet.js |
-| State | Redux Toolkit |
+| Framework | **React 18** |
+| Styling | **Tailwind CSS** |
+| Build tool | **Vite** |
+| Language | TypeScript |
+
+### Frontend — Mobile App
+| Thành phần | Công nghệ |
+|-----------|-----------|
+| Framework | **React Native** (Expo SDK 54) |
+| Routing | **expo-router** (file-based routing) |
+| GPS / Location | **expo-location** (watchPositionAsync) |
+| Maps | **react-native-maps** |
+| TTS / Audio | **expo-speech** (Text-to-Speech) |
+| QR Scanner | **expo-camera** (barcode scanning) |
+| Styling | **NativeWind** (TailwindCSS cho RN) |
+| State | **React Context** (LanguageContext, AuthContext) |
 
 ---
 
@@ -92,79 +111,156 @@ Khách du lịch nước ngoài thường gặp khó khăn khi tìm hiểu về 
 
 ```
 Seminar_sgu/
-├── backend/                    # Node.js API server (NestJS)
-│   ├── src/                    # Source code API (Auth, Stores, Narrations...)
-│   ├── prisma/                 # Database migrations & schema
-│   └── .env.example
+├── README.md
+├── backend/                          # NestJS API Server
+│   ├── src/
+│   │   ├── main.ts                   # Bootstrap (port 3000, CORS, Swagger)
+│   │   ├── app.module.ts             # Root module
+│   │   ├── common/
+│   │   │   ├── guards/               # JwtAuthGuard, RolesGuard
+│   │   │   ├── filters/              # HttpExceptionFilter
+│   │   │   ├── interceptors/         # ResponseInterceptor
+│   │   │   └── utils/               # haversine.util, file.util
+│   │   └── modules/
+│   │       ├── auth/                 # Register, Login, Refresh, Logout
+│   │       ├── users/                # Profile, PreferredLanguage
+│   │       ├── stores/               # Store CRUD + findNearby
+│   │       ├── narrations/           # Audio + Auto-Translate + Listen History
+│   │       ├── menus/                # Món ăn (CRUD + ảnh)
+│   │       ├── qr/                   # Generate / Scan / Resolve QR
+│   │       ├── payments/             # VNPAY + MoMo payment + IPN
+│   │       ├── subscriptions/        # User subscription (free/monthly/yearly)
+│   │       ├── merchant/             # Merchant profile
+│   │       ├── merchant-subscriptions/ # Merchant plan (starter/business/premium)
+│   │       ├── plan-metadata/        # Cấu hình giá gói dịch vụ
+│   │       ├── admin/                # Admin CRUD + Stats + Rankings
+│   │       ├── languages/            # Quản lý ngôn ngữ hỗ trợ
+│   │       └── upload/               # File upload endpoint
+│   └── prisma/
+│       └── schema.prisma             # 15 models
 │
 ├── frontend/
-│   ├── app/                    # React Native app (Mobile App)
-│   │   ├── app/                # Expo Router screens
-│   │   ├── components/         # Reusable UI components
-│   │   ├── services/           # APIs, Offline Caching (OfflineService.ts)
-│   │   └── constants/          # Consts & Config
+│   ├── app/                          # React Native (Expo)
+│   │   ├── app/
+│   │   │   ├── (auth)/               # Login, Register screens
+│   │   │   ├── (tabs)/
+│   │   │   │   ├── home/             # Trang chủ, danh sách quán
+│   │   │   │   ├── map/              # Bản đồ + GPS + Geofencing
+│   │   │   │   ├── guide/            # Hướng dẫn sử dụng
+│   │   │   │   ├── explore/          # Khám phá quán
+│   │   │   │   └── profile/          # Hồ sơ, gói Premium
+│   │   │   ├── stall/[id].tsx        # Chi tiết quán + TTS player
+│   │   │   ├── scanner/              # QR Scanner
+│   │   │   └── plans/                # Màn hình mua gói Premium
+│   │   ├── components/               # ProximityAlert, MapView, ...
+│   │   ├── contexts/                 # LanguageContext, AuthContext
+│   │   ├── services/                 # OfflineService (cache ảnh)
+│   │   └── constants/                # API helpers, config
 │   │
-│   └── web/                    # React Web Dashboard (Vite)
-│       ├── src/
-│       │   ├── pages/          # Admin & Merchant screens
-│       │   ├── components/
-│       │   └── contexts/
-│       └── vite.config.ts
+│   └── web/                          # React + Vite — Web Dashboard
+│       └── src/
+│           ├── pages/
+│           │   ├── Dashboard.tsx         # Admin dashboard stats
+│           │   ├── StoreManagement.tsx   # Admin quản lý stores
+│           │   ├── MerchantApproval.tsx  # Admin duyệt merchant
+│           │   ├── UserManagement.tsx    # Admin quản lý users
+│           │   ├── AudioManagement.tsx   # Merchant upload narration
+│           │   ├── MenuManagement.tsx    # Merchant quản lý menu
+│           │   ├── POIManagement.tsx     # Merchant tạo/sửa POI
+│           │   ├── StoreInfo.tsx         # Merchant thông tin quán
+│           │   ├── SubscriptionManagement.tsx # Admin/Merchant gói đăng ký
+│           │   ├── Translations.tsx      # Quản lý bản dịch
+│           │   ├── Login.tsx / Register.tsx
+│           │   └── ...
+│           └── contexts/             # AuthContext web
 │
-└── docs/                       # 📚 Tài liệu dự án
-    ├── README.md               ← file này
-    ├── PRD.md                  # Yêu cầu sản phẩm (Product Requirements)
-    ├── workflow.md             # Luồng hoạt động
-    ├── database.md             # Schema chi tiết
-    ├── database_analysis.md    # ERD + phân tích dự án
-    ├── api.md                  # API documentation
-    └── migration.sql           # SQL tạo database
+└── docs/
+    ├── README.md                     ← file này
+    ├── PRD.md                        # Product Requirements Document
+    ├── diagrams.md                   # Sequence + Activity Diagrams (Mermaid)
+    ├── database.md                   # Schema 15 models chi tiết
+    ├── api.md                        # REST API documentation
+    ├── workflow.md                   # Luồng hoạt động 3 vai trò
+    └── migration.sql                 # SQL tạo toàn bộ database
 ```
 
 ---
 
 ## ⚡ Tính năng chính
 
-### 📱 Mobile App (User)
-- 🗺️ **Bản đồ GPS** — hiển thị quán gần đó với logic khoanh vùng
-- 🔔 **Cảnh báo Tiệm cận (Geofencing)** — Modal tự động phát audio khi cách < 50m
-- 💾 **Offline Caching** — thuật toán quét Local FS tải dự phòng Media giúp app mượt mà
-- 🎵 **Media Player** — fallback auto TTS khi file âm thanh thiếu
-- 🌐 **Đa ngôn ngữ & Dịch AI** — Tự động gọi API dịch thông minh khi khác ngôn ngữ đích
-- 📷 **QR Scanner** — dự phòng khi định vị GPS sai sót
-- ⭐ **Hồ Sơ Cá Nhân** — Cập nhật thông tin profile dễ dàng
-- 💎 **Premium** — thanh toán bằng VNPAY / MoMo (sandbox)
+### 📱 Mobile App (User — Khách du lịch)
 
-### 🖥️ Merchant Dashboard
-- 📊 **Analytics** — lượt nghe, top quán, top đánh giá
-- 🏪 **Quản lý quán** — tạo/sửa thông tin quán chi tiết, tích hợp UI File Uploads xịn xò
-- 🎙️ **Upload narration** — upload audio và văn bản đa chiều
-- 📋 **Quản lý menu & store img** — thêm/sửa/xóa album quán + menu với quản lý lưu trữ rác tự động
-- 📱 **QR Code** — tạo mã check-in in ấn
+| Tính năng | Chi tiết |
+|-----------|---------|
+| 🗺️ **Bản đồ GPS tương tác** | Hiển thị tất cả POI (quán) trên bản đồ react-native-maps, marker có ảnh bìa quán |
+| 🔔 **Geofencing auto-detect** | Theo dõi GPS mỗi 10m dịch chuyển, popup ProximityAlert khi vào vùng **50m** quanh quán |
+| 🌐 **Chọn ngôn ngữ** | Language Picker từ danh sách ngôn ngữ active trên server (VI, EN, ZH, KO, JA, ...) |
+| 🎵 **TTS Player** | Phát thuyết minh bằng `expo-speech` theo ngôn ngữ đã chọn |
+| 🔄 **Auto-Translate** | Tự động dịch (MyMemory API) nếu chưa có bản dịch, cache vào DB |
+| 📷 **QR Scanner** | Quét QR tại quán → mở chi tiết quán + phát narration theo ngôn ngữ ưa thích |
+| 🏪 **Chi tiết quán** | Xem ảnh, menu, giờ mở cửa, bản đồ, danh sách narrations |
+| 📊 **Giới hạn theo gói** | Free: 10 lần nghe/ngày; Monthly: 30 lần; Yearly: không giới hạn |
+| 💎 **Premium** | Mua gói Monthly/Yearly qua VNPAY / MoMo |
+| 👤 **Hồ sơ cá nhân** | Xem gói hiện tại, ngôn ngữ ưa thích, đăng xuất |
+| 💾 **Offline Cache** | OfflineService cache ảnh cục bộ giúp app mượt hơn |
 
-### 🖥️ Admin Dashboard
-- ✅ **Duyệt merchant & store** — approve/reject gian thương vào hệ thống
-- 👥 **Quản lý users** — chỉnh sửa trạng thái thành viên (Active/Inactive)
-- 💰 **Quản lý giao dịch** — xem lịch sử VNPAY/MoMo
-- 📈 **Bảng xếp hạng hệ thống** — Top POI, Merchant, Khách hàng nổi bật nhất tháng hiển thị Dashboard
+### 🖥️ Merchant Dashboard (Chủ quán)
+
+| Tính năng | Chi tiết |
+|-----------|---------|
+| 📝 **Đăng ký Merchant** | Form đăng ký (tên doanh nghiệp, mã số thuế) → chờ Admin duyệt |
+| 🏪 **Quản lý POI** | CRUD quán (tên, địa chỉ, lat/lng, giờ mở cửa, ảnh bìa, gallery) |
+| 🎙️ **Upload Narration** | Upload file audio (MP3/WAV) HOẶC nhập text → lưu textContent |
+| 🔄 **Auto-Translate** | Nhập text VI → hệ thống tự dịch sang toàn bộ ngôn ngữ active |
+| 📋 **Quản lý Menu** | CRUD món ăn (tên, giá VNĐ, ảnh, trạng thái còn bán) |
+| 📱 **QR Code** | Generate QR code (deeplink `smarttour://stall/{id}`), tải về in |
+| 💳 **Gói đăng ký Merchant** | Starter / Business / Premium (max POI theo plan_metadata) |
+| 📊 **Analytics** | Xem lượt nghe, thống kê theo ngày |
+
+### 🖥️ Admin Dashboard (Quản trị viên)
+
+| Tính năng | Chi tiết |
+|-----------|---------|
+| ✅ **Duyệt Merchant** | Approve (kích hoạt gói Starter tự động) / Reject (kèm lý do) |
+| ✅ **Duyệt Store** | Approve/Hide store → chỉ store `active` mới hiện trên app |
+| 👥 **Quản lý Users** | Xem danh sách, toggle active/inactive tài khoản |
+| 👨‍💼 **Quản lý Merchants** | Xem danh sách, tạo user mới có role merchant |
+| 💰 **Quản lý Transactions** | Xem lịch sử giao dịch VNPAY/MoMo, trạng thái |
+| 📈 **System Analytics** | Dashboard: tổng users, stores, merchants pending, doanh thu 12 tháng, Top POI/Merchant/Client |
+| 🌐 **Quản lý Ngôn ngữ** | Thêm/ẩn/hiện ngôn ngữ hỗ trợ |
+| 🎙️ **Quản lý Narrations** | Xem, tìm kiếm, xóa nội dung thuyết minh |
+| 💎 **Quản lý Subscriptions** | Xem gói user/merchant, cập nhật gói |
 
 ---
 
 ## 💳 Tích hợp thanh toán
 
-### VNPAY
-- **Phương thức:** Redirect (webview trong app)
-- **Xác thực:** `vnp_SecureHash` (SHA-512 HMAC)
-- **IPN:** Server-to-server callback để confirm giao dịch
+### VNPAY (SHA-512)
+- **Phương thức:** Redirect URL → `paymentUrl`
+- **Xác thực:** `vnp_SecureHash` (HMAC-SHA512)
+- **Callback:** `GET /api/v1/payments/vnpay/return` — verify hash → cập nhật transaction → kích hoạt gói
 - **Sandbox:** `https://sandbox.vnpayment.vn/`
-- **Docs:** [https://sandbox.vnpayment.vn/apis/](https://sandbox.vnpayment.vn/apis/)
 
-### MoMo
-- **Phương thức:** Deeplink app / webview
+### MoMo OpenAPI v2 (HMAC-SHA256)
+- **Phương thức:** `captureWallet` → `payUrl` + `deeplink` + `qrCodeUrl`
 - **Xác thực:** HMAC-SHA256 `signature`
-- **IPN:** Server-to-server callback
+- **IPN:** `POST /api/v1/payments/momo/ipn` — verify sig → cập nhật transaction → kích hoạt gói
 - **Sandbox:** `https://test-payment.momo.vn/`
-- **Docs:** [https://developers.momo.vn/](https://developers.momo.vn/)
+
+---
+
+## 🔐 Bảo mật
+
+| Cơ chế | Chi tiết |
+|--------|---------|
+| **Password** | Bcrypt hash (rounds = 12) |
+| **JWT** | Access Token 15 phút, Refresh Token 7 ngày |
+| **Token Rotation** | Mỗi lần refresh cấp cặp token mới, token cũ bị xóa khỏi DB |
+| **Multi-device** | Tối đa 5 refresh token đồng thời / user |
+| **Blacklist detect** | Nếu token đã dùng → revoke toàn bộ session của user |
+| **Role Guard** | 3 role: `user`, `merchant`, `admin` |
+| **Merchant isolation** | Merchant chỉ CRUD data của chính mình, admin bypass |
+| **File filter** | Upload chỉ chấp nhận jpg/png/webp/mp3/wav, max 5MB |
 
 ---
 
@@ -172,27 +268,28 @@ Seminar_sgu/
 
 ### Yêu cầu
 - Node.js >= 20
-- PostgreSQL >= 15 (với extension PostGIS)
-- npm hoặc yarn
+- PostgreSQL >= 15 (hoặc Supabase)
+- npm
 
-### Backend
+### Backend (NestJS)
 
 ```bash
-# 1. Cài dependencies
 cd backend
 npm install
 
-# 2. Copy file môi trường
+# Copy và điền biến môi trường
 cp .env.example .env
-# Điền các biến: DATABASE_URL, JWT_SECRET, VNPAY_*, MOMO_*
 
-# 3. Chạy migration (tạo database)
-npm run migration:run
-# HOẶC chạy file SQL thủ công:
-# psql -U postgres -d your_db -f docs/migration.sql
+# Tạo database với Prisma
+npx prisma migrate dev
 
-# 4. Chạy server dev
+# Seed dữ liệu mặc định (ngôn ngữ, plan metadata)
+npm run db:seed
+
+# Chạy server dev (port 3000)
 npm run start:dev
+# → http://localhost:3000
+# → Swagger docs: http://localhost:3000/api
 ```
 
 ### Web Dashboard
@@ -210,54 +307,80 @@ npm run dev
 cd frontend/app
 npm install
 npx expo start
+# → Scan QR bằng Expo Go hoặc chạy emulator
 ```
 
 ---
 
-## 🌍 Biến môi trường (.env)
+## 🌍 Biến môi trường (backend/.env)
 
 ```env
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/audio_guide
+# Server
+PORT=3000
+NODE_ENV=development
+
+# Database (PostgreSQL / Supabase)
+DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
 
 # JWT
 JWT_SECRET=your_super_secret_key
 JWT_EXPIRES_IN=15m
+JWT_REFRESH_SECRET=your_refresh_secret
 JWT_REFRESH_EXPIRES_IN=7d
 
-# VNPAY
+# VNPAY (Sandbox)
 VNPAY_TMN_CODE=your_tmn_code
 VNPAY_HASH_SECRET=your_hash_secret
 VNPAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-VNPAY_RETURN_URL=https://yourdomain.com/payment/vnpay/return
+VNPAY_RETURN_URL=http://localhost:3000/api/v1/payments/vnpay/return
 
-# MoMo
-MOMO_PARTNER_CODE=your_partner_code
+# MoMo (Sandbox)
+MOMO_PARTNER_CODE=MOMO
 MOMO_ACCESS_KEY=your_access_key
 MOMO_SECRET_KEY=your_secret_key
 MOMO_ENDPOINT=https://test-payment.momo.vn/v2/gateway/api/create
-MOMO_IPN_URL=https://api.yourdomain.com/v1/payments/momo/ipn
+MOMO_IPN_URL=http://localhost:3000/api/v1/payments/momo/ipn
+MOMO_REDIRECT_URL=http://localhost:5173/payment/result
 
-# File Storage
-AWS_S3_BUCKET=your_bucket
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-AWS_REGION=ap-southeast-1
+# Google Gemini (AI)
+GEMINI_API_KEY=your_gemini_api_key
 ```
 
 ---
 
-## 📚 Tài liệu
+## 🗄️ Database — 15 Models
 
-| File | Nội dung |
-|------|----------|
-| [workflow.md](./workflow.md) | Luồng hoạt động chi tiết 3 vai trò |
-| [mobile_business_logic.md](./mobile_business_logic.md) | **Nghiệp vụ Mobile chi tiết (GPS, Caching, AI)** |
-| [database.md](./database.md) | Schema 14 bảng PostgreSQL |
-| [database_analysis.md](./database_analysis.md) | ERD + phân tích VNPAY/MoMo + UI checklist |
-| [api.md](./api.md) | Tài liệu REST API đầy đủ |
-| [migration.sql](./migration.sql) | SQL tạo toàn bộ database |
+| Model | Mô tả |
+|-------|-------|
+| `User` | Tài khoản (role: user/merchant/admin), online status |
+| `Merchant` | Thông tin doanh nghiệp, trạng thái duyệt |
+| `Store` | POI (lat/lng, giờ mở cửa, status: pending/active/hidden) |
+| `StoreImage` | Gallery ảnh quán (nhiều ảnh, sort order) |
+| `Menu` | Món ăn (giá VNĐ, ảnh, isAvailable) |
+| `Narration` | Thuyết minh (audioUrl + textContent + languageId, unique store+lang) |
+| `Language` | Ngôn ngữ hỗ trợ (code, flagIcon, isActive) |
+| `ListenHistory` | Lịch sử nghe (source: gps\|qr) |
+| `QrCode` | QR codes (deeplink, isActive — chỉ 1 active / store) |
+| `Subscription` | Gói user (free/monthly/yearly) |
+| `MerchantSubscription` | Gói merchant (starter/business/premium, maxPOI) |
+| `PlanMetadata` | Bảng cấu hình giá gói (admin quản lý, features JSON) |
+| `Transaction` | Giao dịch (type: user_subscription/merchant_subscription/food_order) |
+| `PaymentVnpay` | Chi tiết thanh toán VNPAY (raw response) |
+| `PaymentMomo` | Chi tiết thanh toán MoMo (raw response) |
+| `RefreshToken` | Token rotation store (max 5/user) |
 
+---
+
+## 📚 Tài liệu dự án (`docs/`)
+
+| File | Mô tả |
+|------|-------|
+| [docs/PRD.md](./PRD.md) | 📋 Product Requirements Document — scope, KPIs, release plan |
+| [docs/diagrams.md](./diagrams.md) | 📐 Sequence Diagrams + ERD (Mermaid.js) |
+| [docs/database.md](./database.md) | 🗄️ Schema 15 models PostgreSQL — đầy đủ constraint |
+| [docs/api.md](./api.md) | 🔌 REST API documentation |
+| [docs/workflow.md](./workflow.md) | 🔄 Luồng hoạt động 3 vai trò |
+| [docs/migration.sql](./migration.sql) | 🛠️ SQL tạo toàn bộ database |
 
 ---
 
@@ -265,10 +388,10 @@ AWS_REGION=ap-southeast-1
 
 | Thành viên | Vai trò |
 |-----------|---------|
-| Vinh | Backend / Database |
-| Khánh | Frontend / Mobile |
+| Vinh | Backend / Database / Deployment |
+| Khánh | Frontend / Mobile / UI/UX |
 
 ---
 
-*Tài liệu này được duy trì bởi nhóm phát triển dự án Seminar SGU.*
-*Cập nhật lần cuối: 2026-04-17*
+*Dự án Seminar SGU — Vĩnh Khánh Digital Audio Guide*  
+*Cập nhật lần cuối: 2026-05-10*

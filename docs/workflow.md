@@ -1,6 +1,6 @@
 # 📋 WORKFLOW — Luồng Hoạt Động Hệ Thống
 
-> **Dự án:** Ứng dụng thuyết minh ẩm thực du lịch (Restaurant Audio Guide)
+> **Dự án:** Vĩnh Khánh Digital Audio Guide
 > **Mô tả:** Hệ thống gồm 3 nhóm người dùng chính: **User (Khách du lịch)**, **Merchant (Chủ quán)**, và **Admin**. Tài liệu này mô tả luồng hoạt động chi tiết của từng nhóm.
 
 ---
@@ -10,15 +10,16 @@
 1. [Luồng User (Khách du lịch)](#1-luồng-user-khách-du-lịch)
 2. [Luồng Merchant (Chủ quán)](#2-luồng-merchant-chủ-quán)
 3. [Luồng Admin](#3-luồng-admin)
-4. [Luồng GPS của hệ thống](#4-luồng-gps-của-hệ-thống)
-5. [Luồng Narration theo ngôn ngữ](#5-luồng-narration-theo-ngôn-ngữ)
-6. [Luồng Tổng thể hệ thống](#6-luồng-tổng-thể-hệ-thống)
+4. [Luồng GPS và Geofencing](#4-luồng-gps-và-geofencing)
+5. [Luồng Narration và Dịch thuật Tự động](#5-luồng-narration-và-dịch-thuật-tự-động)
+6. [Luồng Thanh toán và Kích hoạt gói](#6-luồng-thanh-toán-và-kích-hoạt-gói)
+7. [Luồng Tổng thể hệ thống](#7-luồng-tổng-thể-hệ-thống)
 
 ---
 
 ## 1. Luồng User (Khách du lịch)
 
-> **Nền tảng:** Mobile App (React Native)
+> **Nền tảng:** Mobile App (React Native + Expo)
 
 ---
 
@@ -27,269 +28,269 @@
 ```
 User mở app
   ↓
-Chọn ngôn ngữ yêu thích
+Chọn ngôn ngữ yêu thích (Language Picker từ server)
   ↓
-Cho phép truy cập GPS
+Cho phép truy cập GPS (expo-location)
   ↓
-Tạo profile người dùng
+Đăng ký / Đăng nhập tài khoản
   ↓
-Lưu preferred_language vào DB
+preferred_language được lưu vào DB (bảng users)
 ```
 
 **Database ghi nhận:**
 
-| Bảng   | Trường              | Giá trị ví dụ |
-|--------|---------------------|---------------|
-| `users` | `preferred_language` | `en`, `ko`, `vi` |
+| Bảng   | Trường               | Giá trị ví dụ      |
+|--------|----------------------|--------------------|
+| `users` | `preferred_language` | `en`, `ko`, `vi`   |
+| `users` | `is_online`          | `true`             |
 
 ---
 
 ### 1.2 Khám phá quán gần đó
 
 ```
-User mở app
+User mở màn hình Map
   ↓
-App lấy tọa độ GPS (lat, lng)
+App gọi: GET /api/v1/stores (lấy toàn bộ quán active)
   ↓
-Gửi request: GET /stores (Lấy danh sách các quán active)
+Backend query DB: store.findMany({status: "active"})
   ↓
-Backend query DB lấy danh sách các quán
+Trả về danh sách tất cả quán kèm lat/lng
   ↓
-Trả về danh sách tất cả các quán
+Client tính khoảng cách Haversine để xác định quán trong bán kính 50m
   ↓
-Client tính khoảng cách Haversine để lọc các quán gần (Bán kính 50m)
-  ↓
-Hiển thị trên bản đồ (Map View)
+Hiển thị markers trên bản đồ (react-native-maps)
 ```
 
-**Query Backend ví dụ (Prisma):**
+**Query Backend (Prisma):**
 
 ```ts
 this.prisma.store.findMany({
     where: { status: 'active' },
-    select: { id: true, name: true, address: true, lat: true, lng: true }
+    select: { id: true, name: true, address: true, lat: true, lng: true, coverImage: true }
 });
 ```
 
 ---
 
-### 1.3 Khi user đến gần quán (Cảnh báo Tiệm cận < 50m)
+### 1.3 Khi user đến gần quán (Geofencing < 50m)
 
 ```
-User đi gần quán
+User di chuyển (watchPositionAsync — mỗi 10m)
   ↓
-App tính toán khoảng cách (Haversine) tại Client < 50m
+App tính Haversine distance với tất cả stores trong bộ nhớ
   ↓
-Hiển thị Proximity Modal (Popup thông báo)
+Nếu distance <= 50m VÀ store chưa bị dismiss
+  ↓
+Hiển thị ProximityAlert popup (tên quán, ảnh bìa)
+  ↓
+User bỏ qua → store thêm vào dismissedSet → xem store kế tiếp trong queue
+User xác nhận → navigate /stall/{storeId} → phát narration
 ```
 
-
-**Popup mẫu:**
-> 📍 *Bạn đang gần quán Bún Bò Huế — Nghe thuyết minh?*
-
-**User có thể chọn:**
-- 🎵 Nghe audio thuyết minh
-- 📋 Xem menu
-- 🖼️ Xem hình ảnh quán
+> ⚠️ **Lưu ý:** Toàn bộ tính toán khoảng cách diễn ra tại **client-side**, không gửi GPS lên server theo thời gian thực — giúp tiết kiệm pin và bảo vệ riêng tư.
 
 ---
 
 ### 1.4 Nghe thuyết minh
 
 ```
-User nhấn Play
+User vào màn hình chi tiết quán (/stall/{id})
   ↓
-App kiểm tra Offline Cache (Ảnh/Audio máy đã tải trước đó)
+App gọi: GET /api/v1/narrations/store/{storeId}?lang={selectedLang}
   ↓
-Nếu KHÔNG CÓ cache → Gọi API lấy Audio từ Server
-  ↓
-Nếu Server KHÔNG CÓ Audio theo ngôn ngữ yêu cầu → Tự động gọi API Dịch thuật (VI -> Target Lang)
-  ↓
-Trả về kết quả (Text/Audio) -> App phát thuyết minh (MP3 hoặc TTS)
+┌── Có narration theo ngôn ngữ đã chọn
+│     ↓ POST /api/v1/narrations/{id}/listen {source: "gps"}
+│     ↓ Kiểm tra giới hạn theo gói subscription
+│     ↓ expo-speech.speak(textContent, {language: "ko-KR"})
+│
+└── Không có → có text tiếng Việt (nguồn gốc)
+      ↓ POST /api/v1/languages/translate {text, targetLang}
+      ↓ MyMemory API dịch VI → targetLang
+      ↓ Cache bản dịch vào DB (narration.upsert)
+      ↓ expo-speech.speak(translatedText)
 ```
 
+**Giới hạn nghe theo gói:**
+
+| Gói | Giới hạn |
+|-----|---------|
+| `free` | 10 lần / ngày |
+| `monthly` | 30 lần / ngày |
+| `yearly` | Không giới hạn |
 
 ---
 
 ### 1.5 Trường hợp GPS không chính xác → Quét QR
 
 ```
-User mở QR Scanner trên app
+User mở QR Scanner (expo-camera)
   ↓
-Scan mã QR tại quán (chứa store_id)
+Scan mã QR tại quán → decode deeplink: "smarttour://stall/{storeId}?autoplay=1"
   ↓
-App gọi API: GET /stores/:id
+App gọi: POST /api/v1/qr/scan {code: "qr_code_string"}
   ↓
-Hiển thị thông tin quán
+Backend resolve code → tìm store + narration theo preferredLanguage
+Backend ghi: listenHistory.create({source: "qr"})
   ↓
-Tự động phát narration
+API trả về: {storeId, store, narrationId, preferredLanguage}
+  ↓
+App navigate /stall/{storeId} → tự động phát narration
 ```
 
 ---
 
 ### 1.6 Lịch sử nghe
 
-> Sau khi nghe xong, hệ thống tự động ghi lại lịch sử.
+> Sau khi nghe xong, hệ thống ghi lại.
 
 **Database ghi nhận:**
 
-| Bảng              | Trường         | Mô tả                     |
-|-------------------|----------------|---------------------------|
-| `listen_history`  | `user_id`      | ID của người dùng         |
-|                   | `store_id`     | ID của quán               |
-|                   | `narration_id` | ID của bản thuyết minh    |
-|                   | `timestamp`    | Thời điểm nghe            |
+| Bảng             | Trường         | Mô tả                     |
+|------------------|----------------|---------------------------|
+| `listen_history` | `user_id`      | ID của người dùng         |
+|                  | `store_id`     | ID của quán               |
+|                  | `narration_id` | ID của bản thuyết minh    |
+|                  | `source`       | `"gps"` hoặc `"qr"`      |
+|                  | `listened_at`  | Thời điểm nghe            |
 
 ---
 
 ### 1.7 Nâng cấp Premium
 
 ```
-User vào trang Profile
+User vào trang Profile → chọn gói Premium
   ↓
-Chọn gói Premium
+Chọn phương thức: VNPAY (redirect) hoặc MoMo (deeplink/webview)
   ↓
-Thanh toán (in-app)
+POST /api/v1/payments/{vnpay|momo}/create {planKey}
   ↓
-Backend tạo subscription cho user
+Backend tạo Transaction pending + ghi PaymentVnpay/MoMo record
   ↓
-User mở khóa quyền:
-  - Nghe tất cả ngôn ngữ
-  - Tải về nghe offline
+User hoàn tất thanh toán
+  ↓
+VNPAY: GET /return?code=00 | MoMo: POST /momo/ipn {resultCode: 0}
+  ↓
+Backend verify chữ ký → transaction.status = "success"
+  ↓
+Auto kích hoạt subscription.create({plan: "monthly"|"yearly"})
 ```
 
 ---
 
 ## 2. Luồng Merchant (Chủ quán)
 
-> **Nền tảng:** Web Dashboard (React)
+> **Nền tảng:** Web Dashboard (React 18 + Tailwind CSS + Vite)
 
 ---
 
 ### 2.1 Merchant đăng ký tài khoản
 
 ```
-Merchant điền form đăng ký
+Merchant điền form đăng ký (businessName, taxCode, email, password)
   ↓
-Hệ thống tạo tài khoản với role = "merchant"
+POST /api/v1/auth/register {role: "merchant", businessName, taxCode}
   ↓
-Tạo record trong bảng merchants
+Backend tạo: user {isActive: false, role: "merchant"}
+Backend tạo: merchant {userId, businessName, status: "pending"}
   ↓
-Trạng thái: status = "pending" (chờ duyệt)
+Trả về message "Tài khoản đang chờ duyệt..." (KHÔNG có accessToken)
+  ↓
+Merchant chờ Admin duyệt (không thể đăng nhập)
 ```
 
 ---
 
-### 2.2 Admin duyệt Merchant
+### 2.2 Admin duyệt Merchant → Merchant đăng nhập được
 
 ```
-Admin xem danh sách merchant đang chờ duyệt
+Admin approve merchant
   ↓
-Kiểm tra thông tin
+user.isActive = true | merchant.status = "approved"
+merchantSubscription.create(plan: "starter", maxPOI: 1)  ← auto
   ↓
-Approve hoặc Reject
+Merchant POST /auth/login → nhận accessToken + refreshToken
   ↓
-merchants.status = "approved" (nếu duyệt)
-  ↓
-Merchant được phép tạo quán
-```
-
----
-
-### 2.3 Merchant tạo quán
-
-```
-Merchant đăng nhập Dashboard
-  ↓
-Nhấn "Create Store"
-  ↓
-Nhập thông tin:
-  - Tên quán
-  - Địa chỉ
-  - Tọa độ GPS (location)
-  - Hình ảnh đại diện
-  ↓
-stores.status = "pending" (chờ admin duyệt)
+Merchant có thể dùng Web Dashboard
 ```
 
 ---
 
-### 2.4 Upload menu
+### 2.3 Merchant tạo quán (POI)
 
 ```
-Merchant vào trang quản lý Store
+Merchant → POST /api/v1/stores hoặc /merchant/stores
   ↓
-Nhấn "Add Menu Item"
+Backend kiểm tra:
+  - store.count({merchantId}) < maxPOI (từ planMetadata)
+  - merchantSubscription.status = "active"
   ↓
-Upload ảnh món ăn
+Nếu vượt giới hạn → 403 "Đã đạt giới hạn {maxPOI} POI. Nâng cấp gói!"
+Nếu còn quota → store.create({status: "pending"})
   ↓
-Nhập tên món & giá
-  ↓
-Lưu vào bảng menus
+Store chờ Admin duyệt
 ```
 
 ---
 
-### 2.5 Upload Narration (Thuyết minh)
+### 2.4 Upload Narration + Auto-Translate
 
 ```
-Merchant chọn ngôn ngữ (ví dụ: Tiếng Anh, Tiếng Hàn...)
+Merchant upload text tiếng Việt
   ↓
-Upload file audio HOẶC nhập text để TTS tạo audio
+POST /merchant/stores/{storeId}/narrations {languageId: "vi_uuid", textContent: "..."}
   ↓
-Lưu vào bảng narrations
+Backend upsert narration {storeId, languageId, textContent}
+  ↓
+Backend tự động: language.findMany({isActive: true, code: {not: "vi"}})
+  ↓
+Loop qua từng ngôn ngữ active (en, ko, ja, zh, fr...):
+  MyMemory API dịch VI → target
+  narration.upsert({storeId, languageId, textContent: translated})
+  ↓
+Cache toàn bộ — user sau không cần dịch lại
 ```
-
-**Database ghi nhận:**
-
-| Bảng         | Trường        | Mô tả                     |
-|--------------|---------------|---------------------------|
-| `narrations` | `store_id`    | ID quán thuộc về          |
-|              | `language_id` | Ngôn ngữ của bản thuyết minh |
-|              | `audio_url`   | Đường dẫn file audio      |
 
 ---
 
-### 2.6 Store được publish (Admin duyệt)
+### 2.5 Store được publish (Admin duyệt)
 
 ```
-Admin kiểm tra quán
+Admin xem danh sách stores pending
   ↓
-Approve
+PATCH /api/v1/admin/stores/{id}/approve
   ↓
 stores.status = "active"
   ↓
-Quán xuất hiện trên app cho user thấy
+Quán xuất hiện trên app Mobile cho user thấy
 ```
 
 ---
 
-### 2.7 Merchant xem Analytics
+### 2.6 Merchant xem Analytics
 
-> Merchant có dashboard phân tích dữ liệu của quán mình:
-
-| Chỉ số                | Nguồn dữ liệu    |
-|-----------------------|-----------------|
-| 📊 Số lượt nghe       | `listen_history` |
-| 🍜 Top món được quan tâm | `listen_history` join `menus` |
-| 🌏 Top ngôn ngữ nghe nhiều | `listen_history` join `narrations` |
+| Chỉ số | Nguồn dữ liệu |
+|--------|---------------|
+| 📊 Số lượt nghe | `listen_history` |
+| 🌏 Top ngôn ngữ | `listen_history` JOIN `narrations` JOIN `languages` |
+| 📅 Lượt nghe theo ngày | `listen_history.listened_at` group by date |
 
 ---
 
 ## 3. Luồng Admin
 
-> **Nền tảng:** Web Dashboard (chỉ dành cho Admin nội bộ)
+> **Nền tảng:** Web Dashboard (cùng ứng dụng React, phân quyền role = `admin`)
 
 ---
 
 ### 3.1 Admin đăng nhập
 
 ```
-Admin đăng nhập với tài khoản role = "admin"
+Admin POST /auth/login {email, password}
   ↓
-Vào Admin Dashboard
+Backend kiểm tra role = "admin"
   ↓
-Có toàn quyền quản lý hệ thống
+Nhận accessToken → vào Admin Dashboard
 ```
 
 ---
@@ -297,11 +298,12 @@ Có toàn quyền quản lý hệ thống
 ### 3.2 Quản lý Merchant
 
 ```
-Admin xem danh sách merchants
+GET /admin/merchants?status=pending
   ↓
-Approve / Reject từng merchant
+Xem xét thông tin
   ↓
-Cập nhật: merchants.status
+PATCH /admin/merchants/{id}/approve → auto Starter plan
+PATCH /admin/merchants/{id}/reject {reason: "..."}
 ```
 
 ---
@@ -309,14 +311,12 @@ Cập nhật: merchants.status
 ### 3.3 Quản lý Store
 
 ```
-Admin xem danh sách stores đang "pending"
+GET /admin/stores?status=pending
   ↓
-Kiểm tra:
-  - Hình ảnh quán
-  - Menu món ăn
-  - Narration (thuyết minh)
+Kiểm tra: tên quán, địa chỉ, ảnh, narration
   ↓
-Approve → stores.status = "active"
+PATCH /admin/stores/{id}/approve → stores.status = "active"
+PATCH /admin/stores/{id}/hide   → stores.status = "hidden"
 ```
 
 ---
@@ -325,91 +325,137 @@ Approve → stores.status = "active"
 
 > Admin có thể can thiệp vào nội dung thuyết minh:
 
-- ✏️ **Edit** — Chỉnh sửa nội dung narration
-- 🗑️ **Delete** — Xóa narration vi phạm
-- 🚫 **Hide** — Ẩn tạm thời khỏi app
+- ✏️ **Edit** — PATCH `/admin/narrations/:id`
+- 🗑️ **Delete** — DELETE `/admin/narrations/:id`
+- 🚫 **Toggle Active** — PATCH `/admin/narrations/:id/toggle-active`
 
 ---
 
 ### 3.5 Analytics toàn hệ thống
 
-> Admin xem tổng quan toàn bộ hệ thống:
+```
+GET /api/v1/admin/stats
+```
 
-| Chỉ số                | Mô tả                           |
-|-----------------------|---------------------------------|
-| 👥 Total Users        | Tổng số người dùng đăng ký      |
-| 🏪 Total Stores       | Tổng số quán active             |
-| 🎵 Total Listens      | Tổng số lượt nghe thuyết minh   |
-| ⭐ Top Stores         | Quán được nghe nhiều nhất       |
+| Chỉ số | Mô tả |
+|--------|-------|
+| 👥 Total Users | Tổng số user (role = "user") |
+| 🟢 Online Users | user.is_online = true |
+| 🏪 Total Stores | Tổng số quán active |
+| 💰 Total Revenue | Sum giao dịch status = "success" |
+| 📈 Top POI | Quán được nghe nhiều nhất tháng này |
+| 🏆 Top Merchant | Merchant có nhiều store nhất |
+| ⭐ Top Client | User nghe nhiều nhất tháng này |
+| 📊 Monthly Revenue | Doanh thu 12 tháng gần nhất |
 
 ---
 
-## 4. Luồng GPS và Cảnh báo Tiệm cận
+## 4. Luồng GPS và Geofencing
 
 > Đây là **nghiệp vụ cốt lõi** mang lại trải nghiệm tự động cho người dùng.
 
 ```
-User mở app
+User mở app → GPS Permission
   ↓
-App liên tục lấy tọa độ GPS (lat, lng) của user tại Client
+App: watchPositionAsync(Balanced accuracy, distanceInterval: 10m)
   ↓
-Tính khoảng cách đường chim bay đến danh sách Store đã load (Haversine Algorithm)
+Mỗi 10m di chuyển: tính Haversine với tất cả stores đã load
   ↓
-Nếu khoảng cách < 50m VÀ chưa hiện thông báo cho quán này
+Nếu distance <= 50m VÀ store chưa dismiss
   ↓
-Hiển thị Proximity Modal (Mô tả chi tiết quán, nút Play, nút Menu)
+push vào proximityQueue → hiện ProximityAlert popup
+  ↓
+User bỏ qua → dismissedSet.add(storeId) → queue tiếp theo
+User xem → navigate → phát narration → ghi listenHistory
 ```
 
-> ⚠️ **Lưu ý:** Việc tính toán tại Client giúp App phản ứng tức thời mà không phụ thuộc vào tốc độ mạng (Real-time responsiveness).
-
+> ⚠️ **Bán kính chuẩn: 50m** — không phải 20m. Toàn bộ logic tính tại client-side, không poll server liên tục.
 
 ---
 
 ## 5. Luồng Narration và Dịch thuật Tự động
 
-> Hệ thống hỗ trợ đa ngôn ngữ với cơ chế **Dịch thuật Tức thời (On-demand Translation)**.
+> Hệ thống hỗ trợ đa ngôn ngữ với cơ chế **Dịch thuật On-demand + Cache**.
 
 ```
-User muốn nghe ngôn ngữ = "Korean" (ko)
+User muốn nghe ngôn ngữ "Korean" (ko)
   ↓
-App kiểm tra sự tồn tại của bản "ko" cho store đó (trong Device Cache hoặc Database)
+App kiểm tra: có narration (storeId, lang=ko) trong DB?
   ↓
-┌── Nếu CÓ bản "ko" → Trả audio/text tiếng Hàn về app
-└── Nếu KHÔNG CÓ → Gọi Real-time Translation API (sử dụng AI)
-                      ↓
-                   Dịch nội dung từ Tiếng Việt (gốc) sang tiếng Hàn
-                      ↓
-                   Lưu bản dịch vào DB & Trả kết quả về App để phát bằng TTS/MP3
+┌── CÓ → phát text bằng expo-speech({language: "ko-KR"})
+│
+└── KHÔNG CÓ → gọi POST /languages/translate {text: "...(VI)", targetLang: "ko"}
+                ↓
+              MyMemory API: translate(vi → ko)
+                ↓
+              Cache: narration.upsert({storeId, langId_ko, textContent: dịch})
+                ↓
+              expo-speech.speak(translatedText)
 ```
 
-> 📌 **Cơ chế:** Ưu tiên MP3 (đã thu âm) → Nếu không có thì dùng TTS (đọc từ bản dịch máy).
-
+> 📌 **Ưu tiên:** MP3 audio (đã thu âm) → text TTS (expo-speech).
 
 ---
 
-## 6. Luồng Tổng thể hệ thống
+## 6. Luồng Thanh toán và Kích hoạt gói
 
-> Cái nhìn bird-eye về toàn bộ vòng đời từ khi merchant tạo quán đến khi user nghe thuyết minh.
+### VNPAY
+```
+User chọn gói → POST /payments/vnpay/create {planKey}
+  ↓
+Backend: planMetadata.findUnique({planKey}) → amount
+transaction.create({status: "pending"}) + paymentVnpay.create()
+Build params + HMAC-SHA512 → paymentUrl
+  ↓
+User redirect → VNPAY portal → nhập thẻ → xác nhận
+  ↓
+VNPAY: GET /payments/vnpay/return?vnp_ResponseCode=00&vnp_SecureHash=...
+Backend: verify HMAC-SHA512 → transaction.status = "success"
+  ↓
+handlePostPayment: subscription.create({plan, startDate, endDate})
+```
+
+### MoMo
+```
+User chọn gói → POST /payments/momo/create {planKey}
+  ↓
+Backend: gọi MoMo API (captureWallet) → payUrl + deeplink + qrCodeUrl
+  ↓
+User mở MoMo app → xác nhận
+  ↓
+MoMo: POST /payments/momo/ipn {orderId, resultCode: 0, signature}
+Backend: verify HMAC-SHA256 → transaction.status = "success"
+  ↓
+handlePostPayment: subscription.create({plan, startDate, endDate})
+```
+
+---
+
+## 7. Luồng Tổng thể hệ thống
+
+> Cái nhìn bird-eye từ khi merchant tạo quán đến khi user nghe thuyết minh.
 
 ```
-[MERCHANT] Tạo quán + upload menu + narration
+[MERCHANT] Đăng ký → chờ Admin duyệt
   ↓
-[ADMIN] Xem xét và duyệt quán
+[ADMIN] Approve merchant → auto Starter plan
   ↓
-[HỆ THỐNG] stores.status = "active" → Quán live trên app
+[MERCHANT] Tạo quán (POI) + upload narration (vi) → auto-translate
   ↓
-[USER] Đến gần quán (GPS detect khoảng cách < 20m)
+[ADMIN] Approve store → stores.status = "active"
   ↓
-[APP] Hiển thị popup thông báo
+[USER] Đến gần quán (GPS detect khoảng cách <= 50m)
   ↓
-[USER] Nhấn nghe → App phát narration theo ngôn ngữ
+[APP] Hiển thị ProximityAlert popup
   ↓
-[HỆ THỐNG] Lưu listen_history vào database
+[USER] Xác nhận → App phát narration bằng expo-speech (ngôn ngữ ưa thích)
+  ↓
+[HỆ THỐNG] Ghi listen_history vào database
   ↓
 [MERCHANT / ADMIN] Xem analytics & thống kê
 ```
 
 ---
 
-*Tài liệu này được duy trì bởi nhóm phát triển dự án Seminar SGU.*
-*Cập nhật lần cuối: 2026-03-16*
+*Tài liệu này được duy trì bởi nhóm phát triển dự án Seminar SGU.*  
+*Cập nhật lần cuối: 2026-05-10*

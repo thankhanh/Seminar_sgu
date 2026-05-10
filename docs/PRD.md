@@ -185,7 +185,7 @@ Hệ thống kết hợp **GPS Geofencing + Text-to-Speech (TTS) đa ngôn ngữ
 
 | ID | Yêu cầu | Chi tiết |
 |----|---------|----------|
-| FR-SUB-01 | User plans | free (100 năm), monthly (+1 tháng), yearly (+1 năm) |
+| FR-SUB-01 | User plans | `free` (100 năm — mặc định), `monthly` (+1 tháng), `yearly` (+1 năm) |
 | FR-SUB-02 | Queue logic | Mua yearly khi đang có monthly → yearly bắt đầu sau khi monthly kết thúc |
 | FR-SUB-03 | Merchant plans | starter (auto khi approved), business, premium |
 | FR-SUB-04 | maxPOI | Lấy từ planMetadata (admin cấu hình), không hardcode |
@@ -353,4 +353,4 @@ RefreshToken (token rotation store, max 5/user)
 ---
 
 *Tài liệu này được duy trì bởi nhóm phát triển dự án Seminar SGU.*  
-*Cập nhật lần cuối: 2026-05-09*
+*Cập nhật lần cuối: 2026-05-10*

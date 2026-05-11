@@ -60,12 +60,10 @@ Hệ thống hoạt động dựa trên:
 | Thành phần | Công nghệ |
 |-----------|-----------|
 | Database | **PostgreSQL** |
-| Extension | **PostGIS** |
 
-> **Lý do dùng PostGIS:**
-> - Xử lý GPS
-> - Query khoảng cách
-> - Geofencing
+> **Lý do dùng PostgreSQL:**
+> - Ổn định, bảo mật cao
+> - Hỗ trợ tính khoảng cách bằng Haversine hiệu quả
 
 ---
 

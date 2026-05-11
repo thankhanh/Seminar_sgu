@@ -124,7 +124,7 @@ Hệ thống kết hợp **GPS Geofencing + Audio Narration đa ngôn ngữ + QR
 | ID | Yêu cầu | Chi tiết |
 |----|---------|---------|
 | FR-GPS-01 | Tracking vị trí | Mobile app watch GPS mỗi 10-15 giây |
-| FR-GPS-02 | Tìm quán gần đó | API query PostGIS `ST_DWithin` bán kính configurable (default 500m) |
+| FR-GPS-02 | Tìm quán gần đó | API query tính khoảng cách Haversine bán kính configurable (default 500m) |
 | FR-GPS-03 | Geofence trigger | Khi khoảng cách < 20m → hiện popup thông báo |
 | FR-GPS-04 | Chống lặp | Không trigger lại cho cùng quán trong 30 phút |
 | FR-GPS-05 | QR fallback | Khi GPS sai > 20m → user scan QR code tại quán |
@@ -180,10 +180,10 @@ Hệ thống kết hợp **GPS Geofencing + Audio Narration đa ngôn ngữ + QR
 | Layer | Công nghệ | Ghi chú |
 |-------|-----------|---------|
 | **Backend** | NestJS + TypeScript | Monolith, Prisma ORM |
-| **Database** | PostgreSQL + PostGIS | Supabase hosted, GEOGRAPHY(POINT, 4326) |
+| **Database** | PostgreSQL | Supabase hosted, lưu tọa độ lat/lng cơ bản |
 | **Web Frontend** | React + Tailwind CSS + Vite | CMS cho Merchant & Admin |
 | **Mobile** | React Native (Expo) | GPS, QR, Audio player |
-| **Auth** | JWT + Refresh Token + Session | Bcrypt, token rotation |
+| **Auth** | JWT + Refresh Token | Bcrypt, token rotation, Stateless |
 | **Payment** | VNPAY SDK + MoMo OpenAPI v2 | Sandbox → Production |
 | **Storage** | Supabase Storage | Audio MP3, images |
 | **API Docs** | Swagger / OpenAPI | Auto-generated |
@@ -226,8 +226,8 @@ merchants ← merchant_subscriptions
 └──────────────────────────┬───────────────────────────────────┘
                            │
         ┌──────────────────▼──────────────────┐
-        │     SUPABASE (PostgreSQL + PostGIS)  │
-        │  14 tables │ GIST spatial index      │
+        │     SUPABASE (PostgreSQL)           │
+        │  14 tables │ Tính Geofence Backend  │
         │  Supabase Storage (MP3 + Images)     │
         └─────────────────────────────────────┘
 ```
@@ -238,7 +238,7 @@ merchants ← merchant_subscriptions
 
 | Phase | Timeline | Deliverables |
 |-------|----------|-------------|
-| **Phase 1: Core** | Tuần 1-4 | Auth API, Store CRUD, PostGIS query, Narration CRUD |
+| **Phase 1: Core** | Tuần 1-4 | Auth API, Store CRUD, API query vị trí (Haversine), Narration CRUD |
 | **Phase 2: Web CMS** | Tuần 3-6 | Merchant Dashboard UI, Admin Dashboard UI, kết nối API |
 | **Phase 3: Mobile MVP** | Tuần 5-8 | GPS tracking, Map view, Audio player, QR Scanner |
 | **Phase 4: Payment** | Tuần 7-9 | VNPAY + MoMo integration, Premium/Subscription |
@@ -252,7 +252,7 @@ merchants ← merchant_subscriptions
 |--------|----------|-----------|
 | GPS không chính xác trong khu vực hẹp | Cao | QR Code fallback, cho phép adjust bán kính geofence |
 | Merchant không chủ động upload narration | Trung bình | Cung cấp text-to-speech (TTS), team hỗ trợ record |
-| Latency cao khi nhiều user đồng thời | Thấp | PostGIS spatial index, caching Redis (tương lai) |
+| Latency cao khi nhiều user đồng thời | Thấp | Tối ưu caching Redis (tương lai) |
 | VNPAY/MoMo sandbox khác production | Trung bình | Test kỹ trên sandbox, có error handling + retry |
 | Pin phone hao nhanh do GPS liên tục | Cao | Giảm tần suất tracking khi user đứng yên, dùng significant location changes |
 
@@ -267,8 +267,7 @@ merchants ← merchant_subscriptions
 | **POI** (Point of Interest) | Điểm quan tâm trên bản đồ, ở đây = quán ăn |
 | **Geofencing** | Vùng ảo quanh POI, khi user vào vùng → trigger sự kiện |
 | **Narration** | Bản thuyết minh audio giới thiệu quán ăn |
-| **PostGIS** | Extension PostgreSQL xử lý dữ liệu địa lý |
-| **ST_DWithin** | Hàm PostGIS kiểm tra 2 điểm có nằm trong khoảng cách cho trước |
+| **Haversine** | Công thức tính khoảng cách dựa trên vĩ độ/kinh độ |
 | **TTS** (Text-to-Speech) | Chuyển văn bản thành giọng nói tự động |
 | **IPN** (Instant Payment Notification) | Webhook server-to-server từ cổng thanh toán |
 

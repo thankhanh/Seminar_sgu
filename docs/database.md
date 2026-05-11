@@ -1,6 +1,6 @@
 # 🗄️ DATABASE SCHEMA — Chi Tiết
 
-> **Hệ quản trị CSDL:** PostgreSQL + PostGIS (extension địa lý)
+> **Hệ quản trị CSDL:** PostgreSQL
 > **Kiểu ID:** UUID v4 cho tất cả bảng
 > **Múi giờ:** UTC (lưu `timestamp with time zone`)
 
@@ -90,7 +90,7 @@
 
 ## 1.4 `stores`
 
-> Thông tin quán ăn, tích hợp PostGIS để tra cứu vị trí địa lý.
+> Thông tin quán ăn, lưu trữ tọa độ cơ bản để tra cứu vị trí địa lý.
 
 | Column         | Type                         | Constraint | Mô tả                           |
 |----------------|------------------------------|------------|---------------------------------|

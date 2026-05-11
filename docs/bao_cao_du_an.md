@@ -4,7 +4,7 @@
 **Trường:** Đại học Sài Gòn (SGU)  
 **Ngày cập nhật:** 24/03/2026  
 **Team size:** 4 developer  
-**Kiến trúc:** Client-Server (NestJS + PostgreSQL/PostGIS + React Native + React/Vite)
+**Kiến trúc:** Client-Server (NestJS + PostgreSQL + React Native + React/Vite)
 
 ---
 
@@ -14,18 +14,18 @@
 Xây dựng hệ thống thuyết minh tự động theo vị trí GPS dành cho **khu ẩm thực Vĩnh Khánh**. Khi khách hàng đến gần một quán ăn, hệ thống sẽ:
 
 1. Nhận diện vị trí GPS của khách
-2. Tìm quán ăn gần nhất trong bán kính geofence (PostGIS)
+2. Tìm quán ăn gần nhất trong bán kính geofence bằng thuật toán Haversine
 3. Tự động phát audio giới thiệu đa ngôn ngữ (Tiếng Việt, Anh, Trung, Hàn, Nhật, Pháp)
 
 ### 1.2 Ý tưởng cốt lõi
 
 | Khái niệm | Mô tả |
 |---|---|
-| **POI** (Point Of Interest) | Tọa độ GPS của cửa hàng, lưu bằng PostGIS GEOGRAPHY(POINT, 4326) |
-| **Geofencing** | Phát hiện người dùng vào vùng POI bằng `ST_DWithin` |
+| **POI** (Point Of Interest) | Tọa độ GPS của cửa hàng, lưu trữ dưới dạng `lat` (vĩ độ) và `lng` (kinh độ) |
+| **Geofencing** | Phát hiện người dùng vào vùng POI bằng cách tính khoảng cách sử dụng công thức Haversine |
 | **Audio narration** | Thuyết minh tự động đa ngôn ngữ, file MP3 lưu Supabase Storage |
 
-> **Thiết kế quan trọng:** POI = Store (không tách module riêng). Mỗi Store đã chứa tọa độ GPS `GEOGRAPHY(POINT, 4326)`. Khi 2 store chồng vùng geofence, backend luôn ưu tiên store **gần nhất** (`ORDER BY distance ASC LIMIT 1`).
+> **Thiết kế quan trọng:** POI = Store (không tách module riêng). Mỗi Store đã chứa tọa độ GPS (`lat`, `lng`). Backend sử dụng thuật toán Haversine trên Application Level để tính khoảng cách và ưu tiên store **gần nhất**.
 
 ---
 
@@ -37,8 +37,9 @@ Xây dựng hệ thống thuyết minh tự động theo vị trí GPS dành cho
 | Framework | **NestJS + TypeScript** | ✅ Đã triển khai |
 | ORM | **Prisma** | ✅ Đã triển khai |
 | Database | **PostgreSQL (Supabase)** | ✅ Đã kết nối |
-| PostGIS Extension | **GEOGRAPHY(POINT, 4326)** | ✅ Đã có trong migration.sql |
-| Auth | **JWT + Refresh Token + Session** | ✅ Đã triển khai |
+| Xử lý Vị trí | **Công thức Haversine** | ✅ Tính toán ở Application Level |
+| Auth | **JWT (Access + Refresh Token)** | ✅ Đã triển khai |
+| API Docs | **Swagger UI** | ✅ Đã triển khai |
 | API Docs | **Swagger UI** | ✅ Đã triển khai |
 
 ### Frontend Web (CMS - Quản lý cho Merchant & Admin)
@@ -71,13 +72,14 @@ Xây dựng hệ thống thuyết minh tự động theo vị trí GPS dành cho
 ┌────────────────────────▼────────────────────────────────┐
 │                   BACKEND (NestJS)                      │
 │  Auth | Stores | Narrations | QR | Payments | Admin     │
-│  JWT + Session | Prisma ORM | Swagger UI                │
+│  JWT Stateless | Prisma ORM | Swagger UI                │
+│  (Xử lý Geofencing bằng thuật toán Haversine)           │
 └────────────────────────┬────────────────────────────────┘
                          │
 ┌────────────────────────▼────────────────────────────────┐
-│              SUPABASE (PostgreSQL + PostGIS)             │
-│  GEOGRAPHY index (GIST) | find_nearby_stores() function │
-│  Supabase Storage (Audio MP3 files)                     │
+│              SUPABASE (PostgreSQL)                      │
+│  Lưu trữ dữ liệu tọa độ lat, lng cơ bản                 │
+│  Supabase Storage (Audio MP3 files, Images)             │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -91,7 +93,7 @@ Xây dựng hệ thống thuyết minh tự động theo vị trí GPS dành cho
 |---|---|---|
 | `users` | Tài khoản: user / merchant / admin | Role-based |
 | `merchants` | Thông tin doanh nghiệp chủ quán | 1 user → 1 merchant |
-| `stores` | **Quán ăn + tọa độ GPS (PostGIS)** | **`location GEOGRAPHY(POINT,4326)`** |
+| `stores` | **Quán ăn + tọa độ GPS** | **`lat Float`, `lng Float`** |
 | `store_images` | Bộ ảnh của quán | Nhiều ảnh / quán |
 | `menus` | Danh sách món ăn | Giá VND |
 | `narrations` | Audio thuyết minh đa ngôn ngữ | 1 bản / ngôn ngữ / quán |
@@ -103,23 +105,9 @@ Xây dựng hệ thống thuyết minh tự động theo vị trí GPS dành cho
 | `plan_metadata` | Cấu hình giá và giới hạn gói | Chứa metadata JSON |
 | `transactions` | Giao dịch thanh toán | VNPay / MoMo / Cash |
 
-### 4.2 PostGIS đã triển khai
+### 4.2 Xử lý vị trí địa lý (Geofencing)
 
-```sql
--- ✅ Extension đã bật
-CREATE EXTENSION IF NOT EXISTS "postgis";
-
--- ✅ Column trong bảng stores
-location GEOGRAPHY(POINT, 4326) NOT NULL
-
--- ✅ Spatial index (tối ưu query GPS)
-CREATE INDEX idx_stores_location ON stores USING GIST (location);
-
--- ✅ Function tìm quán gần vị trí user
-CREATE FUNCTION find_nearby_stores(p_lng, p_lat, p_radius_meters)
-RETURNS TABLE (id, name, address, distance_meters, ...)
--- Dùng ST_DWithin + ST_Distance + ORDER BY distance ASC
-```
+Hệ thống lưu trữ tọa độ trực tiếp dưới dạng `lat` và `lng` (`Float`) trong bảng `stores`. Khi người dùng di chuyển, Mobile App liên tục đẩy tọa độ lên, Backend sử dụng **Công thức Haversine** để tính khoảng cách và lọc ra các quán ăn nằm trong bán kính quy định. Cách tiếp cận này giúp giảm tải truy vấn phức tạp cho Database và hoạt động hiệu quả với quy mô MVP.
 
 ---
 
@@ -128,7 +116,7 @@ RETURNS TABLE (id, name, address, distance_meters, ...)
 ### 5.1 Danh sách module
 | Module | Endpoint chính | Chức năng |
 |---|---|---|
-| **Auth** | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` | JWT + Refresh Token + Session |
+| **Auth** | `POST /auth/register`, `/auth/login`, `/auth/refresh` | JWT Access Token + Refresh Token |
 | **Users** | `GET /users/me`, `PATCH /users/me` | Profile người dùng |
 | **Merchant** | `POST /merchant/register`, `GET /merchant/me` | Đăng ký làm chủ quán |
 | **Stores** | `CRUD /stores` | Quản lý cửa hàng + GPS |
@@ -138,37 +126,65 @@ RETURNS TABLE (id, name, address, distance_meters, ...)
 | **Payments** | `POST /payments/vnpay`, `/payments/momo` | Tích hợp thanh toán trực tuyến |
 
 ### 5.2 Authentication Flow
-- **Access Token:** JWT, expire 15 phút, lưu trong memory (Authorization header).
+- **Access Token:** JWT, expire 15 phút, gửi qua Authorization header (Bearer). Hệ thống thiết kế hoàn toàn Stateless.
 - **Refresh Token:** Hashed trong DB table `refresh_tokens`, expire 7 ngày.
-- **Session:** Express-session với connect-pg-simple (PostgreSQL store).
+- **Bảo mật:** Sử dụng JWT Guards và Role Guards ở tầng NestJS Middleware. Mọi request không hợp lệ sẽ bị Throttler chặn lại.
 
-### 5.3 Tính năng thông minh: Auto-Translation & Caching
-Hệ thống tích hợp logic tự động dịch thuật để hỗ trợ Merchant:
-- **Tự động dịch:** Khi tải lên nội dung thuyết minh Tiếng Việt, hệ thống tự động gọi MyMemory API để dịch sang các ngôn ngữ khác (En, Ko, Ja...).
-- **Caching:** Các bản dịch được lưu trực tiếp vào database để tối ưu hiệu năng và chi phí API.
+### 5.3 Tính năng thông minh: Dịch thuật tự động (Auto-Translation) & Caching
+Hệ thống tích hợp logic tự động dịch thuật trong `NarrationsService` để hỗ trợ Merchant một cách tối đa:
+- **Tự động dịch:** Khi tải lên nội dung thuyết minh gốc (Tiếng Việt), hệ thống sử dụng **MyMemory API** để tự động dịch thuật nội dung sang các ngôn ngữ đích (Tiếng Anh, Hàn, Nhật, Trung...).
+- **Caching Database:** Thay vì gọi API dịch thuật mỗi lần khách hàng quét, các bản dịch được lưu trực tiếp (`upsert`) vào database. Khi Mobile App fetch dữ liệu, nội dung được tải siêu tốc từ Cache DB, tối ưu hiệu năng và tránh bị giới hạn rate-limit của API dịch thuật.
 
 ---
 
 ## 6. FRONTEND WEB (CMS)
 
-### 6.1 Các trang đã có
-| Trang | Đường dẫn | Chức năng |
-|---|---|---|
-| Đăng nhập | `/login` | Đăng nhập tài khoản |
-| Đăng ký | `/register` | Tạo tài khoản mới |
-| Hồ sơ cửa hàng | `/dashboard/store` | Thông tin + Liên hệ + Vị trí quán |
-| Quản lý Menu | `/dashboard/menu` | Thêm/sửa/xóa món ăn |
-| Audio thuyết minh | `/dashboard/audio` | Quản lý file audio đa ngôn ngữ |
+### 6.1 Cấu trúc giao diện CMS
+
+Hệ thống được thiết kế Role-based UI rõ ràng, phân cấp bảo mật chặt chẽ:
+
+**Giao diện dùng chung & Xác thực:**
+- `/login`, `/register`: Đăng nhập và đăng ký tài khoản (User, Merchant).
+
+**Giao diện cho Admin (Quản trị viên):**
+- `/dashboard`: Thống kê tổng quan số lượng cửa hàng, doanh thu, luợt nghe.
+- `/admin/merchants`: Xem và phê duyệt Merchant đăng ký mới (`MerchantApproval.tsx`).
+- `/admin/users`: Quản lý, phân quyền và khóa tài khoản người dùng (`UserManagement.tsx`).
+- `/admin/subscriptions`: Quản lý các gói thanh toán (`SubscriptionManagement.tsx`).
+
+**Giao diện cho Merchant (Chủ quán):**
+- `/merchant/stores`: Thêm mới, chỉnh sửa và quản lý nhiều cửa hàng (`StoreManagement.tsx`).
+- `/merchant/poi`: Cấu hình vị trí GPS cho cửa hàng (`POIManagement.tsx`).
+- `/merchant/menus`: Quản lý thực đơn và giá món ăn (`MenuManagement.tsx`).
+- `/merchant/audio`: Đăng tải và quản lý file audio đa ngôn ngữ (`AudioManagement.tsx`).
+- `/merchant/translations`: Quản lý các bản dịch text (`Translations.tsx`).
 
 ### 6.2 Nhận xét UI/UX
-- **Design:** Hiện đại, sidebar điều hướng rõ ràng, sử dụng Tailwind CSS v4.
-- **Tình trạng:** Đã hoàn thiện kết nối 100% với Backend API thông qua Axios Interceptors.
+- **Design:** Hiện đại, sidebar điều hướng rõ ràng, sử dụng Tailwind CSS v4, phân trang và tìm kiếm đầy đủ.
+- **Tình trạng:** Đã hoàn thiện kết nối 100% với Backend API thông qua Axios Interceptors. Token được gắn tự động vào Header, tự động logout khi token hết hạn.
 
 ---
 
-## 7. CÁC TÍNH NĂNG NỔI BẬT VÀ ĐỊNH HƯỚNG
+## 7. CẤU TRÚC MOBILE APP (React Native / Expo)
 
-- **Geofencing thông minh:** Sử dụng thuật toán Haversine kết hợp PostGIS để kích hoạt thuyết minh trong bán kính 20m.
+Ứng dụng di động được xây dựng bằng Expo Router, cung cấp trải nghiệm mượt mà với kiến trúc Tab Navigation:
+
+### 7.1 Cấu trúc Tab
+- **Tab Map (`/map`)**: Tích hợp `react-native-maps`, hiển thị vị trí hiện tại và các quán ăn xung quanh.
+- **Tab Guide (`/guide`)**: Trình phát Audio đa ngôn ngữ (sử dụng `expo-av`), hiển thị tên quán, lời dịch và thời lượng.
+- **Tab Scanner (`/scanner`)**: Fallback sử dụng `expo-barcode-scanner` để quét mã QR tại quán khi GPS bị nhiễu.
+- **Tab Explore (`/explore`)**: Liệt kê danh sách các quán ăn nổi bật hoặc gần nhất.
+- **Tab Profile (`/profile`)**: Quản lý thông tin cá nhân và Gói Subscription.
+
+### 7.2 Tính năng thiết yếu đã hoàn thiện
+- **Geofencing & Location**: Liên tục lắng nghe vị trí người dùng qua `expo-location`. Khi khoảng cách nhỏ hơn bán kính quy định, ứng dụng tự động hiển thị popup phát thuyết minh.
+- **Xử lý âm thanh**: Tải và phát audio mượt mà từ url trên Supabase Storage, hỗ trợ chạy ẩn.
+
+---
+
+## 8. CÁC TÍNH NĂNG NỔI BẬT VÀ ĐỊNH HƯỚNG
+
+- **Geofencing thông minh:** Sử dụng thuật toán Haversine để kích hoạt thuyết minh trong bán kính 20m.
 - **Thanh toán đa phương thức:** Hỗ trợ VNPAY và MoMo với quy trình đối soát tự động.
 
 ### 7.1 Hướng phát triển tương lai
@@ -178,9 +194,9 @@ Hệ thống tích hợp logic tự động dịch thuật để hỗ trợ Merc
 
 ---
 
-## 8. THÔNG TIN KỸ THUẬT BỔ SUNG
+## 9. THÔNG TIN KỸ THUẬT BỔ SUNG
 
-### 8.1 Chạy dự án
+### 9.1 Chạy dự án
 ```bash
 # Backend (NestJS)
 cd backend && npm run start:dev
@@ -194,12 +210,12 @@ cd frontend/app && npx expo start
 
 ---
 
-## 9. TỔNG KẾT TIẾN ĐỘ
+## 10. TỔNG KẾT TIẾN ĐỘ
 
 | Hạng mục | Tiến độ |
 |---|---|
-| Backend NestJS (API + Auth + Modules) | **100%** hoàn thành |
-| Database Schema + PostGIS Migration | **100%** hoàn thành |
+| Backend NestJS (API + Auth + Logic tính toán) | **100%** hoàn thành |
+| Database Schema (PostgreSQL) | **100%** hoàn thành |
 | Frontend Web CMS (UI/UX + API) | **100%** hoàn thành |
 | Mobile App (GPS, QR, Audio, Maps) | **100%** hoàn thành |
 | Payments (VNPAY, MoMo) | **100%** hoàn thành |
@@ -230,7 +246,7 @@ Map hiển thị	react-native-maps
   └─ expo-location.watchPositionAsync() → mỗi 10-15 giây gửi GPS lên backend
   
 [Backend API] POST /stores/nearby  { lat, lng }
-  └─ ST_DWithin query → trả về store gần nhất
+  └─ Tính Haversine Distance → trả về store gần nhất
   
 [Mobile app]
   └─ Nhận store → gọi GET /narrations?storeId&lang=vi → play audio
@@ -239,7 +255,7 @@ Merchant upload file .mp3 qua CMS web
 Backend lưu URL vào narrations.audio_url
 Mobile fetch URL → dùng expo-av phát trực tiếp từ URL
 Thứ tự ưu tiên nên làm
-1️⃣ Enable PostGIS + thêm column location + API findNearby  (~2-3 giờ)
+1️⃣ Thiết lập cơ sở dữ liệu và API findNearby bằng Haversine  (~2-3 giờ)
 2️⃣ Tạo Expo app mobile + tích hợp GPS + gọi API findNearby  (~1 ngày)
 3️⃣ Tích hợp expo-av phát audio + expo-barcode-scanner QR    (~4-5 giờ)
 4️⃣ Tích hợp Leaflet vào frontend web cho trang POI           (~2 giờ)  
